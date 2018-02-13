@@ -8,8 +8,8 @@ namespace MicroCoin.Protocol
 {
     public class BlockResponse : Response
     {
-        public List<BlockTransactionList> OperationBlocks { get; set; }
-        public uint OpCount { get; set; }
+        public List<BlockTransactionList> BlockTransactions { get; set; }
+        public uint TransactionCount { get; set; }
 
         public BlockResponse(Stream stream) : base(stream)
         {
@@ -18,18 +18,18 @@ namespace MicroCoin.Protocol
 
         public BlockResponse(Stream stream, Response rp) :base(rp)
         {
-            OperationBlocks = new List<BlockTransactionList>();
+            BlockTransactions = new List<BlockTransactionList>();
             using (BinaryReader br = new BinaryReader(stream, Encoding.ASCII, true))
             {
-                OpCount = br.ReadUInt32();
-                for(int i = 0; i < OpCount; i++)
+                TransactionCount = br.ReadUInt32();
+                for(int i = 0; i < TransactionCount; i++)
                 {
                     if (stream.Position >= stream.Length - 1) {
                         Console.WriteLine("Position");
                         break;
                     }                    
                     BlockTransactionList op = new BlockTransactionList(stream);
-                    OperationBlocks.Add(op);
+                    BlockTransactions.Add(op);
                 }
             }
         }

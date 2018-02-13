@@ -12,7 +12,7 @@ namespace MicroCoin.Protocol
         public ushort ServerPort { get; set; }
         public ECKeyPair AccountKey { get; set; }
         public int Timestamp { get; set; }
-        public TransactionBlock OperationBlock { get; set; }
+        public TransactionBlock TransactionBlock { get; set; }
         public NodeServerList NodeServers { get; set; }
         public string Version { get; set; }
         public Int64 WorkSum { get; set; }
@@ -25,7 +25,7 @@ namespace MicroCoin.Protocol
                 AccountKey = new ECKeyPair();
                 AccountKey.LoadFromStream(stream);
                 Timestamp = br.ReadInt32();
-                OperationBlock = new TransactionBlock(stream);
+                TransactionBlock = new TransactionBlock(stream);
                 NodeServers = NodeServerList.LoadFromStream(stream);
                 ushort vlen = br.ReadUInt16();
                 byte[] vb = br.ReadBytes(vlen);

@@ -9,54 +9,46 @@ namespace MicroCoin.BlockChain
 {
     public class BlockTransactionList : TransactionBlock
     {
-        public uint OpCount { get; set; }
-        public TransactionType OpType { get; set; }
+        public uint TransactionCount { get; set; }
+        public TransactionType TransactionsType { get; set; }
         public List<Transaction> Transactions;
         public BlockTransactionList(Stream s) : base(s)
         {
             using (BinaryReader br = new BinaryReader(s, Encoding.Default, true))
             {
-                OpCount = br.ReadUInt32();
-                if (OpCount > 0)
+                TransactionCount = br.ReadUInt32();
+                if (TransactionCount > 0)
                 {
                     Transactions = new List<Transaction>();
-                    for (int i = 0; i < OpCount; i++)
+                    for (int i = 0; i < TransactionCount; i++)
                     {
-                        OpType = (TransactionType)br.ReadUInt32();
-                        if (OpType == TransactionType.Transaction || OpType == TransactionType.BuyAccount)
+                        TransactionsType = (TransactionType)br.ReadUInt32();
+                        if (TransactionsType == TransactionType.Transaction || TransactionsType == TransactionType.BuyAccount)
                         {
                             try
                             {
                                 TransferTransaction t = new TransferTransaction(s);
                                 Transactions.Add(t);
-                                if (t.NewAccountKey != null)
-                                    Console.WriteLine("Block {0}, new Transaction {1} => {2} {3}", BlockNumber, t.SignerAccount, t.TargetAccount, t.Amount);
                             }
                             catch (Exception e)
                             {
-                                Console.WriteLine(OpType);
-                                Console.WriteLine(BlockNumber);
                                 throw;
                             }
                         }
-                        else if (OpType == TransactionType.ChangeKey || OpType == TransactionType.ChangeKeySigned)
+                        else if (TransactionsType == TransactionType.ChangeKey || TransactionsType == TransactionType.ChangeKeySigned)
                         {
-                            ChangeKeyTransaction ct = new ChangeKeyTransaction(s, OpType);
-                            //			    Console.WriteLine("Change key Signer: {0} Target: {1} ", ct.SignerAccount, ct.TargetAccount);
+                            ChangeKeyTransaction ct = new ChangeKeyTransaction(s, TransactionsType);
                         }
-                        else if(OpType==TransactionType.ListAccountForSale || OpType == TransactionType.DeListAccountForSale)
+                        else if(TransactionsType==TransactionType.ListAccountForSale || TransactionsType == TransactionType.DeListAccountForSale)
                         {
                             ListAccountTransaction t = new ListAccountTransaction(s);
                         }
-                        else if(OpType == TransactionType.ChangeAccountInfo)
+                        else if(TransactionsType == TransactionType.ChangeAccountInfo)
                         {
-                            Console.WriteLine(BlockNumber);
                             ChangeAccountInfoTransaction tr = new ChangeAccountInfoTransaction(s);
-                            Console.WriteLine("Account info {0} {1} {2}", tr.ChangeType, tr.SignerAccount, tr.NewName.ToAnsiString());
                         }
                         else
                         {
-                            Console.WriteLine(OpType);
                             s.Position = s.Length;
                             return;
                         }
@@ -69,6 +61,11 @@ namespace MicroCoin.BlockChain
             base.SaveToStream(s);
             using (BinaryWriter bw = new BinaryWriter(s, Encoding.ASCII, true))
             {
+                if (Transactions == null)
+                {
+                    bw.Write((uint)0);
+                    return;
+                }
                 bw.Write((uint)Transactions.Count);
                 foreach (var t in Transactions)
                 {

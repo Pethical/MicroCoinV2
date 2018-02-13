@@ -47,7 +47,7 @@ namespace MicroCoin.Net
                 ProtocolVersion = 0,
                 Reward = 0,
                 SafeBoxHash = h,
-                OperationBlockSignature = 3,
+                TransactionBlockSignature = 3,
                 Timestamp = 0
             };
 
@@ -101,48 +101,66 @@ namespace MicroCoin.Net
 
         public void Start()
         {
-            tcpClient = new TcpClient("127.0.0.1", 4004);            
+            tcpClient = new TcpClient("127.0.0.1", 4004);
+            tcpClient.ReceiveBufferSize = 1024 * 1014 * 1024;
             Thread t = new Thread(() =>
             {
                 while (true)
                 {
                     while (tcpClient.Available == 0) Thread.Sleep(1);
                     var ms = new MemoryStream();
+                    NetworkStream ns = tcpClient.GetStream();
                     while (tcpClient.Available > 0)
-                    {
-                        NetworkStream ns = tcpClient.GetStream();
+                    {                        
                         byte[] buffer = new byte[tcpClient.Available];
                         ns.Read(buffer, 0, buffer.Length);
                         ms.Write(buffer, 0, buffer.Length);
                     }
-                    ms.Position = 0;
+                    {
+                        ms.Position = 0;
                         Response rp = new Response(ms);
+                        int wt = 0;
+                        while (rp.DataLength > ms.Length - Response.size)
+                        {
+                            while (tcpClient.Available == 0)
+                            {
+                                Thread.Sleep(1);
+                                wt++;
+                                if (wt > 1000) break;
+                            }
+                            if (wt > 1000) break;
+                            while (tcpClient.Available > 0)
+                            {
+                                byte[] buffer = new byte[tcpClient.Available];
+                                ns.Read(buffer, 0, buffer.Length);
+                                ms.Write(buffer, 0, buffer.Length);
+                            }
+                        }
+                        if (wt > 1000) continue;
                         switch (rp.Operation)
                         {
                             case NetOperationType.Hello:
                                 try
                                 {
-                                    HelloResponse response = new HelloResponse(ms, rp);                                
+                                    HelloResponse response = new HelloResponse(ms, rp);
                                     OnHelloResponse(response);
                                 }
-                                catch(Exception e)
+                                catch (Exception e)
                                 {
                                     Console.WriteLine(e.Message);
                                 }
-                                
+
                                 break;
                             case NetOperationType.GetBlocks:
                                 BlockResponse blockResponse = new BlockResponse(ms, rp);
-                                lock (threadLock)
-                                {
-                                    OnGetBlockResponse(blockResponse);
-                                }
+                                OnGetBlockResponse(blockResponse);
                                 break;
                             default:
                                 break;
                         }
+                        ms.Dispose();
                     }
-                
+                }
             });
             t.Start();            
         }

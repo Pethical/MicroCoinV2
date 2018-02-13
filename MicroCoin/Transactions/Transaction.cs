@@ -11,10 +11,10 @@ namespace MicroCoin.Transactions
         public uint TargetAccount { get; set; }
         public byte[] Payload { get; set; }
         public ECSig Signature { get; set; }
-        public string PayloadString => Encoding.ASCII.GetString(Payload);
         public ECKeyPair AccountKey { get; set; }
         public ulong Fee { get; set; }
         abstract public void SaveToStream(Stream s);
+        abstract public void LoadFromStream(Stream s);
         protected void ReadPayLoad(BinaryReader br)
         {
             ushort len = br.ReadUInt16();

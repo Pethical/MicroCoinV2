@@ -3,13 +3,6 @@ using System.Text;
 
 namespace MicroCoin.Protocol
 {
-    public class BlockEntry
-    {
-        public uint Soob { get; set; }
-        public uint Number { get; set; }
-
-
-    }
     public class Response : RequestHeader
     {
         public Response(Stream stream)

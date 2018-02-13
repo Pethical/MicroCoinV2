@@ -1,4 +1,5 @@
 ﻿using MicroCoin.Cryptography;
+using MicroCoin.Util;
 using System;
 using System.IO;
 using System.Text;
@@ -17,6 +18,28 @@ namespace MicroCoin.Transactions
 
         public ChangeAccountInfoTransaction(Stream stream)
         {
+            LoadFromStream(stream);
+        }
+        public override void SaveToStream(Stream s)
+        {
+            using(BinaryWriter bw = new BinaryWriter(s, Encoding.ASCII, true))
+            {
+                bw.Write(SignerAccount);
+                bw.Write(TargetAccount);
+                bw.Write(NumberOfOperations);
+                bw.Write(Fee);
+                Payload.SaveToStream(bw);
+                AccountKey.SaveToStream(s, false);
+                bw.Write(ChangeType);
+                NewAccountKey.SaveToStream(s,false);
+                NewName.SaveToStream(bw);
+                bw.Write(NewType);
+                Signature.SaveToStream(s);
+            }
+        }
+
+        public override void LoadFromStream(Stream stream)
+        {
             using (BinaryReader br = new BinaryReader(stream, Encoding.Default, true))
             {
                 SignerAccount = br.ReadUInt32();
@@ -28,16 +51,12 @@ namespace MicroCoin.Transactions
                 AccountKey.LoadFromStream(stream, false);
                 ChangeType = br.ReadByte();
                 NewAccountKey = new ECKeyPair();
-                NewAccountKey.LoadFromStream(stream,false);
+                NewAccountKey.LoadFromStream(stream, false);
                 ushort len = br.ReadUInt16();
                 NewName = br.ReadBytes(len);
                 NewType = br.ReadUInt16();
                 Signature = new ECSig(stream);
             }
-        }
-        public override void SaveToStream(Stream s)
-        {
-            throw new NotImplementedException();
         }
     }
 }

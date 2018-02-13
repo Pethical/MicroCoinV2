@@ -17,8 +17,8 @@ namespace MicroCoin.BlockChain
         {
             using (BinaryReader br = new BinaryReader(s, System.Text.Encoding.ASCII, true))
             {
-                OperationBlockSignature = br.ReadByte();
-                if (OperationBlockSignature > 0)
+                TransactionBlockSignature = br.ReadByte();
+                if (TransactionBlockSignature > 0)
                 {
                     ProtocolVersion = br.ReadUInt16();
                     AvailableProtocol = br.ReadUInt16();
@@ -59,7 +59,7 @@ namespace MicroCoin.BlockChain
 
         }
 
-        public byte OperationBlockSignature { get; set; } = 3;
+        public byte TransactionBlockSignature { get; set; } = 3;
         public ushort ProtocolVersion { get; set; } = 0;
         public ushort AvailableProtocol { get; set; } = 0;
         public uint BlockNumber { get; set; } = 0;
@@ -85,7 +85,7 @@ namespace MicroCoin.BlockChain
         {
             using (BinaryWriter bw = new BinaryWriter(s, System.Text.Encoding.ASCII, true))
             {
-                bw.Write(OperationBlockSignature);
+                bw.Write(TransactionBlockSignature);
                 bw.Write(ProtocolVersion);
                 bw.Write(AvailableProtocol);
                 bw.Write(BlockNumber);

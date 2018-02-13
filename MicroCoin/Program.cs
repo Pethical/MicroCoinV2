@@ -38,49 +38,36 @@ namespace MicroCoin
 
     class Program
     {
-
-
-        static MemoryStream CreateStream(MemoryStream data)
-        {
-            MemoryStream ms = new MemoryStream();
-            BinaryWriter bw = new BinaryWriter(ms);
-            bw.Write(0x0A043580); //Magic
-            bw.Write((ushort)1);  // op
-            bw.Write((ushort)1);  // op
-            bw.Write((ushort)0);  // error
-            bw.Write((uint)1);    // request_id
-
-            bw.Write((ushort)6);  // Protv
-            bw.Write((ushort)6);    // prota
-            // HEADER END
-            bw.Write((int) data.Length);
-
-            bw.Write(data.ToArray());
-            bw.Flush();
-            return ms;
-        }
-
         static void Main(string[] args)
         {
             List<TransactionBlock> list = new List<TransactionBlock>();
             MicroCoinClient microCoinClient = new MicroCoinClient();
-            microCoinClient.BlockResponse += async (o, e) => {
-                foreach(var l in e.OperationBlocks)
-                {
-                    list.Add(l);
-                }
-                await Task.Delay(0);
-                Console.WriteLine("Received {0} Block from blockchain. BlockChain size: {1}, End block: {2}", e.OperationBlocks.Count, list.Count, list.Last().BlockNumber);
-            };
             microCoinClient.HelloResponse += async (o, e) =>
             {
-                Console.WriteLine("BlockChain to receive: {0}", e.OperationBlock.BlockNumber);
-                for (uint i = 1; i < e.OperationBlock.BlockNumber; i += 100)
-                {
-                    microCoinClient.RequestBlockChain(i, 100);
-                    await Task.Delay(100);
-                    //Thread.Sleep(100);
-                }
+                Console.WriteLine("BlockChain to receive: {0}", e.TransactionBlock.BlockNumber);                
+                microCoinClient.BlockResponse += (ob, eb) => {
+                    foreach (var l in eb.BlockTransactions)
+                    {
+                        list.Add(l);
+                    }
+                    Console.WriteLine("Received {0} Block from blockchain. BlockChain size: {1}, End block: {2}", eb.BlockTransactions.Count, list.Count, list.Last().BlockNumber);
+                    if (list.Last().BlockNumber < e.TransactionBlock.BlockNumber)
+                    {
+                        microCoinClient.RequestBlockChain(list.Last().BlockNumber+1, 200);
+                    }
+                    else
+                    {
+                        FileStream fileStream = File.Create("blockchain");
+                        foreach(var a in list)
+                        {
+                            a.SaveToStream(fileStream);
+                        }
+                        fileStream.Close();
+                    }
+                };                                
+                    microCoinClient.RequestBlockChain(1, 1000);
+                    await Task.Delay(1);                    
+                
             };
             microCoinClient.Start();
             microCoinClient.SendHello();

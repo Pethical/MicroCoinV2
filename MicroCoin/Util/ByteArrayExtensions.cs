@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.IO;
+using System.Text;
 
 namespace MicroCoin.Util
 {
@@ -7,5 +8,11 @@ namespace MicroCoin.Util
         {
             return Encoding.Default.GetString(b);
         }
+        public static void SaveToStream(this byte[] b, BinaryWriter bw)
+        {
+            bw.Write((ushort)b.Length);
+            bw.Write(b, 0, b.Length);
+        }
+
     }
 }

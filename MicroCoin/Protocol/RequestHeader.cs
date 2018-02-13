@@ -5,6 +5,8 @@ namespace MicroCoin.Protocol
 {
     public class RequestHeader
     {
+        public static int size = 4 + 2 + 2 + 2 + 4 + 2 + 2 + 4;
+
         public uint Magic { get; set; }
         public RequestType RequestType { get; set; }
         public NetOperationType Operation { get; set; }
