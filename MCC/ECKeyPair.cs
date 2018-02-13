@@ -127,10 +127,15 @@ namespace MCC
                     //pub = new FpPoint(c1, new FpFieldElement(c1.H, new BigInteger(+1, xKey)), new FpFieldElement(c1.Q, ));
                     return;
                 }
-                else
-                {
+                else if(type==714)
+                {	    
                     curve = Org.BouncyCastle.Asn1.Sec.SecNamedCurves.GetByName("secp256k1");
-                }
+		}
+		else if(type!=0) {
+		    throw new Exception(String.Format("{0} TYPE", type));
+		}else{	
+                    curve = Org.BouncyCastle.Asn1.Sec.SecNamedCurves.GetByName("secp256k1");
+		}
                 
                 FpCurve c = (FpCurve)curve.Curve;                
                 pub = new FpPoint(c,new FpFieldElement(c.Q, new BigInteger(+1, xKey)), new FpFieldElement(c.Q, new BigInteger(+1, yKey)));

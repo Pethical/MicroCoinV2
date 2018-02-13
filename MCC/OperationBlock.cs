@@ -152,12 +152,16 @@ namespace MCC
         public ulong Fee { get; set; }
         public byte[] Payload { get; set; }
         public ECSig Signature { get; set; }
+	public ulong AccountPrice { get; set; }
+	public uint SellerAccount { get; set; }
+	public ECKeyPair NewAccountKey { get; set; }
+        public ECKeyPair AccountKey { get; set; }
+
         public string PayloadString {
             get {
                 return Encoding.ASCII.GetString(Payload);
             }
         }
-        public ECKeyPair AccountKey { get; set; }
 
         public Transaction(Stream stream)
         {
@@ -171,10 +175,31 @@ namespace MCC
                 ushort PayloadLength = br.ReadUInt16();
                 Payload = new byte[PayloadLength];
                 br.Read(Payload, 0, PayloadLength); // 372
-                AccountKey = new ECKeyPair();
-                AccountKey.LoadFromStream(stream, false);
+	        try{
+		    //ushort u = br.ReadUInt16();
+		    //Console.WriteLine(u);
+    	    	    //stream.Position-=2;
+                    AccountKey = new ECKeyPair();
+            	    AccountKey.LoadFromStream(stream, false);
+		} catch (Exception e) {
+			Console.WriteLine(PayloadLength);
+			Console.WriteLine("Error {0} {1} {2}",Sender,Target,Amount);
+			throw e;
+		}
                 byte b = br.ReadByte();
-                if (b > 2) stream.Position -= 1;
+                if (b > 2){ stream.Position -= 1; }
+		if (b > 0 && b<3) {
+		    try{
+			AccountPrice = br.ReadUInt64();
+			SellerAccount = br.ReadUInt32();
+    			NewAccountKey = new ECKeyPair();
+    			NewAccountKey.LoadFromStream(stream, false);
+    			Console.WriteLine("Account Operation: Price: {0}, Seller: {1}, B:{2}, newKey {3}", AccountPrice, SellerAccount, b, Encoding.ASCII.GetString(NewAccountKey.pub.X.GetEncoded()) );
+		    } catch (Exception e){
+			Console.WriteLine("B: {0}",b);
+			throw e;
+		    }
+		}
                 Signature = new ECSig(stream);
             }
         }
@@ -196,6 +221,54 @@ namespace MCC
         }
     }
 
+    public class ChangeKeyTransaction {
+	public uint SignerAccount { get; set; }
+	public uint TargetAccount { get; set; }
+	public uint NumberOfOperations { get; set; }
+	public ulong Fee { get; set; }
+	public byte[] Payload { get; set; }
+	public ECKeyPair PublicKey { get; set; }
+	public ECKeyPair NewAccountKey { get ;set; }
+	public ECSig Signature { get ;set; }
+
+	public ChangeKeyTransaction(){}
+
+	public ChangeKeyTransaction(Stream s, OperationType OpType){
+            using (BinaryReader br = new BinaryReader(s, Encoding.Default, true)){
+		SignerAccount = br.ReadUInt32();
+		if(OpType == OperationType.ChangeKey) {
+		     TargetAccount = SignerAccount;
+		}
+		else if(OpType == OperationType.ChangeKeySigned) {
+		     TargetAccount = br.ReadUInt32();
+		}
+		NumberOfOperations = br.ReadUInt32();
+		Fee = br.ReadUInt64();
+		ushort len = br.ReadUInt16();
+		Payload = new byte[len];
+		br.Read(Payload, 0, len);
+		PublicKey = new ECKeyPair();
+		try{
+		    PublicKey.LoadFromStream(s, false);
+		}catch(Exception e){
+		    Console.WriteLine("PublicKey");
+		    Console.ReadLine();
+		    throw e;
+		}
+		NewAccountKey = new ECKeyPair();
+		try{
+		    NewAccountKey.LoadFromStream(s, true);
+		    //Console.WriteLine("OK");
+		}catch(Exception e){
+		    Console.WriteLine("NewAccountKey");
+		    Console.ReadLine();
+		    throw e;
+		}
+		Signature = new ECSig(s);
+	    }
+	}
+    }
+
     public class Operation : OperationBlock
     {
         public uint OpCount { get; set; }
@@ -212,15 +285,27 @@ namespace MCC
                     for (int i = 0; i < OpCount; i++)
                     {
                         OpType = (OperationType)br.ReadUInt32();
-                        if (OpType == OperationType.Transaction)
+                        if (OpType == OperationType.Transaction || OpType == OperationType.BuyAccount)
                         {
-                            Transaction t = new Transaction(s);
-                            Transactions.Add(t);
-                            Console.WriteLine("Block {0}, new Transaction {1} => {2} {3}", BlockNumber, t.Sender, t.Target, t.Amount);
+			    try{
+                                Transaction t = new Transaction(s);
+                                Transactions.Add(t);
+				if(t.NewAccountKey!=null)
+        	            	    Console.WriteLine("Block {0}, new Transaction {1} => {2} {3}", BlockNumber, t.Sender, t.Target, t.Amount);
+			    }catch(Exception e){
+				Console.WriteLine(OpType);
+				Console.WriteLine(BlockNumber);
+				throw e;
+			    }
                         }
+			else if(OpType == OperationType.ChangeKey || OpType == OperationType.ChangeKeySigned) {
+			    ChangeKeyTransaction ct = new ChangeKeyTransaction(s, OpType);
+//			    Console.WriteLine("Change key Signer: {0} Target: {1} ", ct.SignerAccount, ct.TargetAccount);
+			}
                         else
                         {
-                            s.Position = s.Length - 1;
+			    Console.WriteLine(OpType);
+                            s.Position = s.Length;
                             return;
                         }
                     }
