@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using MicroCoin.Net;
+using System.IO;
 using System.Text;
 
 namespace MicroCoin.Protocol

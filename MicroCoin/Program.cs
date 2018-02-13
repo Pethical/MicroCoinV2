@@ -22,20 +22,6 @@ using MicroCoin.Net.Discovery;
 
 namespace MicroCoin
 {
-    public enum RequestType : ushort { None = 0, Request, Response, AutoSend, Unknown };
-    public enum NetOperationType : ushort
-    {
-        Hello = 1,
-        Error = 2,
-        Message = 3,
-        GetOperationBlocks = 0x05,
-        GetBlocks = 0x10,
-        NewBlock = 0x11,
-        AddOperations = 0x20,
-        GetSafeBox = 0x21
-    }
-
-
     class Program
     {
         static void Main(string[] args)
@@ -57,6 +43,7 @@ namespace MicroCoin
                     }
                     else
                     {
+                        Console.WriteLine("Saving blockChain");
                         FileStream fileStream = File.Create("blockchain");
                         foreach(var a in list)
                         {

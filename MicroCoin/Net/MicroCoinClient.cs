@@ -12,12 +12,25 @@ using System.Threading.Tasks;
 
 namespace MicroCoin.Net
 {
+    public enum RequestType : ushort { None = 0, Request, Response, AutoSend, Unknown };
+    public enum NetOperationType : ushort
+    {
+        Hello = 1,
+        Error = 2,
+        Message = 3,
+        GetOperationBlocks = 0x05,
+        GetBlocks = 0x10,
+        NewBlock = 0x11,
+        AddOperations = 0x20,
+        GetSafeBox = 0x21
+    }
 
     public class MicroCoinClient
     {
         public event EventHandler<HelloRequest> HelloRequest;
         public event EventHandler<HelloResponse> HelloResponse;
         public event EventHandler<BlockResponse> BlockResponse;
+
         private object threadLock = new object();
 
         protected TcpClient tcpClient;
