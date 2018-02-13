@@ -10,38 +10,8 @@ using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Crypto.Parameters;
 using Org.BouncyCastle.Crypto.Generators;
 
-namespace MCC
+namespace MicroCoin.Cryptography
 {
-
-    public class ECSig
-    {
-        public byte[] r { get; set; }
-        public byte[] s { get; set; }
-
-        public ECSig() { }
-        public ECSig(Stream stream) {
-            using (BinaryReader br = new BinaryReader(stream, Encoding.ASCII, true))
-            {
-                ushort len = br.ReadUInt16();
-                r = new byte[len];
-                br.Read(r, 0, len);
-                len = br.ReadUInt16();
-                s = new byte[len];
-                br.Read(s, 0, len);
-            }
-        }
-
-        public void SaveToStream(Stream stream)
-        {
-            using (BinaryWriter bw = new BinaryWriter(stream, Encoding.ASCII, true))
-            {
-                bw.Write((ushort)r.Length);
-                bw.Write(r);
-                bw.Write((ushort)s.Length);
-                bw.Write(s);
-            }
-        }
-    }
 
     public class ECKeyPair
     {
@@ -66,7 +36,7 @@ namespace MCC
             if (compressed)
             {
                 ECPoint q = pubParams.Q;
-                k.pub = new FpPoint(domain.Curve, q.X, q.Y, true);
+                k.pub = new FpPoint(domain.Curve, q.AffineXCoord, q.AffineYCoord, true);
 
             }
             else
@@ -80,14 +50,14 @@ namespace MCC
         {
             using(BinaryWriter bw = new BinaryWriter(s, Encoding.ASCII, true))
             {
-                BigInteger bg = pub.X.ToBigInteger();                
-                int len = pub.X.GetEncoded().Length + pub.Y.GetEncoded().Length + 6;                
+                BigInteger bg = pub.AffineXCoord.ToBigInteger();                
+                int len = pub.AffineXCoord.GetEncoded().Length + pub.AffineYCoord.GetEncoded().Length + 6;                
                 if(WriteLength) bw.Write((ushort)len);
                 bw.Write((ushort)714);
-                bw.Write((ushort)pub.X.GetEncoded().Length);
-                bw.Write(pub.X.GetEncoded());
-                bw.Write((ushort)pub.Y.GetEncoded().Length);
-                bw.Write(pub.Y.GetEncoded());
+                bw.Write((ushort)pub.AffineXCoord.GetEncoded().Length);
+                bw.Write(pub.AffineXCoord.GetEncoded());
+                bw.Write((ushort)pub.AffineYCoord.GetEncoded().Length);
+                bw.Write(pub.AffineYCoord.GetEncoded());
                 
             }
         }
@@ -136,9 +106,9 @@ namespace MCC
 		}else{	
                     curve = Org.BouncyCastle.Asn1.Sec.SecNamedCurves.GetByName("secp256k1");
 		}
-                
                 FpCurve c = (FpCurve)curve.Curve;                
-                pub = new FpPoint(c,new FpFieldElement(c.Q, new BigInteger(+1, xKey)), new FpFieldElement(c.Q, new BigInteger(+1, yKey)));
+                pub = new FpPoint(c, new FpFieldElement(c.Q, new BigInteger(+1, xKey)),
+                    new FpFieldElement(c.Q, new BigInteger(+1, yKey)));
             }
         }
 

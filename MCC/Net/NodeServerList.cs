@@ -4,7 +4,7 @@ using System.IO;
 using System.Net;
 using System.Text;
 
-namespace MCC
+namespace MicroCoin.Net
 {
     public class NodeServer
     {

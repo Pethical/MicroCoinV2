@@ -1,15 +1,15 @@
 ﻿using System.Collections.Generic;
 using System.IO;
 
-namespace MCC
+namespace MicroCoin.BlockChain
 {
-    public class BlockChain : List<OperationBlock>
+    public class BlockChain : List<TransactionBlock>
     {
         public void LoadFromStream(Stream s)
         {
             while (s.Position < s.Length-1)
             {
-                this.Add(new OperationBlock(s));
+                this.Add(new TransactionBlock(s));
             }
         }
     }

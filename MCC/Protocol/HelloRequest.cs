@@ -1,15 +1,18 @@
-﻿using System;
+﻿using MicroCoin.BlockChain;
+using MicroCoin.Cryptography;
+using MicroCoin.Net;
+using System;
 using System.IO;
 using System.Text;
 
-namespace MCC
+namespace MicroCoin.Protocol
 {
     public class HelloRequest : Request
     {
         public ushort ServerPort { get; set; }
         public ECKeyPair AccountKey { get; set; }
         public int Timestamp { get; set; }
-        public OperationBlock OperationBlock { get; set; }
+        public TransactionBlock OperationBlock { get; set; }
         public NodeServerList NodeServers { get; set; }
         public string Version { get; set; }
         public Int64 WorkSum { get; set; }

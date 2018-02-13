@@ -1,5 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using MicroCoin.BlockChain;
+using MicroCoin.Cryptography;
+using MicroCoin.Protocol;
+using System;
 using System.IO;
 using System.Linq;
 using System.Net.Sockets;
@@ -8,35 +10,8 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace MCC
+namespace MicroCoin.Net
 {
-
-    public class BlockResponse : Response
-    {
-        public List<Operation> OperationBlocks { get; set; }
-        public uint OpCount { get; set; }
-
-        public BlockResponse(Stream stream) : base(stream)
-        {
-            Operation op = new Operation(stream);
-        }
-
-        public BlockResponse(Stream stream, Response rp) :base(rp)
-        {
-            OperationBlocks = new List<Operation>();
-            using (BinaryReader br = new BinaryReader(stream, Encoding.ASCII, true))
-            {
-                OpCount = br.ReadUInt32();
-                for(int i = 0; i < OpCount; i++)
-                {
-                    if (stream.Position == stream.Length-1) break;
-                    if (stream.Position == stream.Length) break;
-                    Operation op = new Operation(stream);
-                    OperationBlocks.Add(op);
-                }
-            }
-        }
-    }
 
     public class MicroCoinClient
     {
@@ -58,7 +33,7 @@ namespace MCC
             SHA256Managed sha = new SHA256Managed();
             Int32 unixTimestamp = (Int32)(DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1))).TotalSeconds;
             byte[] h = sha.ComputeHash(Encoding.ASCII.GetBytes("(c) Peter Nemeth - Okes rendben okes"));
-            request.OperationBlock = new OperationBlock
+            request.OperationBlock = new TransactionBlock
             {
                 AccountKey = null,
                 AvailableProtocol = 0,
@@ -72,7 +47,7 @@ namespace MCC
                 ProtocolVersion = 0,
                 Reward = 0,
                 SafeBoxHash = h,
-                Soob = 3,
+                OperationBlockSignature = 3,
                 Timestamp = 0
             };
 
@@ -110,7 +85,7 @@ namespace MCC
         }
 
         public void OnHelloResponse(HelloResponse helloResponse)
-        {
+        {            
             HelloResponse?.Invoke(this, helloResponse);
         }
         public void OnGetBlockResponse(BlockResponse blockResponse)
@@ -135,7 +110,6 @@ namespace MCC
                     var ms = new MemoryStream();
                     while (tcpClient.Available > 0)
                     {
-                        //Console.WriteLine("Availbytes: {0}", tcpClient.Available);
                         NetworkStream ns = tcpClient.GetStream();
                         byte[] buffer = new byte[tcpClient.Available];
                         ns.Read(buffer, 0, buffer.Length);
@@ -148,7 +122,7 @@ namespace MCC
                             case NetOperationType.Hello:
                                 try
                                 {
-                                    HelloResponse response = new HelloResponse(ms, rp);
+                                    HelloResponse response = new HelloResponse(ms, rp);                                
                                     OnHelloResponse(response);
                                 }
                                 catch(Exception e)
