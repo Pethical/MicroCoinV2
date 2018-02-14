@@ -23,35 +23,29 @@ namespace MicroCoin.BlockChain
                     for (int i = 0; i < TransactionCount; i++)
                     {
                         TransactionsType = (TransactionType)br.ReadUInt32();
-                        if (TransactionsType == TransactionType.Transaction || TransactionsType == TransactionType.BuyAccount)
+                        Transaction t = null;
+                        switch (TransactionsType)
                         {
-                            try
-                            {
-                                TransferTransaction t = new TransferTransaction(s);
-                                Transactions.Add(t);
-                            }
-                            catch (Exception e)
-                            {
-                                throw;
-                            }
+                            case TransactionType.Transaction:
+                            case TransactionType.BuyAccount:
+                                t = new TransferTransaction(s);
+                                break;
+                            case TransactionType.ChangeKey:
+                            case TransactionType.ChangeKeySigned:
+                                t = new ChangeKeyTransaction(s, TransactionsType);
+                                break;
+                            case TransactionType.ListAccountForSale:
+                            case TransactionType.DeListAccountForSale:
+                                t = new ListAccountTransaction(s);
+                                break;
+                            case TransactionType.ChangeAccountInfo:
+                                t = new ChangeAccountInfoTransaction(s);
+                                break;
+                            default:
+                                s.Position = s.Length;
+                                return;
                         }
-                        else if (TransactionsType == TransactionType.ChangeKey || TransactionsType == TransactionType.ChangeKeySigned)
-                        {
-                            ChangeKeyTransaction ct = new ChangeKeyTransaction(s, TransactionsType);
-                        }
-                        else if(TransactionsType==TransactionType.ListAccountForSale || TransactionsType == TransactionType.DeListAccountForSale)
-                        {
-                            ListAccountTransaction t = new ListAccountTransaction(s);
-                        }
-                        else if(TransactionsType == TransactionType.ChangeAccountInfo)
-                        {
-                            ChangeAccountInfoTransaction tr = new ChangeAccountInfoTransaction(s);
-                        }
-                        else
-                        {
-                            s.Position = s.Length;
-                            return;
-                        }
+                        Transactions.Add(t);
                     }
                 }
             }
@@ -73,6 +67,5 @@ namespace MicroCoin.BlockChain
                 }
             }
         }
-
     }
 }

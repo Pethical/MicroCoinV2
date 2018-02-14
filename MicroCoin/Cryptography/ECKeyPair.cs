@@ -12,15 +12,22 @@ using Org.BouncyCastle.Crypto.Generators;
 
 namespace MicroCoin.Cryptography
 {
-
+    public enum CurveType : ushort {
+        empty = 0,
+        secp256k1 = 714,
+        secp384r1 = 715,
+        secp521r1 = 716,
+        sect283k1 = 729
+    };
     public class ECKeyPair
     {
-        public BigInteger priv;
-        public bool compressed;
-        public ECPoint pub;
+        public BigInteger PrivateKey { get; set; }
+        public bool Compressed { get; set; }
+        public ECPoint PublicKey { get; set; }
+        public CurveType CurveType { get; set; }
 
         public static ECKeyPair createNew(bool compressed)
-        {
+        {            
             SecureRandom secureRandom = new SecureRandom();
             X9ECParameters curve = Org.BouncyCastle.Asn1.Sec.SecNamedCurves.GetByName("secp256k1");
             ECDomainParameters domain = new ECDomainParameters(curve.Curve, curve.G, curve.N, curve.H);
@@ -31,17 +38,18 @@ namespace MicroCoin.Cryptography
             ECPrivateKeyParameters privParams = (ECPrivateKeyParameters)keypair.Private;
             ECPublicKeyParameters pubParams = (ECPublicKeyParameters)keypair.Public;
             ECKeyPair k = new ECKeyPair();
-            k.priv = privParams.D;
-            k.compressed = compressed;
+            k.CurveType = CurveType.secp256k1;
+            k.PrivateKey = privParams.D;
+            k.Compressed = compressed;
             if (compressed)
             {
                 ECPoint q = pubParams.Q;
-                k.pub = new FpPoint(domain.Curve, q.AffineXCoord, q.AffineYCoord, true);
+                k.PublicKey = new FpPoint(domain.Curve, q.AffineXCoord, q.AffineYCoord, true);
 
             }
             else
             {
-                k.pub = pubParams.Q;
+                k.PublicKey = pubParams.Q;
             }
             return k;
         }
@@ -50,14 +58,14 @@ namespace MicroCoin.Cryptography
         {
             using(BinaryWriter bw = new BinaryWriter(s, Encoding.ASCII, true))
             {
-                BigInteger bg = pub.AffineXCoord.ToBigInteger();                
-                int len = pub.AffineXCoord.GetEncoded().Length + pub.AffineYCoord.GetEncoded().Length + 6;                
+                BigInteger bg = PublicKey.AffineXCoord.ToBigInteger();                
+                int len = PublicKey.AffineXCoord.GetEncoded().Length + PublicKey.AffineYCoord.GetEncoded().Length + 6;                
                 if(WriteLength) bw.Write((ushort)len);
-                bw.Write((ushort)714);
-                bw.Write((ushort)pub.AffineXCoord.GetEncoded().Length);
-                bw.Write(pub.AffineXCoord.GetEncoded());
-                bw.Write((ushort)pub.AffineYCoord.GetEncoded().Length);
-                bw.Write(pub.AffineYCoord.GetEncoded());
+                bw.Write((ushort)CurveType);
+                bw.Write((ushort)PublicKey.AffineXCoord.GetEncoded().Length);
+                bw.Write(PublicKey.AffineXCoord.GetEncoded());
+                bw.Write((ushort)PublicKey.AffineYCoord.GetEncoded().Length);
+                bw.Write(PublicKey.AffineYCoord.GetEncoded());
                 
             }
         }
@@ -71,43 +79,47 @@ namespace MicroCoin.Cryptography
                     ushort len = br.ReadUInt16();
                     if (len == 0) return;
                 }
-                ushort type = br.ReadUInt16();
+                CurveType = (CurveType) br.ReadUInt16();
                 ushort xLen = br.ReadUInt16();
                 byte[] xKey = br.ReadBytes(xLen);
                 ushort yLen = br.ReadUInt16();
                 byte[] yKey = br.ReadBytes(yLen);
                 X9ECParameters curve;
-                if (type == 716)
+                if (CurveType == CurveType.secp521r1)
                 {
 
                     curve = Org.BouncyCastle.Asn1.Sec.SecNamedCurves.GetByName("secp521r1");
-                    
-                } else if (type == 715)
+
+                }
+                else if (CurveType == CurveType.secp384r1)
                 {
                     curve = Org.BouncyCastle.Asn1.Sec.SecNamedCurves.GetByName("secp384r1");
-                    
+
                 }
-                else if (type == 729)
+                else if (CurveType == CurveType.sect283k1)
                 {
                     curve = Org.BouncyCastle.Asn1.Sec.SecNamedCurves.GetByName("sect283k1");
                     F2mCurve c1 = (F2mCurve)curve.Curve;
-                    pub = new FpPoint(c1, new F2mFieldElement(c1.M, c1.K1, new BigInteger(+1, xKey)),
+                    PublicKey = new FpPoint(c1, new F2mFieldElement(c1.M, c1.K1, new BigInteger(+1, xKey)),
                         new F2mFieldElement(c1.M, c1.K1, new BigInteger(+1, yKey)))
                         ;
                     //pub = new FpPoint(c1, new FpFieldElement(c1.H, new BigInteger(+1, xKey)), new FpFieldElement(c1.Q, ));
                     return;
                 }
-                else if(type==714)
-                {	    
+                else if (CurveType == CurveType.secp256k1)
+                {
                     curve = Org.BouncyCastle.Asn1.Sec.SecNamedCurves.GetByName("secp256k1");
-		}
-		else if(type!=0) {
-		    throw new Exception(String.Format("{0} TYPE", type));
-		}else{	
+                }
+                else if (CurveType != 0)
+                {
+                    throw new Exception(String.Format("{0} TYPE", CurveType));
+                }
+                else
+                {
                     curve = Org.BouncyCastle.Asn1.Sec.SecNamedCurves.GetByName("secp256k1");
-		}
+                }
                 FpCurve c = (FpCurve)curve.Curve;                
-                pub = new FpPoint(c, new FpFieldElement(c.Q, new BigInteger(+1, xKey)),
+                PublicKey = new FpPoint(c, new FpFieldElement(c.Q, new BigInteger(+1, xKey)),
                     new FpFieldElement(c.Q, new BigInteger(+1, yKey)));
             }
         }

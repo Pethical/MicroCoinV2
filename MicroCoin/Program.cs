@@ -28,7 +28,7 @@ namespace MicroCoin
         {
             List<TransactionBlock> list = new List<TransactionBlock>();
             MicroCoinClient microCoinClient = new MicroCoinClient();
-            microCoinClient.HelloResponse += async (o, e) =>
+            microCoinClient.HelloResponse += (o, e) =>
             {
                 Console.WriteLine("BlockChain to receive: {0}", e.TransactionBlock.BlockNumber);                
                 microCoinClient.BlockResponse += (ob, eb) => {
@@ -39,7 +39,7 @@ namespace MicroCoin
                     Console.WriteLine("Received {0} Block from blockchain. BlockChain size: {1}, End block: {2}", eb.BlockTransactions.Count, list.Count, list.Last().BlockNumber);
                     if (list.Last().BlockNumber < e.TransactionBlock.BlockNumber)
                     {
-                        microCoinClient.RequestBlockChain(list.Last().BlockNumber+1, 200);
+                        microCoinClient.RequestBlockChain(list.Last().BlockNumber+1, 100);
                     }
                     else
                     {
@@ -51,10 +51,10 @@ namespace MicroCoin
                         }
                         fileStream.Close();
                     }
+                    //await Task.Delay(0);
                 };                                
-                    microCoinClient.RequestBlockChain(1, 1000);
-                    await Task.Delay(1);                    
-                
+                microCoinClient.RequestBlockChain(1, 100);
+                //await Task.Delay(1);
             };
             microCoinClient.Start();
             microCoinClient.SendHello();

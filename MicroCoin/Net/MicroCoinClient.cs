@@ -124,55 +124,60 @@ namespace MicroCoin.Net
                     var ms = new MemoryStream();
                     NetworkStream ns = tcpClient.GetStream();
                     while (tcpClient.Available > 0)
-                    {                        
+                    {
                         byte[] buffer = new byte[tcpClient.Available];
                         ns.Read(buffer, 0, buffer.Length);
                         ms.Write(buffer, 0, buffer.Length);
                     }
+                    ms.Position = 0;
+                    Response rp = new Response(ms);
+                    long pos = ms.Position;
+                    int wt = 0;
+                    while (rp.DataLength > ms.Length - Response.size)
                     {
-                        ms.Position = 0;
-                        Response rp = new Response(ms);
-                        int wt = 0;
-                        while (rp.DataLength > ms.Length - Response.size)
+                        while (tcpClient.Available == 0)
                         {
-                            while (tcpClient.Available == 0)
-                            {
-                                Thread.Sleep(1);
-                                wt++;
-                                if (wt > 1000) break;
-                            }
+                            Thread.Sleep(1);
+                            wt++;
                             if (wt > 1000) break;
-                            while (tcpClient.Available > 0)
-                            {
-                                byte[] buffer = new byte[tcpClient.Available];
-                                ns.Read(buffer, 0, buffer.Length);
-                                ms.Write(buffer, 0, buffer.Length);
-                            }
                         }
-                        if (wt > 1000) continue;
-                        switch (rp.Operation)
+                        if (wt > 1000) break;
+                        while (tcpClient.Available > 0)
                         {
-                            case NetOperationType.Hello:
-                                try
-                                {
-                                    HelloResponse response = new HelloResponse(ms, rp);
-                                    OnHelloResponse(response);
-                                }
-                                catch (Exception e)
-                                {
-                                    Console.WriteLine(e.Message);
-                                }
-
-                                break;
-                            case NetOperationType.GetBlocks:
-                                BlockResponse blockResponse = new BlockResponse(ms, rp);
-                                OnGetBlockResponse(blockResponse);
-                                break;
-                            default:
-                                break;
+                            byte[] buffer = new byte[tcpClient.Available];
+                            ns.Read(buffer, 0, buffer.Length);
+                            ms.Write(buffer, 0, buffer.Length);
                         }
-                        ms.Dispose();
                     }
+                    
+                    if (wt > 1000)
+                    {
+                        Console.WriteLine("Timeout");
+                        continue;
+                    }
+                    ms.Position = pos;
+                    switch (rp.Operation)
+                    {
+                        case NetOperationType.Hello:
+                            try
+                            {
+                                HelloResponse response = new HelloResponse(ms, rp);
+                                OnHelloResponse(response);
+                            }
+                            catch (Exception e)
+                            {
+                                Console.WriteLine(e.Message);
+                            }
+
+                            break;
+                        case NetOperationType.GetBlocks:
+                            BlockResponse blockResponse = new BlockResponse(ms, rp);
+                            OnGetBlockResponse(blockResponse);
+                            break;
+                        default:
+                            break;
+                    }
+                    ms.Dispose();
                 }
             });
             t.Start();            
