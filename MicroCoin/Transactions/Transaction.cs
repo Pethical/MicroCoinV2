@@ -18,7 +18,6 @@
 
 using MicroCoin.Cryptography;
 using System.IO;
-using System.Text;
 
 namespace MicroCoin.Transactions
 {
@@ -31,8 +30,8 @@ namespace MicroCoin.Transactions
         public ECSig Signature { get; set; }
         public ECKeyPair AccountKey { get; set; }
         public ulong Fee { get; set; }
-        abstract public void SaveToStream(Stream s);
-        abstract public void LoadFromStream(Stream s);
+        public abstract void SaveToStream(Stream s);
+        public abstract void LoadFromStream(Stream s);
         protected void ReadPayLoad(BinaryReader br)
         {
             ushort len = br.ReadUInt16();

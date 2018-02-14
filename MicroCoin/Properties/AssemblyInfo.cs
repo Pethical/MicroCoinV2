@@ -17,18 +17,17 @@
 
 
 using System.Reflection;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 // General Information about an assembly is controlled through the following
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("MCC")]
+[assembly: AssemblyTitle("MicroCoin")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("MCC")]
-[assembly: AssemblyCopyright("Copyright ©  2018")]
+[assembly: AssemblyProduct("MicroCoin")]
+[assembly: AssemblyCopyright("Copyright © 2018 Peter Nemeth")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

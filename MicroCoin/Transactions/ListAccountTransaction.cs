@@ -18,13 +18,12 @@
 
 using MicroCoin.Cryptography;
 using MicroCoin.Util;
-using System;
 using System.IO;
 using System.Text;
 
 namespace MicroCoin.Transactions
 {
-    public class ListAccountTransaction : Transaction
+    public sealed class ListAccountTransaction : Transaction
     {
         public enum AccountTransactionType : ushort
         {
@@ -53,7 +52,7 @@ namespace MicroCoin.Transactions
                     bw.Write(AccountPrice);
                     bw.Write(AccountToPay);
                     AccountKey.SaveToStream(s, false);
-                    NewPublicKey.SaveToStream(s, true);
+                    NewPublicKey.SaveToStream(s);
                     bw.Write(LockedUntilBlock);
                 }
                 bw.Write(Fee);
@@ -78,7 +77,7 @@ namespace MicroCoin.Transactions
                     AccountKey = new ECKeyPair();
                     AccountKey.LoadFromStream(s, false);
                     NewPublicKey = new ECKeyPair();
-                    NewPublicKey.LoadFromStream(s, true);
+                    NewPublicKey.LoadFromStream(s);
                     LockedUntilBlock = br.ReadUInt32();
                 }
                 Fee = br.ReadUInt64();

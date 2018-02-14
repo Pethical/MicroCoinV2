@@ -17,8 +17,6 @@
 
 
 using MicroCoin.Transactions;
-using MicroCoin.Util;
-using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -41,7 +39,7 @@ namespace MicroCoin.BlockChain
                     for (int i = 0; i < TransactionCount; i++)
                     {
                         TransactionsType = (TransactionType)br.ReadUInt32();
-                        Transaction t = null;
+                        Transaction t;
                         switch (TransactionsType)
                         {
                             case TransactionType.Transaction:

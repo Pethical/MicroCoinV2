@@ -31,7 +31,7 @@ namespace MicroCoin.Net.Discovery
         
         private string[] fixSeedIPs = { "185.33.146.44" };
         public List<IPEndPoint> endPoints { get; set; } = new List<IPEndPoint>();
-        private object lockObject = new object();
+        private readonly object lockObject = new object();
         public Discovery()
         {
             try
@@ -86,7 +86,6 @@ namespace MicroCoin.Net.Discovery
             }
             if (Message.Command == DiscoveryCommand.NodeListRequest)
             {
-                Console.WriteLine("Send nodelist");
                 using (MemoryStream m = new MemoryStream())
                 {
                     //SslStream stream = new SslStream(m);
@@ -141,9 +140,8 @@ namespace MicroCoin.Net.Discovery
         {
             lock (lockObject)
             {
-                IPEndPoint ip = new IPEndPoint(IPAddress.Broadcast, 15000);
-                DiscoveryMessage Response = new DiscoveryMessage();
-                Response.Command = DiscoveryCommand.HelloRequest;
+                IPEndPoint ip;
+                DiscoveryMessage Response = new DiscoveryMessage {Command = DiscoveryCommand.HelloRequest};
                 foreach (var seed in fixSeedIPs)
                 {
 

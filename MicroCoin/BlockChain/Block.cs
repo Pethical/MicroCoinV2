@@ -16,16 +16,17 @@
 // along with MicroCoin. If not, see <http://www.gnu.org/licenses/>.
 
 
+using MicroCoin.Cryptography;
+using MicroCoin.Util;
 using System;
+using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace MicroCoin.BlockChain
 {
 
-    class Block
+    public class Block
     {
         
         /// <summary>
@@ -35,15 +36,15 @@ namespace MicroCoin.BlockChain
         /// <summary>
         /// Account key for this block
         /// </summary>
-        public byte[] AccountKey { get; set; }
+        public ECKeyPair AccountKey { get; set; }
         /// <summary>
         /// Miner reward
         /// </summary>
-        public UInt64 Reward { get; set; }
+        public ulong Reward { get; set; }
         /// <summary>
         /// Transaction Fees
         /// </summary>
-        public UInt64 Fee { get; set; }
+        public ulong Fee { get; set; }
         /// <summary>
         /// Miner Protocol Version
         /// </summary>
@@ -55,7 +56,7 @@ namespace MicroCoin.BlockChain
         /// <summary>
         /// When the Block created
         /// </summary>
-        public uint Timestamp { get; set; }
+        public Timestamp Timestamp { get; set; }
         /// <summary>
         /// Compact Target (Difficulty)
         /// </summary>
@@ -68,6 +69,7 @@ namespace MicroCoin.BlockChain
         /// Previus snapshot hash
         /// </summary>
         public byte[] PreviusSnaphotHash { get; set; }
+        public byte[] BlockPayload { get; set; }
         /// <summary>
         /// Merkle Tree hash for checkpointing
         /// </summary>
@@ -76,10 +78,41 @@ namespace MicroCoin.BlockChain
         /// Proof of work
         /// </summary>
         public byte[] ProofOfWork { get; set; }
+        public List<Account> Accounts { get; set; } = new List<Account>();
+        public ByteString BlockHash { get; set; }
+        public ulong AccumulatedWork { get; set; }
+
         public Block(Stream stream)
         {
-            using(BinaryReader br = new BinaryReader(stream))
-            {              
+            using(BinaryReader br = new BinaryReader(stream, Encoding.Default, true))
+            {
+                BlockNumber = br.ReadUInt32();
+                AccountKey = new ECKeyPair();
+                AccountKey.LoadFromStream(stream, false);
+                Reward = br.ReadUInt64();
+                Fee = br.ReadUInt64();
+                ProtocolVersion = br.ReadUInt16();
+                AvailableProtocolVersion = br.ReadUInt16();
+                Timestamp = br.ReadUInt32();
+                DateTime t = Timestamp;
+                CompactTarget = br.ReadUInt32();
+                Nonce = br.ReadUInt32();
+                ushort len = br.ReadUInt16();
+                BlockPayload = br.ReadBytes(len);
+                len = br.ReadUInt16();
+                PreviusSnaphotHash = br.ReadBytes(len);
+                len = br.ReadUInt16();
+                MerkleTreeHash = br.ReadBytes(len);
+                len = br.ReadUInt16();
+                ProofOfWork = br.ReadBytes(len);
+                for(int i = 0; i < 5; i++)
+                {
+                    Account acc = new Account(stream);
+                    Accounts.Add(acc);
+                    string name = acc.Name;
+                }
+                BlockHash = ByteString.ReadFromStream(br);
+                AccumulatedWork = br.ReadUInt64();
             }
         }
     }

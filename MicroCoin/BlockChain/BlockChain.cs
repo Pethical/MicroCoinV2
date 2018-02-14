@@ -23,24 +23,20 @@ namespace MicroCoin.BlockChain
 {
     public class BlockChain : List<TransactionBlock>
     {
-        private static BlockChain s_instance;
+        private static BlockChain _sInstance;
 
         protected BlockChain() { }
 
         public static BlockChain Instance
         {
-            get
-            {
-                if (s_instance == null) s_instance = new BlockChain();
-                return s_instance;
-            }
+            get { return _sInstance ?? (_sInstance = new BlockChain()); }
         }
 
         public void LoadFromStream(Stream s)
         {
             while (s.Position < s.Length - 1)
             {
-                this.Add(new TransactionBlock(s));
+                Add(new TransactionBlock(s));
             }
         }
     }

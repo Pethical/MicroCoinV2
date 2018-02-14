@@ -29,20 +29,10 @@ namespace MicroCoin.Net
         public byte[] IP { get; set; }
         public ushort Port { get; set; }
         public uint LastConnection { get; set; }
-        public string IPAddress
-        {
-            get
-            {
-                return System.Text.Encoding.ASCII.GetString(IP);
-            }
-        }
-        public IPEndPoint EndPoint
-        {
-            get
-            {
-                return new IPEndPoint(System.Net.IPAddress.Parse(IPAddress), Port);
-            }
-        }
+        public string IPAddress => Encoding.ASCII.GetString(IP);
+
+        public IPEndPoint EndPoint => new IPEndPoint(System.Net.IPAddress.Parse(IPAddress), Port);
+
         internal static void LoadFromStream(Stream stream)
         {
             throw new NotImplementedException();

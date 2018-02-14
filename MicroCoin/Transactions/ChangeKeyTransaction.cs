@@ -19,20 +19,19 @@
 using MicroCoin.BlockChain;
 using MicroCoin.Cryptography;
 using MicroCoin.Util;
-using System;
 using System.IO;
 using System.Text;
 
 namespace MicroCoin.Transactions
 {
-    public class ChangeKeyTransaction : Transaction
+    public sealed class ChangeKeyTransaction : Transaction
     {
         public ECKeyPair NewAccountKey { get; set; }
         public TransactionType TransactionType { get; set; }
         public ChangeKeyTransaction() { }
-        public ChangeKeyTransaction(Stream s, TransactionType TransactionType)
+        public ChangeKeyTransaction(Stream s, TransactionType transactionType)
         {
-            this.TransactionType = TransactionType;
+            TransactionType = transactionType;
             LoadFromStream(s);
         }
 
@@ -73,7 +72,7 @@ namespace MicroCoin.Transactions
                 AccountKey = new ECKeyPair();
                 AccountKey.LoadFromStream(s, false);
                 NewAccountKey = new ECKeyPair();
-                NewAccountKey.LoadFromStream(s, true);
+                NewAccountKey.LoadFromStream(s);
                 Signature = new ECSig(s);
             }
 

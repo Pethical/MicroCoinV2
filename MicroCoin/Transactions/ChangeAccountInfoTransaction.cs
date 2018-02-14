@@ -18,13 +18,12 @@
 
 using MicroCoin.Cryptography;
 using MicroCoin.Util;
-using System;
 using System.IO;
 using System.Text;
 
 namespace MicroCoin.Transactions
 {
-    public class ChangeAccountInfoTransaction : Transaction
+    public sealed class ChangeAccountInfoTransaction : Transaction
     {
         public enum AccountInfoChangeType : byte { PublicKey = 1, AccountName = 2, AccountType = 3 };
         public byte ChangeType { get; set; }

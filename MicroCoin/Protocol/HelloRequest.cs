@@ -39,7 +39,7 @@ namespace MicroCoin.Protocol
             base.SaveToStream(s);
             using (MemoryStream ms = new MemoryStream())
             {
-                using (BinaryWriter bw = new BinaryWriter(ms, Encoding.ASCII, true))
+                using (BinaryWriter bw = new BinaryWriter(ms, Encoding.Default, true))
                 {
                     bw.Write(ServerPort);
                     AccountKey.SaveToStream(ms);
@@ -52,13 +52,13 @@ namespace MicroCoin.Protocol
                     bw.Write(WorkSum);
                 }
                 DataLength = (int)ms.Length;
-                using (BinaryWriter bw = new BinaryWriter(s, Encoding.ASCII, true))
+                using (BinaryWriter bw = new BinaryWriter(s, Encoding.Default, true))
                 {
                     bw.Write(DataLength);
                 }
                 ms.Position = 0;
-                ms.CopyTo(s);
-            }
+                ms.CopyTo(s);                
+           }
         }
     }
 }

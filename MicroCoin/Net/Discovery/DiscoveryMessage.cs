@@ -18,10 +18,7 @@
 
 using System.IO;
 using System.Linq;
-using System.Net.Security;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace MicroCoin.Net.Discovery
 {
@@ -39,13 +36,7 @@ namespace MicroCoin.Net.Discovery
             }
         }
         public byte[] Payload { get; set; }
-        public int Length
-        {
-            get
-            {
-                return PayloadLength + sizeof(int) +sizeof(ushort);
-            }
-        }
+        public int Length => PayloadLength + sizeof(int) +sizeof(ushort);
 
         public DiscoveryMessage() { }
 
@@ -53,25 +44,23 @@ namespace MicroCoin.Net.Discovery
         {
             int dt = (data[3] << 24 | data[2] << 16 | data[1] << 8 | data[0]);
             Command = (DiscoveryCommand)dt;
-            ushort PayloadLength =  (ushort)((data[4] << 8) | (data[2]));
+            ushort payloadLength =  (ushort)((data[4] << 8) | (data[2]));
             Payload = data.Skip(6).ToArray();
         }
 
         public byte[] ToByteArray()
-        {            
-            using (MemoryStream ms = new MemoryStream())
+        {
+            MemoryStream ms = new MemoryStream();
+            using (BinaryWriter bw = new BinaryWriter(ms))
             {
-                using (BinaryWriter bw = new BinaryWriter(ms))
+                bw.Write((int)Command);
+                bw.Write(PayloadLength);
+                if (PayloadLength > 0)
                 {
-                    bw.Write((int)Command);
-                    bw.Write(PayloadLength);
-                    if (PayloadLength > 0)
-                    {
-                        bw.Write(Payload, 0, Payload.Length);
-                    }
-                    bw.Flush();
-                    return ms.ToArray();
+                    bw.Write(Payload, 0, Payload.Length);
                 }
+                bw.Flush();
+                return ms.ToArray();
             }
         }
         public override string ToString() => Payload==null?"":Encoding.ASCII.GetString(Payload);

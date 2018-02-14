@@ -24,15 +24,15 @@ namespace MicroCoin.Protocol
 {
     public class RequestHeader
     {
-        public static int size = 4 + 2 + 2 + 2 + 4 + 2 + 2 + 4;
+        public static int Size = 4 + 2 + 2 + 2 + 4 + 2 + 2 + 4;
 
         public uint Magic { get; set; }
         public RequestType RequestType { get; set; }
         public NetOperationType Operation { get; set; }
         public ushort Error { get; set; }
         public uint RequestId { get; set; }
-        public ushort ProtocolVersion { get; set; } = 2;
-        public ushort AvailableProtocol { get; set; } = 2;
+        public ushort ProtocolVersion { get; set; }
+        public ushort AvailableProtocol { get; set; }
         public int DataLength { get; set; }
 
         public RequestHeader()

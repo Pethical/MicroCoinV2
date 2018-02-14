@@ -31,7 +31,6 @@ namespace MicroCoin.Protocol
 
         public BlockResponse(Stream stream) : base(stream)
         {
-            BlockTransactionList op = new BlockTransactionList(stream);
         }
 
         public BlockResponse(Stream stream, Response rp) :base(rp)

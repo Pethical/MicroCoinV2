@@ -16,27 +16,12 @@
 // along with MicroCoin. If not, see <http://www.gnu.org/licenses/>.
 
 
-using System;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Net;
-using System.Net.Sockets;
-using System.Security.Cryptography;
-using Org.BouncyCastle.Crypto.Generators;
-using Org.BouncyCastle.Crypto.Parameters;
-using Org.BouncyCastle.Crypto;
-using Org.BouncyCastle.Math.EC;
-using Org.BouncyCastle.Security;
-using Org.BouncyCastle.Asn1.X9;
-using System.Collections.Generic;
 using MicroCoin.BlockChain;
 using MicroCoin.Net;
-using MicroCoin.Protocol;
-using MicroCoin.Cryptography;
-using MicroCoin.Net.Discovery;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 
 namespace MicroCoin
 {
@@ -44,18 +29,30 @@ namespace MicroCoin
     {
         static void Main(string[] args)
         {
+            FileStream fs = File.OpenRead("checkpoint7");
+            var sh = new Snapshot(fs);
+            Block b = sh[1002];
+            sh.Reset();                        
+            foreach (var bas in sh.Accounts.Where(p=>p.Name!=""))
+            {
+                Console.WriteLine($"{bas.AccountNumber} {bas.Name} {bas.Balance}");
+            }            
+            Console.WriteLine(b.Reward);
+
+            Util.MicroCoin m = new Util.MicroCoin();
+              m = 1000;
             List<TransactionBlock> list = new List<TransactionBlock>();
             MicroCoinClient microCoinClient = new MicroCoinClient();
             microCoinClient.HelloResponse += (o, e) =>
             {
-                Console.WriteLine("BlockChain to receive: {0}", e.TransactionBlock.BlockNumber);                
+                Console.WriteLine("BlockChain to receive: {0}", e.HelloResponse.TransactionBlock.BlockNumber);                
                 microCoinClient.BlockResponse += (ob, eb) => {
-                    foreach (var l in eb.BlockTransactions)
+                    foreach (var l in eb.BlockResponse.BlockTransactions)
                     {
                         list.Add(l);
                     }
-                    Console.WriteLine("Received {0} Block from blockchain. BlockChain size: {1}, End block: {2}", eb.BlockTransactions.Count, list.Count, list.Last().BlockNumber);
-                    if (list.Last().BlockNumber < e.TransactionBlock.BlockNumber)
+                    Console.WriteLine("Received {0} Block from blockchain. BlockChain size: {1}, End block: {2}", eb.BlockResponse.BlockTransactions.Count, list.Count, list.Last().BlockNumber);
+                    if (list.Last().BlockNumber < e.HelloResponse.TransactionBlock.BlockNumber)
                     {
                         microCoinClient.RequestBlockChain(list.Last().BlockNumber+1, 100);
                     }

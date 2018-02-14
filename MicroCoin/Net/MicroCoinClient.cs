@@ -21,12 +21,10 @@ using MicroCoin.Cryptography;
 using MicroCoin.Protocol;
 using System;
 using System.IO;
-using System.Linq;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace MicroCoin.Net
 {
@@ -43,24 +41,51 @@ namespace MicroCoin.Net
         GetSafeBox = 0x21
     }
 
-    public class MicroCoinClient
+    public class HelloRequestEventArgs : EventArgs
     {
-        public event EventHandler<HelloRequest> HelloRequest;
-        public event EventHandler<HelloResponse> HelloResponse;
-        public event EventHandler<BlockResponse> BlockResponse;
+        public HelloRequest HelloRequest { get; set; }
+        public HelloRequestEventArgs(HelloRequest helloRequest)
+        {
+            HelloRequest = helloRequest;
+        }
+    }
+    public class HelloResponseEventArgs : EventArgs
+    {
+        public HelloResponse HelloResponse { get; }
+        public HelloResponseEventArgs(HelloResponse helloResponse)
+        {
+            HelloResponse = helloResponse;
+        }
+    }
+    public class BlockResponseEventArgs : EventArgs
+    {
+        public BlockResponse BlockResponse { get; }
+        public BlockResponseEventArgs(BlockResponse blockResponse)
+        {
+            BlockResponse = blockResponse;
+        }
+    }
 
-        private object threadLock = new object();
 
-        protected TcpClient tcpClient;
+    public class MicroCoinClient : IDisposable
+    {
+
+        public event EventHandler<HelloRequestEventArgs> HelloRequest;
+        public event EventHandler<HelloResponseEventArgs> HelloResponse;
+        public event EventHandler<BlockResponseEventArgs> BlockResponse;
+
+        protected TcpClient TcpClient;
 
         public void SendHello()
         {
-            HelloRequest request = new HelloRequest();
-            request.AccountKey = ECKeyPair.createNew(false);
-            request.AvailableProtocol = 6;
-            request.Error = 0;
-            request.NodeServers = new NodeServerList();
-            request.Operation = NetOperationType.Hello;
+            HelloRequest request = new HelloRequest
+            {
+                AccountKey = ECKeyPair.CreateNew(false),
+                AvailableProtocol = 6,
+                Error = 0,
+                NodeServers = new NodeServerList(),
+                Operation = NetOperationType.Hello
+            };
             SHA256Managed sha = new SHA256Managed();
             Int32 unixTimestamp = (Int32)(DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1))).TotalSeconds;
             byte[] h = sha.ComputeHash(Encoding.ASCII.GetBytes("(c) Peter Nemeth - Okes rendben okes"));
@@ -93,19 +118,20 @@ namespace MicroCoin.Net
             request.SaveToStream(ms);
             ms.Flush();
             ms.Position = 0;
-            NetworkStream ns = tcpClient.GetStream();
+            NetworkStream ns = TcpClient.GetStream();
             ms.CopyTo(ns);
-            ms.Close();
             ms.Dispose();
             ns.Flush();
         }
 
         public void RequestBlockChain(uint startBlock, uint blockNumber)
         {
-            BlockRequest br = new BlockRequest();
-            br.StartBlock = startBlock;
-            br.BlockNumber = blockNumber;
-            NetworkStream ns = tcpClient.GetStream();
+            BlockRequest br = new BlockRequest
+            {
+                StartBlock = startBlock,
+                BlockNumber = blockNumber
+            };
+            NetworkStream ns = TcpClient.GetStream();
             using (MemoryStream ms = new MemoryStream())
             {
                 br.SaveToStream(ms);
@@ -117,33 +143,32 @@ namespace MicroCoin.Net
 
         public void OnHelloResponse(HelloResponse helloResponse)
         {            
-            HelloResponse?.Invoke(this, helloResponse);
+            HelloResponse?.Invoke(this, new HelloResponseEventArgs( helloResponse ));
         }
         public void OnGetBlockResponse(BlockResponse blockResponse)
         {
-            BlockResponse?.Invoke(this, blockResponse);
+            BlockResponse?.Invoke(this, new BlockResponseEventArgs( blockResponse ));
         }
 
 
         public void OnHelloRequest(HelloRequest helloRequest)
         {
-            HelloRequest?.Invoke(this, helloRequest);
+            HelloRequest?.Invoke(this, new HelloRequestEventArgs( helloRequest));
         }
 
         public void Start()
         {
-            tcpClient = new TcpClient("127.0.0.1", 4004);
-            tcpClient.ReceiveBufferSize = 1024 * 1014 * 1024;
+            TcpClient = new TcpClient("127.0.0.1", 4004) {ReceiveBufferSize = 1024 * 1014 * 1024};
             Thread t = new Thread(() =>
             {
                 while (true)
                 {
-                    while (tcpClient.Available == 0) Thread.Sleep(1);
+                    while (TcpClient.Available == 0) Thread.Sleep(1);
                     var ms = new MemoryStream();
-                    NetworkStream ns = tcpClient.GetStream();
-                    while (tcpClient.Available > 0)
+                    NetworkStream ns = TcpClient.GetStream();
+                    while (TcpClient.Available > 0)
                     {
-                        byte[] buffer = new byte[tcpClient.Available];
+                        byte[] buffer = new byte[TcpClient.Available];
                         ns.Read(buffer, 0, buffer.Length);
                         ms.Write(buffer, 0, buffer.Length);
                     }
@@ -151,18 +176,18 @@ namespace MicroCoin.Net
                     Response rp = new Response(ms);
                     long pos = ms.Position;
                     int wt = 0;
-                    while (rp.DataLength > ms.Length - Response.size)
+                    while (rp.DataLength > ms.Length - RequestHeader.Size)
                     {
-                        while (tcpClient.Available == 0)
+                        while (TcpClient.Available == 0)
                         {
                             Thread.Sleep(1);
                             wt++;
                             if (wt > 1000) break;
                         }
                         if (wt > 1000) break;
-                        while (tcpClient.Available > 0)
+                        while (TcpClient.Available > 0)
                         {
-                            byte[] buffer = new byte[tcpClient.Available];
+                            byte[] buffer = new byte[TcpClient.Available];
                             ns.Read(buffer, 0, buffer.Length);
                             ms.Write(buffer, 0, buffer.Length);
                         }
@@ -199,6 +224,21 @@ namespace MicroCoin.Net
                 }
             });
             t.Start();            
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+
+        }
+
+        private void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                TcpClient.Dispose();
+            }
         }
     }
 }

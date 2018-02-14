@@ -33,7 +33,7 @@ namespace MicroCoin.BlockChain
     {
         public TransactionBlock(Stream s)
         {
-            using (BinaryReader br = new BinaryReader(s, System.Text.Encoding.ASCII, true))
+            using (BinaryReader br = new BinaryReader(s, Encoding.ASCII, true))
             {
                 TransactionBlockSignature = br.ReadByte();
                 if (TransactionBlockSignature > 0)
@@ -78,22 +78,19 @@ namespace MicroCoin.BlockChain
         }
 
         public byte TransactionBlockSignature { get; set; } = 3;
-        public ushort ProtocolVersion { get; set; } = 0;
-        public ushort AvailableProtocol { get; set; } = 0;
-        public uint BlockNumber { get; set; } = 0;
+        public ushort ProtocolVersion { get; set; }
+        public ushort AvailableProtocol { get; set; }
+        public uint BlockNumber { get; set; }
         public ECKeyPair AccountKey { get; set; } = new ECKeyPair();
-        public UInt64 Reward { get; set; } = 0;
-        public UInt64 Fee { get; set; } = 0;
-        public uint Timestamp { get; set; } = 0;
-        public uint CompactTarget { get; set; } = 0;
-        public uint Nonce { get; set; } = 0;
+        public UInt64 Reward { get; set; }
+        public UInt64 Fee { get; set; }
+        public uint Timestamp { get; set; }
+        public uint CompactTarget { get; set; }
+        public uint Nonce { get; set; }
         public byte[] Payload { get; set; }
         public string PayloadString
         {
-            get
-            {
-                return Encoding.UTF8.GetString(Payload);
-            }
+            get => Encoding.UTF8.GetString(Payload);
         }
         public byte[] SafeBoxHash { get; set; }
         public byte[] OperationHash { get; set; }
@@ -101,7 +98,7 @@ namespace MicroCoin.BlockChain
 
         public virtual void SaveToStream(Stream s)
         {
-            using (BinaryWriter bw = new BinaryWriter(s, System.Text.Encoding.ASCII, true))
+            using (BinaryWriter bw = new BinaryWriter(s, Encoding.ASCII, true))
             {
                 bw.Write(TransactionBlockSignature);
                 bw.Write(ProtocolVersion);

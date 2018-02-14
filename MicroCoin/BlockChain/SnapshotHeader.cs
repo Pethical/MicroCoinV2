@@ -16,30 +16,54 @@
 // along with MicroCoin. If not, see <http://www.gnu.org/licenses/>.
 
 
-using System;
+using System.IO;
+using System.Text;
 
 namespace MicroCoin.BlockChain
 {
     public class SnapshotHeader
     {
-	public byte[] Magic { get; set; }
-	public ushort Protocol{ get; set; }
-	public ushort Version { get ;set; }
-	public uint BlockCount { get; set; }
-	public uint StartBlock { get; set; }
-	public uint EndBlock { get; set; }
-	public byte[] Hash { get; set; }
+        public byte[] Magic { get; set; }
+        public ushort Protocol { get; set; }
+        public ushort Version { get; set; }
+        public uint BlockCount { get; set; }
+        public uint StartBlock { get; set; }
+        public uint EndBlock { get; set; }
+        public byte[] Hash { get; set; }
+        public string MagicString
+        {
+            get => Encoding.ASCII.GetString(Magic);
 
-	public void LoadFromStream(Stream s) {
+        }
+        private uint[] offsets;
+        public uint BlockOffset(uint blockNumber)
+        {
+            return offsets[blockNumber];
+        }
+        public SnapshotHeader() { }
+        public SnapshotHeader(Stream s)
+        {
+            LoadFromStream(s);            
+        }
+        public void LoadFromStream(Stream s)
+        {
             using (BinaryReader br = new BinaryReader(s, Encoding.Default, true))
             {
-		ushort len = br.ReadUInt16();
-		Magic = br.ReadBytes(len);
-		Version = br.ReadUIn16();
-		BlockCount = br.ReadUInt32();
-		StartBlock = br.ReadUInt32();
-		EndBlock = br.ReadUInt32();
-	    }
-	}
+                ushort len = br.ReadUInt16();
+                Magic      = br.ReadBytes(len);
+                Protocol   = br.ReadUInt16();
+                Version    = br.ReadUInt16();
+                BlockCount = br.ReadUInt32();
+                StartBlock = br.ReadUInt32();
+                EndBlock   = br.ReadUInt32();
+                long pos   = s.Position;
+                offsets    = new uint[(BlockCount + 1)];
+                for(int i = 0; i < offsets.Length; i++)
+                {
+                    offsets[i] = (uint)(br.ReadUInt32()+pos);
+                }
+            }
+        }
     }
+
 }
