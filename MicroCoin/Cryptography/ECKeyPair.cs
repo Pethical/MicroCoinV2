@@ -101,9 +101,7 @@ namespace MicroCoin.Cryptography
                     curve = Org.BouncyCastle.Asn1.Sec.SecNamedCurves.GetByName("sect283k1");
                     F2mCurve c1 = (F2mCurve)curve.Curve;
                     PublicKey = new FpPoint(c1, new F2mFieldElement(c1.M, c1.K1, new BigInteger(+1, xKey)),
-                        new F2mFieldElement(c1.M, c1.K1, new BigInteger(+1, yKey)))
-                        ;
-                    //pub = new FpPoint(c1, new FpFieldElement(c1.H, new BigInteger(+1, xKey)), new FpFieldElement(c1.Q, ));
+                        new F2mFieldElement(c1.M, c1.K1, new BigInteger(+1, yKey)));                    
                     return;
                 }
                 else if (CurveType == CurveType.secp256k1)
@@ -118,7 +116,7 @@ namespace MicroCoin.Cryptography
                 {
                     curve = Org.BouncyCastle.Asn1.Sec.SecNamedCurves.GetByName("secp256k1");
                 }
-                FpCurve c = (FpCurve)curve.Curve;                
+                FpCurve c = (FpCurve)curve.Curve;
                 PublicKey = new FpPoint(c, new FpFieldElement(c.Q, new BigInteger(+1, xKey)),
                     new FpFieldElement(c.Q, new BigInteger(+1, yKey)));
             }
