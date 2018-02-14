@@ -1,5 +1,7 @@
-﻿/*************************************************************************
- * Copyright (c) 2018 Peter Nemeth
+extensions: designer.cs generated.cs
+extensions: .cs .cpp .h
+/*************************************************************************
+ * Copyright (c) %CreationYear% Peter Nemeth
  *
  * This file is part of MicroCoin.
  *
@@ -16,14 +18,3 @@
  * You should have received a copy of the GNU General Public License
  * along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
  *************************************************************************/
-
-namespace MicroCoin.Protocol
-{
-    public class BlockEntry
-    {
-        public uint TransactionBlockSignature { get; set; }
-        public uint Number { get; set; }
-
-
-    }
-}
