@@ -16,7 +16,10 @@
 // along with MicroCoin. If not, see <http://www.gnu.org/licenses/>.
 
 
+using log4net;
+using MicroCoin.Util;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
@@ -26,20 +29,24 @@ namespace MicroCoin.Net
 {
     public class NodeServer
     {
-        public byte[] IP { get; set; }
-        public ushort Port { get; set; }
-        public uint LastConnection { get; set; }
-        public string IPAddress => Encoding.ASCII.GetString(IP);
 
+        public ByteString IP { get; set; }
+        public ushort Port { get; set; }
+        public Timestamp LastConnection { get; set; } = DateTime.Now;
+        public string IPAddress => Encoding.ASCII.GetString(IP);
         public IPEndPoint EndPoint => new IPEndPoint(System.Net.IPAddress.Parse(IPAddress), Port);
 
         internal static void LoadFromStream(Stream stream)
         {
             throw new NotImplementedException();
         }
+        public override string ToString()
+        {
+            return IP +":"+ Port.ToString();
+        }
     }
 
-    public class NodeServerList : List<NodeServer>
+    public class NodeServerList : ConcurrentDictionary<string, NodeServer>
     {
         public void SaveToStream(Stream s)
         {
@@ -61,8 +68,9 @@ namespace MicroCoin.Net
                     ushort iplen = br.ReadUInt16();
                     server.IP = br.ReadBytes(iplen);
                     server.Port = br.ReadUInt16();
-                    server.LastConnection = br.ReadUInt32();
-                    ns.Add(server);
+                    server.LastConnection = br.ReadUInt32();              
+                    
+                    ns.TryAdd(server.ToString(), server);
                 }
             }
             return ns;

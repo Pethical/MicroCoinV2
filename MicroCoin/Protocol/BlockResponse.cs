@@ -16,7 +16,7 @@
 // along with MicroCoin. If not, see <http://www.gnu.org/licenses/>.
 
 
-using MicroCoin.BlockChain;
+using MicroCoin.Chain;
 using System;
 using System.Collections.Generic;
 using System.IO;

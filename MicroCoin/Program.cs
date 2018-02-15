@@ -16,7 +16,12 @@
 // along with MicroCoin. If not, see <http://www.gnu.org/licenses/>.
 
 
-using MicroCoin.BlockChain;
+using log4net;
+using log4net.Appender;
+using log4net.Core;
+using log4net.Layout;
+using log4net.Repository.Hierarchy;
+using MicroCoin.Chain;
 using MicroCoin.Net;
 using System;
 using System.Collections.Generic;
@@ -27,48 +32,72 @@ namespace MicroCoin
 {
     class Program
     {
+        private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
         static void Main(string[] args)
         {
-            FileStream fs = File.OpenRead("checkpoint7");
-            var sh = new Snapshot(fs);
-            Block b = sh[1002];
-            sh.Reset();                        
-            foreach (var bas in sh.Accounts.Where(p=>p.Name!=""))
+            Hierarchy hierarchy = (Hierarchy)LogManager.GetRepository();
+            PatternLayout patternLayout = new PatternLayout();
+            patternLayout.ConversionPattern = "%date [%thread] %-5level %logger - %message%newline";
+            patternLayout.ActivateOptions();
+            ColoredConsoleAppender consoleAppender = new ColoredConsoleAppender();
+            consoleAppender.Layout = patternLayout;
+            consoleAppender.AddMapping(new ColoredConsoleAppender.LevelColors()
             {
-                Console.WriteLine($"{bas.AccountNumber} {bas.Name} {bas.Balance}");
-            }            
-            Console.WriteLine(b.Reward);
+                ForeColor = ColoredConsoleAppender.Colors.Yellow,
+                Level = Level.Warn
+            });
+            consoleAppender.AddMapping(new ColoredConsoleAppender.LevelColors()
+            {
+                ForeColor = ColoredConsoleAppender.Colors.Red,
+                Level = Level.Error
+            });
 
-            Util.MicroCoin m = new Util.MicroCoin();
-              m = 1000;
-            List<TransactionBlock> list = new List<TransactionBlock>();
+            consoleAppender.ActivateOptions();
+
+            hierarchy.Root.AddAppender(consoleAppender);
+            //MemoryAppender memory = new MemoryAppender();
+            //memory.ActivateOptions();
+            //hierarchy.Root.AddAppender(memory);
+            hierarchy.Root.Level = Level.All;
+            hierarchy.Configured = true;
             MicroCoinClient microCoinClient = new MicroCoinClient();
             microCoinClient.HelloResponse += (o, e) =>
             {
-                Console.WriteLine("BlockChain to receive: {0}", e.HelloResponse.TransactionBlock.BlockNumber);                
+                log.DebugFormat("BlockChain to receive: {0}", e.HelloResponse.TransactionBlock.BlockNumber);                
                 microCoinClient.BlockResponse += (ob, eb) => {
                     foreach (var l in eb.BlockResponse.BlockTransactions)
                     {
-                        list.Add(l);
+                        log.DebugFormat("Received {0} Block from blockchain. BlockChain size: {1}. Block height: {2}", eb.BlockResponse.BlockTransactions.Count, BlockChain.Instance.Count, eb.BlockResponse.BlockTransactions.Last().BlockNumber);
+                        if (l.BlockNumber > BlockChain.Instance.BlockHeight())
+                        {
+                            log.Debug($"Appending block {l.BlockNumber}");
+                            BlockChain.Instance.Append(l);
+                        }
                     }
-                    Console.WriteLine("Received {0} Block from blockchain. BlockChain size: {1}, End block: {2}", eb.BlockResponse.BlockTransactions.Count, list.Count, list.Last().BlockNumber);
-                    if (list.Last().BlockNumber < e.HelloResponse.TransactionBlock.BlockNumber)
+                    //log.DebugFormat("Received {0} Block from blockchain. BlockChain size: {1}, End block: {2}", eb.BlockResponse.BlockTransactions.Count, BlockChain.Instance.Count, BlockChain.Instance.Last().BlockNumber);
+                    if (BlockChain.Instance.BlockHeight() < e.HelloResponse.TransactionBlock.BlockNumber)
                     {
-                        microCoinClient.RequestBlockChain(list.Last().BlockNumber+1, 100);
+                        microCoinClient.RequestBlockChain((uint)(BlockChain.Instance.BlockHeight()), 100);
                     }
                     else
                     {
-                        Console.WriteLine("Saving blockChain");
-                        FileStream fileStream = File.Create("blockchain");
-                        foreach(var a in list)
-                        {
-                            a.SaveToStream(fileStream);
-                        }
+/*                        log.Debug("Saving blockChain");
+                        FileStream fileStream = File.Open("block.chain",FileMode.OpenOrCreate,FileAccess.ReadWrite);
+                        BlockChain.Instance.SaveToStorage(fileStream);
+                        //foreach(var a in list)
+                        //{
+                        //    a.SaveToStream(fileStream);
+                        //}
                         fileStream.Close();
+                        log.Debug("Saved");*/
                     }
                     //await Task.Delay(0);
-                };                                
-                microCoinClient.RequestBlockChain(1, 100);
+                };
+                if (BlockChain.Instance.BlockHeight() < e.HelloResponse.TransactionBlock.BlockNumber)
+                {
+                    microCoinClient.RequestBlockChain((uint)(BlockChain.Instance.BlockHeight()), 100);
+                }
+//                microCoinClient.RequestBlockChain(1, 100);
                 //await Task.Delay(1);
             };
             microCoinClient.Start();

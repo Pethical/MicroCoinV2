@@ -16,18 +16,22 @@
 // along with MicroCoin. If not, see <http://www.gnu.org/licenses/>.
 
 
-using MicroCoin.BlockChain;
+using MicroCoin.Chain;
 using MicroCoin.Cryptography;
 using MicroCoin.Protocol;
 using System;
+using System.Linq;
 using System.IO;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
+using log4net;
 
 namespace MicroCoin.Net
 {
+    
     public enum RequestType : ushort { None = 0, Request, Response, AutoSend, Unknown };
     public enum NetOperationType : ushort
     {
@@ -69,13 +73,13 @@ namespace MicroCoin.Net
 
     public class MicroCoinClient : IDisposable
     {
+        private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public event EventHandler<HelloRequestEventArgs> HelloRequest;
         public event EventHandler<HelloResponseEventArgs> HelloResponse;
         public event EventHandler<BlockResponseEventArgs> BlockResponse;
 
         protected TcpClient TcpClient;
-
         public void SendHello()
         {
             HelloRequest request = new HelloRequest
@@ -122,14 +126,13 @@ namespace MicroCoin.Net
             ms.CopyTo(ns);
             ms.Dispose();
             ns.Flush();
-        }
-
-        public void RequestBlockChain(uint startBlock, uint blockNumber)
+        }        
+        public void RequestBlockChain(uint startBlock, uint quantity)
         {
             BlockRequest br = new BlockRequest
             {
                 StartBlock = startBlock,
-                BlockNumber = blockNumber
+                BlockNumber = quantity
             };
             NetworkStream ns = TcpClient.GetStream();
             using (MemoryStream ms = new MemoryStream())
@@ -140,7 +143,6 @@ namespace MicroCoin.Net
             }
             ns.Flush();
         }
-
         public void OnHelloResponse(HelloResponse helloResponse)
         {            
             HelloResponse?.Invoke(this, new HelloResponseEventArgs( helloResponse ));
@@ -149,16 +151,35 @@ namespace MicroCoin.Net
         {
             BlockResponse?.Invoke(this, new BlockResponseEventArgs( blockResponse ));
         }
-
-
         public void OnHelloRequest(HelloRequest helloRequest)
         {
             HelloRequest?.Invoke(this, new HelloRequestEventArgs( helloRequest));
+        }
+        protected void UpdateNodeServers(HelloResponse response)
+        {
+            foreach (var n in response.NodeServers)
+            {
+                if (!Node.Instance.NodeServers.ContainsKey(n.Value.ToString()))
+                {
+                    Node.Instance.NodeServers.TryAdd(n.Value.ToString(), n.Value);
+                    log.Debug($"New node connection: {n.Value}");
+                }
+            }
+            if (Node.Instance.NodeServers.Count > 100)
+            {
+                var list = Node.Instance.NodeServers.OrderByDescending(p => p.Value.LastConnection).Take(100 - Node.Instance.NodeServers.Count);
+                foreach (var l in list)
+                {
+                    Node.Instance.NodeServers.TryRemove(l.Key, out NodeServer n);
+                    log.Debug($"Removed connection: {n}");
+                }
+            }
         }
 
         public void Start()
         {
             TcpClient = new TcpClient("127.0.0.1", 4004) {ReceiveBufferSize = 1024 * 1014 * 1024};
+            TcpClient.ReceiveBufferSize = 2 * 1024 * 1024;
             Thread t = new Thread(() =>
             {
                 while (true)
@@ -176,6 +197,7 @@ namespace MicroCoin.Net
                     Response rp = new Response(ms);
                     long pos = ms.Position;
                     int wt = 0;
+                    log.Debug($"Expected: {rp.DataLength} received: {ms.Length-RequestHeader.Size}");
                     while (rp.DataLength > ms.Length - RequestHeader.Size)
                     {
                         while (TcpClient.Available == 0)
@@ -191,34 +213,48 @@ namespace MicroCoin.Net
                             ns.Read(buffer, 0, buffer.Length);
                             ms.Write(buffer, 0, buffer.Length);
                         }
+                        wt = 0;
                     }
-                    
+
                     if (wt > 1000)
                     {
-                        Console.WriteLine("Timeout");
+                        log.Error($"Timeout. Received {ms.Length}, expected {rp.DataLength}");
                         continue;
                     }
                     ms.Position = pos;
-                    switch (rp.Operation)
+                    log.Debug($"New {rp.Operation} {rp.RequestType} from {TcpClient.Client.RemoteEndPoint}. Data length: {rp.DataLength}");
+                    if (rp.RequestType == RequestType.Response)
                     {
-                        case NetOperationType.Hello:
-                            try
-                            {
-                                HelloResponse response = new HelloResponse(ms, rp);
-                                OnHelloResponse(response);
-                            }
-                            catch (Exception e)
-                            {
-                                Console.WriteLine(e.Message);
-                            }
+                        switch (rp.Operation)
+                        {
+                            case NetOperationType.Hello:
+                                try
+                                {
+                                    HelloResponse response = new HelloResponse(ms, rp);
+                                    UpdateNodeServers(response);                                    
+                                    OnHelloResponse(response);
+                                }
+                                catch (Exception e)
+                                {                                    
+                                    log.Error(e.Message,e);
+                                }
 
+                                break;
+                            case NetOperationType.GetBlocks:
+                                BlockResponse blockResponse = new BlockResponse(ms, rp);
+                                OnGetBlockResponse(blockResponse);
+                                break;
+                            default:
+                                break;
+                        }
+                    } else if (rp.RequestType == RequestType.Request) {
+                        switch (rp.Operation)
+                        {
+                            case NetOperationType.Hello:
+                                HelloResponse response = new HelloResponse(ms, rp);
+                                UpdateNodeServers(response);                                
                             break;
-                        case NetOperationType.GetBlocks:
-                            BlockResponse blockResponse = new BlockResponse(ms, rp);
-                            OnGetBlockResponse(blockResponse);
-                            break;
-                        default:
-                            break;
+                        }
                     }
                     ms.Dispose();
                 }

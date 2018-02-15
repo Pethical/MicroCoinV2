@@ -21,7 +21,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
-namespace MicroCoin.BlockChain
+namespace MicroCoin.Chain
 {
     public class Snapshot : IEnumerable<Block>, IEnumerator<Block>
     {

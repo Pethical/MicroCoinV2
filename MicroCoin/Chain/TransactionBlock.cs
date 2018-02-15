@@ -21,7 +21,7 @@ using System;
 using System.IO;
 using System.Text;
 
-namespace MicroCoin.BlockChain
+namespace MicroCoin.Chain
 {
     public enum TransactionType : uint
     {

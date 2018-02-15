@@ -32,6 +32,11 @@ namespace MicroCoin.Util
             return t.UnixTimestamp;
         }
 
+        public override string ToString()
+        {
+            return ((DateTime)this).ToString();
+        }
+
     }
 
 }

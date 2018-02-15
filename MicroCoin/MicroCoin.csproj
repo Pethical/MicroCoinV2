@@ -50,6 +50,9 @@
     <Reference Include="BouncyCastle.Crypto, Version=1.8.1.0, Culture=neutral, PublicKeyToken=0e99375e54769942">
       <HintPath>..\packages\BouncyCastle.1.8.1\lib\BouncyCastle.Crypto.dll</HintPath>
     </Reference>
+    <Reference Include="log4net, Version=2.0.8.0, Culture=neutral, PublicKeyToken=669e0ddf0bb1aa2a, processorArchitecture=MSIL">
+      <HintPath>..\packages\log4net.2.0.8\lib\net45-full\log4net.dll</HintPath>
+    </Reference>
     <Reference Include="Microsoft.Win32.Primitives, Version=4.0.2.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <HintPath>..\packages\Microsoft.Win32.Primitives.4.3.0\lib\net46\Microsoft.Win32.Primitives.dll</HintPath>
     </Reference>
@@ -108,17 +111,18 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="BlockChain\Account.cs" />
-    <Compile Include="BlockChain\AccountInfo.cs" />
-    <Compile Include="BlockChain\Block.cs" />
-    <Compile Include="BlockChain\BlockChain.cs" />
-    <Compile Include="BlockChain\BlockStream.cs" />
-    <Compile Include="BlockChain\BlockStreamHeader.cs" />
-    <Compile Include="BlockChain\Snapshot.cs" />
-    <Compile Include="BlockChain\SnapshotHeader.cs" />
+    <Compile Include="Chain\Account.cs" />
+    <Compile Include="Chain\AccountInfo.cs" />
+    <Compile Include="Chain\Block.cs" />
+    <Compile Include="Chain\BlockChain.cs" />
+    <Compile Include="Chain\BlockStream.cs" />
+    <Compile Include="Chain\BlockStreamHeader.cs" />
+    <Compile Include="Chain\Snapshot.cs" />
+    <Compile Include="Chain\SnapshotHeader.cs" />
     <Compile Include="Cryptography\ECSig.cs" />
     <Compile Include="Net\Discovery\Discovery.cs" />
     <Compile Include="Net\Discovery\DiscoveryMessage.cs" />
+    <Compile Include="Node.cs" />
     <Compile Include="Protocol\BlockEntry.cs" />
     <Compile Include="Protocol\BlockRequest.cs" />
     <Compile Include="Protocol\BlockResponse.cs" />
@@ -131,8 +135,8 @@
     <Compile Include="Transactions\ListAccountTransaction.cs" />
     <Compile Include="Net\MicroCoinClient.cs" />
     <Compile Include="Net\NodeServerList.cs" />
-    <Compile Include="BlockChain\BlockTransactionList.cs" />
-    <Compile Include="BlockChain\TransactionBlock.cs" />
+    <Compile Include="Chain\BlockTransactionList.cs" />
+    <Compile Include="Chain\TransactionBlock.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Protocol\Request.cs" />

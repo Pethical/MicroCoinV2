@@ -23,7 +23,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
-namespace MicroCoin.BlockChain
+namespace MicroCoin.Chain
 {
 
     public class Block

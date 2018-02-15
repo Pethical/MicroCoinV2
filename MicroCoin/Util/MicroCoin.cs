@@ -4,44 +4,44 @@ using System.Text;
 
 namespace MicroCoin.Util
 {
-    public struct MicroCoin
+    public struct MCC
     {
         public decimal value { get; set; }
 
-        public MicroCoin(decimal value)
+        public MCC(decimal value)
         {
             this.value = value;
         }
 
-        public static implicit operator ulong(MicroCoin m)
+        public static implicit operator ulong(MCC m)
         {
             return (ulong) (m.value * 10000M);
         }
 
-        public static implicit operator decimal(MicroCoin m)
+        public static implicit operator decimal(MCC m)
         {
             return m.value;
         }
 
-        public static implicit operator MicroCoin(ulong m)
+        public static implicit operator MCC(ulong m)
         {
-            return new MicroCoin( m / 10000M );
+            return new MCC( m / 10000M );
         }
-        public static MicroCoin operator +(MicroCoin a, MicroCoin b)
+        public static MCC operator +(MCC a, MCC b)
         {
-            return new MicroCoin(a.value + b.value);
+            return new MCC(a.value + b.value);
         }
-        public static MicroCoin operator -(MicroCoin a, MicroCoin b)
+        public static MCC operator -(MCC a, MCC b)
         {
-            return new MicroCoin(a.value - b.value);
+            return new MCC(a.value - b.value);
         }
-        public static MicroCoin operator -(MicroCoin a, ulong b)
+        public static MCC operator -(MCC a, ulong b)
         {
-            return new MicroCoin(a.value - b);
+            return new MCC(a.value - b);
         }
-        public static MicroCoin operator +(MicroCoin a, ulong b)
+        public static MCC operator +(MCC a, ulong b)
         {
-            return new MicroCoin(a.value + b);
+            return new MCC(a.value + b);
         }
         public override bool Equals(object obj)
         {
@@ -51,5 +51,11 @@ namespace MicroCoin.Util
         {
             return value.ToString();
         }
+
+        public override int GetHashCode()
+        {
+            return value.GetHashCode();
+        }
+
     }
 }

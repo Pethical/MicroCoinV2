@@ -16,28 +16,14 @@
 // along with MicroCoin. If not, see <http://www.gnu.org/licenses/>.
 
 
-using System.Collections.Generic;
-using System.IO;
+using System;
 
-namespace MicroCoin.BlockChain
+namespace MicroCoin.Chain
 {
-    public class BlockChain : List<TransactionBlock>
+    public class BlockStreamHeader
     {
-        private static BlockChain _sInstance;
-
-        protected BlockChain() { }
-
-        public static BlockChain Instance
-        {
-            get { return _sInstance ?? (_sInstance = new BlockChain()); }
-        }
-
-        public void LoadFromStream(Stream s)
-        {
-            while (s.Position < s.Length - 1)
-            {
-                Add(new TransactionBlock(s));
-            }
-        }
+        public uint BlockNumber { get; set; }
+        public UInt64 Offset { get; set; }
+        public uint Size { get; set; }
     }
 }

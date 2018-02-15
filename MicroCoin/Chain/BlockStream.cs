@@ -19,7 +19,7 @@
 using System.Collections.Generic;
 using System.IO;
 
-namespace MicroCoin.BlockChain
+namespace MicroCoin.Chain
 {
     class BlockStream
     {

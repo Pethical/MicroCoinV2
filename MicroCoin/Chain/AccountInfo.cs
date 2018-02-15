@@ -2,7 +2,7 @@
 using System;
 using System.IO;
 
-namespace MicroCoin.BlockChain
+namespace MicroCoin.Chain
 {
     public class AccountInfo
     {
