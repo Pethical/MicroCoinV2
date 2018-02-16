@@ -39,19 +39,18 @@ namespace MicroCoin
             PatternLayout patternLayout = new PatternLayout();
             patternLayout.ConversionPattern = "%date [%thread] %-5level %logger - %message%newline";
             patternLayout.ActivateOptions();
-            ColoredConsoleAppender consoleAppender = new ColoredConsoleAppender();
+            ManagedColoredConsoleAppender consoleAppender = new ManagedColoredConsoleAppender();
             consoleAppender.Layout = patternLayout;
-            consoleAppender.AddMapping(new ColoredConsoleAppender.LevelColors()
+            consoleAppender.AddMapping(new ManagedColoredConsoleAppender.LevelColors()
             {
-                ForeColor = ColoredConsoleAppender.Colors.Yellow,
+                ForeColor = ConsoleColor.Yellow,
                 Level = Level.Warn
             });
-            consoleAppender.AddMapping(new ColoredConsoleAppender.LevelColors()
+            consoleAppender.AddMapping(new ManagedColoredConsoleAppender.LevelColors()
             {
-                ForeColor = ColoredConsoleAppender.Colors.Red,
+                ForeColor = ConsoleColor.Red,
                 Level = Level.Error
             });
-
             consoleAppender.ActivateOptions();
 
             hierarchy.Root.AddAppender(consoleAppender);
@@ -63,17 +62,17 @@ namespace MicroCoin
             MicroCoinClient microCoinClient = new MicroCoinClient();
             microCoinClient.HelloResponse += (o, e) =>
             {
-                log.DebugFormat("BlockChain to receive: {0}", e.HelloResponse.TransactionBlock.BlockNumber);                
+                log.DebugFormat("Network BlockHeight: {0}. My BlockHeight: {1}", e.HelloResponse.TransactionBlock.BlockNumber, BlockChain.Instance.BlockHeight());
                 microCoinClient.BlockResponse += (ob, eb) => {
-                    foreach (var l in eb.BlockResponse.BlockTransactions)
-                    {
-                        log.DebugFormat("Received {0} Block from blockchain. BlockChain size: {1}. Block height: {2}", eb.BlockResponse.BlockTransactions.Count, BlockChain.Instance.Count, eb.BlockResponse.BlockTransactions.Last().BlockNumber);
+                    log.DebugFormat("Received {0} Block from blockchain. BlockChain size: {1}. Block height: {2}", eb.BlockResponse.BlockTransactions.Count, BlockChain.Instance.Count, eb.BlockResponse.BlockTransactions.Last().BlockNumber);
+//                    foreach (var l in eb.BlockResponse.BlockTransactions)
+//                    {
                         /*if (l.BlockNumber > BlockChain.Instance.BlockHeight())
                         {
                             log.Debug($"Appending block {l.BlockNumber}");
                             
                         }*/
-                    }
+//                    }
                     BlockChain.Instance.AppendAll(eb.BlockResponse.BlockTransactions);
                     //log.DebugFormat("Received {0} Block from blockchain. BlockChain size: {1}, End block: {2}", eb.BlockResponse.BlockTransactions.Count, BlockChain.Instance.Count, BlockChain.Instance.Last().BlockNumber);
                     if (BlockChain.Instance.BlockHeight() < e.HelloResponse.TransactionBlock.BlockNumber)

@@ -125,6 +125,7 @@
     <Compile Include="Node.cs" />
     <Compile Include="Protocol\BlockEntry.cs" />
     <Compile Include="Protocol\BlockRequest.cs" />
+    <Compile Include="Protocol\NewBlockRequest.cs" />
     <Compile Include="Protocol\BlockResponse.cs" />
     <Compile Include="Util\ByteArrayExtensions.cs" />
     <Compile Include="Transactions\ChangeAccountInfoTransaction.cs" />

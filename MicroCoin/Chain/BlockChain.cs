@@ -54,7 +54,6 @@ namespace MicroCoin.Chain
         }
 
         public string BlockChainFileName { get; set; } = "block.chain";
-
         private int blockHeight = 0;
         public int BlockHeight()
         {
@@ -150,8 +149,6 @@ namespace MicroCoin.Chain
                         fi.Position = 0;
                         foreach (var t in ts)
                         {
-                            iw.BaseStream.Position = iw.BaseStream.Length;
-                            iw.Write(count + 1);
                             f.Position = f.Length;
                             fi.Position = fi.Length;
                             long pos = f.Position;
@@ -160,7 +157,11 @@ namespace MicroCoin.Chain
                             iw.Write(pos);
                             iw.Write((uint)(f.Position - pos));
                             iw.Write((long)0);
+                            iw.BaseStream.Position = 0; //iw.BaseStream.Length;
+                            iw.Write(count + 1);
+                            iw.Write(fi.Length);
                             log.Debug($"Saved {t.BlockNumber}");
+			    count++;
                         }
                     }
                 }

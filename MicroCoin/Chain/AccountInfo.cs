@@ -33,7 +33,7 @@ namespace MicroCoin.Chain
             ushort stateOrKeyType = br.ReadUInt16();
             switch (stateOrKeyType)
             {
-                case (ushort) CurveType.Secp256K1:
+                case (ushort)CurveType.Secp256K1:
                 case (ushort)CurveType.Secp384R1:
                 case (ushort)CurveType.Secp521R1:
                 case (ushort)CurveType.Sect283K1:

@@ -29,6 +29,8 @@ namespace MicroCoin.Chain
         DeListAccountForSale, BuyAccount, ChangeKeySigned, ChangeAccountInfo
     };
 
+    
+    // TPCOperationsComp
     public class TransactionBlock
     {
         public TransactionBlock(Stream s)

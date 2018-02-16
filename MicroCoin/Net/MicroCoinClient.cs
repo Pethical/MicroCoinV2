@@ -80,6 +80,7 @@ namespace MicroCoin.Net
         public event EventHandler<BlockResponseEventArgs> BlockResponse;
 
         protected TcpClient TcpClient;
+
         public void SendHello()
         {
             HelloRequest request = new HelloRequest
@@ -231,11 +232,11 @@ namespace MicroCoin.Net
                                 try
                                 {
                                     HelloResponse response = new HelloResponse(ms, rp);
-                                    UpdateNodeServers(response);                                    
+                                    UpdateNodeServers(response);
                                     OnHelloResponse(response);
                                 }
                                 catch (Exception e)
-                                {                                    
+                                {
                                     log.Error(e.Message,e);
                                 }
 
@@ -255,7 +256,18 @@ namespace MicroCoin.Net
                                 UpdateNodeServers(response);                                
                             break;
                         }
-                    }
+                    } else if (rp.RequestType == RequestType.AutoSend) {
+                        switch (rp.Operation)
+                        {
+                            case NetOperationType.NewBlock:
+	                    log.Debug($"Received new block from client");
+                            NewBlockRequest response = new NewBlockRequest(ms, rp);
+			    log.Debug($"Block number {response.TransactionBlock.BlockNumber}");
+			    BlockChain.Instance.Append(response.TransactionBlock);
+                            break;
+                        }
+			
+		    }
                     ms.Dispose();
                 }
             });
