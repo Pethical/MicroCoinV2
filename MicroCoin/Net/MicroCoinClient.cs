@@ -252,8 +252,12 @@ namespace MicroCoin.Net
                         switch (rp.Operation)
                         {
                             case NetOperationType.Hello:
-                                HelloResponse response = new HelloResponse(ms, rp);
-                                UpdateNodeServers(response);                                
+                                /*HelloResponse response = new HelloResponse(ms, rp);
+                                UpdateNodeServers(response);
+				response.SaveToStream(ns);
+				ns.Flush();*/
+				TcpClient.Dispose();
+		                TcpClient = new TcpClient("127.0.0.1", 4004) { ReceiveBufferSize = 1024 * 1014 * 1024 };
                             break;
                         }
                     } else if (rp.RequestType == RequestType.AutoSend) {

@@ -96,7 +96,7 @@ namespace MicroCoin.Chain
                         indexSize = size + 16;
                         br.ReadUInt64(); // Padding                
                     }
-                    if (count > t.BlockNumber)
+                    if (count != t.BlockNumber)
                     {
                         throw new Exception($"Bad block. My cont {count}. BlockNumber: {t.BlockNumber}. Need to download new chain");
                     }
@@ -158,10 +158,10 @@ namespace MicroCoin.Chain
                             iw.Write((uint)(f.Position - pos));
                             iw.Write((long)0);
                             iw.BaseStream.Position = 0; //iw.BaseStream.Length;
-                            iw.Write(count + 1);
-                            iw.Write(fi.Length);
-                            log.Debug($"Saved {t.BlockNumber}");
 			    count++;
+                            iw.Write(count);
+                            iw.Write(fi.Length);
+                            log.Debug($"Saved {t.BlockNumber} {count}");
                         }
                     }
                 }
@@ -211,7 +211,7 @@ namespace MicroCoin.Chain
                         t.SaveToStream(s);
                         iw.Write(t.BlockNumber);
                         iw.Write(pos);
-                        iw.Write((uint)(s.Position - pos));         
+                        iw.Write((uint)(s.Position - pos));
                     }
                 }
             }

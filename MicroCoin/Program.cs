@@ -27,6 +27,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Timers;
 
 namespace MicroCoin
 {
@@ -77,7 +78,7 @@ namespace MicroCoin
                     //log.DebugFormat("Received {0} Block from blockchain. BlockChain size: {1}, End block: {2}", eb.BlockResponse.BlockTransactions.Count, BlockChain.Instance.Count, BlockChain.Instance.Last().BlockNumber);
                     if (BlockChain.Instance.BlockHeight() < e.HelloResponse.TransactionBlock.BlockNumber)
                     {
-                        microCoinClient.RequestBlockChain((uint)(BlockChain.Instance.BlockHeight()), 100);
+                        microCoinClient.RequestBlockChain((uint)(BlockChain.Instance.BlockHeight()+1), 100);
                     }
                     else
                     {
@@ -100,8 +101,13 @@ namespace MicroCoin
 //                microCoinClient.RequestBlockChain(1, 100);
                 //await Task.Delay(1);
             };
+	    log.Debug("Start Node Client...");
             microCoinClient.Start();
+	    log.Debug("Sendign Hellos...");
             microCoinClient.SendHello();
+	    Timer timer = new Timer(120000);
+    	    timer.Elapsed += ( sender, e ) => microCoinClient.SendHello();
+    	    timer.Start();
             Console.ReadLine();
         }
     }
