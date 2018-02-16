@@ -98,7 +98,7 @@ namespace MicroCoin.Chain
                         br.ReadUInt64(); // Padding                
                     }
                     if (count > t.BlockNumber)
-                    {u
+                    {
                         throw new Exception($"Bad block. My cont {count}. BlockNumber: {t.BlockNumber}. Need to download new chain");
                     }
                     using (BinaryWriter iw = new BinaryWriter(fi, Encoding.Default, true))
