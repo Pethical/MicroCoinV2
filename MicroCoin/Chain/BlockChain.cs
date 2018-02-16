@@ -98,7 +98,7 @@ namespace MicroCoin.Chain
                         br.ReadUInt64(); // Padding                
                     }
                     if (count > t.BlockNumber)
-                    {u
+                    {
                         throw new Exception($"Bad block. My cont {count}. BlockNumber: {t.BlockNumber}. Need to download new chain");
                     }
                     using (BinaryWriter iw = new BinaryWriter(fi, Encoding.Default, true))
@@ -121,6 +121,53 @@ namespace MicroCoin.Chain
                 f.Dispose();
             }
             
+        }
+        public void AppendAll(IEnumerable<TransactionBlock> ts)
+        {
+            lock (flock)
+            {
+                blockHeight = 0;
+                FileStream f = File.Open(BlockChainFileName, FileMode.OpenOrCreate, FileAccess.ReadWrite);
+                FileStream fi = File.Open(BlockChainFileName + ".index", FileMode.OpenOrCreate, FileAccess.ReadWrite);
+                using (BinaryReader br = new BinaryReader(fi, Encoding.Default, true))
+                {
+                    int count = 0;
+                    int size = 0;
+                    int indexSize = 0;
+                    if (fi.Length == 0)
+                    {
+                        count = 0;
+                    }
+                    else
+                    {
+                        count = br.ReadInt32();
+                        size = br.ReadInt32();
+                        indexSize = size + 16;
+                        br.ReadUInt64(); // Padding                
+                    }
+                    using (BinaryWriter iw = new BinaryWriter(fi, Encoding.Default, true))
+                    {
+                        fi.Position = 0;
+                        foreach (var t in ts)
+                        {
+                            iw.BaseStream.Position = iw.BaseStream.Length;
+                            iw.Write(count + 1);
+                            f.Position = f.Length;
+                            fi.Position = fi.Length;
+                            long pos = f.Position;
+                            t.SaveToStream(f);
+                            iw.Write(t.BlockNumber);
+                            iw.Write(pos);
+                            iw.Write((uint)(f.Position - pos));
+                            iw.Write((long)0);
+                            log.Debug($"Saved {t.BlockNumber}");
+                        }
+                    }
+                }
+                fi.Dispose();
+                f.Dispose();
+            }
+
         }
 
         public void SaveToStorage(Stream s)

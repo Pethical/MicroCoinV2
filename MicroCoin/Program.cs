@@ -68,12 +68,13 @@ namespace MicroCoin
                     foreach (var l in eb.BlockResponse.BlockTransactions)
                     {
                         log.DebugFormat("Received {0} Block from blockchain. BlockChain size: {1}. Block height: {2}", eb.BlockResponse.BlockTransactions.Count, BlockChain.Instance.Count, eb.BlockResponse.BlockTransactions.Last().BlockNumber);
-                        if (l.BlockNumber > BlockChain.Instance.BlockHeight())
+                        /*if (l.BlockNumber > BlockChain.Instance.BlockHeight())
                         {
                             log.Debug($"Appending block {l.BlockNumber}");
-                            BlockChain.Instance.Append(l);
-                        }
+                            
+                        }*/
                     }
+                    BlockChain.Instance.AppendAll(eb.BlockResponse.BlockTransactions);
                     //log.DebugFormat("Received {0} Block from blockchain. BlockChain size: {1}, End block: {2}", eb.BlockResponse.BlockTransactions.Count, BlockChain.Instance.Count, BlockChain.Instance.Last().BlockNumber);
                     if (BlockChain.Instance.BlockHeight() < e.HelloResponse.TransactionBlock.BlockNumber)
                     {
