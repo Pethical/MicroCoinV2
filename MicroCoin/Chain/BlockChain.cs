@@ -98,7 +98,7 @@ namespace MicroCoin.Chain
                     }
                     if (count != t.BlockNumber)
                     {
-                        throw new Exception($"Bad block. My cont {count}. BlockNumber: {t.BlockNumber}. Need to download new chain");
+                        throw new Exception($"Bad block. My count {count}. BlockNumber: {t.BlockNumber}. Need to download new chain");
                     }
                     using (BinaryWriter iw = new BinaryWriter(fi, Encoding.Default, true))
                     {
