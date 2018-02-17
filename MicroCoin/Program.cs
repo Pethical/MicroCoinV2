@@ -136,7 +136,7 @@ namespace MicroCoin
 	        log.Debug("Sendign Hellos...");
             microCoinClient.SendHello();
             var t = BlockChain.Instance.GetLastTransactionBlock();
-            log.Info($"Last block data: {t.BlockNumber} {t.CompactTarget} {t.Nonce} {t.PayloadString} {t.ProofOfWork.ToHexString()})");
+            log.Info($"Last block: {t.BlockNumber} {t.CompactTarget} {t.Nonce} {t.PayloadString} {t.ProofOfWork.ToHexString()})");
             Console.ReadLine();
         }
     }
