@@ -12,6 +12,12 @@ namespace MicroCoin.Util
             value = b;
         }
 
+        public int Length { get
+            {
+                return value.Length;
+            }
+        }
+
         public static implicit operator ByteString(string s)
         {
             return new ByteString(Encoding.Default.GetBytes(s));
@@ -30,11 +36,6 @@ namespace MicroCoin.Util
         {
             return new ByteString(s);
         }
-        public int Length()
-        {
-            return value.Length;
-        }
-
         public static ByteString ReadFromStream(BinaryReader br)
         {
             ByteString bs = new ByteString();

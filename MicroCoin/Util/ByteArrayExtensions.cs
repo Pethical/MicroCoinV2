@@ -16,6 +16,7 @@
 // along with MicroCoin. If not, see <http://www.gnu.org/licenses/>.
 
 
+using System;
 using System.IO;
 using System.Text;
 
@@ -26,11 +27,19 @@ namespace MicroCoin.Util
         {
             return Encoding.Default.GetString(b);
         }
+
+        public static string ToHexString(this byte[] b)
+        {
+            return BitConverter.ToString(b).Replace("-", "");
+        }
+
         public static void SaveToStream(this byte[] b, BinaryWriter bw)
         {
             bw.Write((ushort)b.Length);
             bw.Write(b, 0, b.Length);
         }
+
+
 
     }
 }

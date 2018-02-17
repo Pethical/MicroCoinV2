@@ -17,6 +17,7 @@
 
 
 using MicroCoin.Cryptography;
+using MicroCoin.Util;
 using System;
 using System.IO;
 using System.Text;
@@ -89,10 +90,10 @@ namespace MicroCoin.Chain
         public uint Timestamp { get; set; }
         public uint CompactTarget { get; set; }
         public uint Nonce { get; set; }
-        public byte[] Payload { get; set; }
+        public ByteString Payload { get; set; }
         public string PayloadString
         {
-            get => Encoding.UTF8.GetString(Payload);
+            get => Payload;
         }
         public byte[] SafeBoxHash { get; set; }
         public byte[] OperationHash { get; set; }
@@ -125,7 +126,7 @@ namespace MicroCoin.Chain
                 if (Payload != null)
                 {
                     bw.Write((ushort)Payload.Length);
-                    bw.Write(Payload);
+                    bw.Write((byte[])Payload);
                 }
                 else
                 {

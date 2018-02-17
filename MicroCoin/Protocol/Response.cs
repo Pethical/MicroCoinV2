@@ -22,9 +22,15 @@ using System.Text;
 
 namespace MicroCoin.Protocol
 {
-    public class Response : RequestHeader
+    public class MessageHeader : RequestHeader
     {
-        public Response(Stream stream)
+
+        public MessageHeader() : base()
+        {
+            RequestType = RequestType.Response;            
+        }
+
+        public MessageHeader(Stream stream)
         {
             using(BinaryReader br = new BinaryReader(stream, Encoding.ASCII, true))
             {
@@ -36,13 +42,10 @@ namespace MicroCoin.Protocol
                 ProtocolVersion = br.ReadUInt16();
                 AvailableProtocol = br.ReadUInt16();
                 DataLength = br.ReadInt32();
-                if(Operation == NetOperationType.GetBlocks)
-                {
-                }
             }
         }
 
-        public Response(Response rp)
+        public MessageHeader(MessageHeader rp)
         {
             Magic = rp.Magic;
             RequestType = rp.RequestType;

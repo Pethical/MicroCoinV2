@@ -19,22 +19,23 @@
 using MicroCoin.Chain;
 using MicroCoin.Cryptography;
 using MicroCoin.Net;
+using MicroCoin.Util;
 using System;
 using System.IO;
+using System.Reflection;
 using System.Text;
 
 namespace MicroCoin.Protocol
 {
-    public class HelloResponse : Response
+    public class HelloResponse : MessageHeader
     {
         public ushort ServerPort { get; set; }
         public ECKeyPair AccountKey { get; set; }
-        public int Timestamp { get; set; }
+        public Timestamp Timestamp { get; set; }
         public TransactionBlock TransactionBlock { get; set; }
         public NodeServerList NodeServers { get; set; }
         public string Version { get; set; }
         public Int64 WorkSum { get; set; }
-
         public void LoadFromStream(Stream stream)
         {
             using (BinaryReader br = new BinaryReader(stream, Encoding.ASCII, true))
@@ -42,7 +43,7 @@ namespace MicroCoin.Protocol
                 ServerPort = br.ReadUInt16();
                 AccountKey = new ECKeyPair();
                 AccountKey.LoadFromStream(stream);
-                Timestamp = br.ReadInt32();
+                Timestamp = br.ReadUInt32();
                 TransactionBlock = new TransactionBlock(stream);
                 NodeServers = NodeServerList.LoadFromStream(stream);
                 ushort vlen = br.ReadUInt16();
@@ -53,12 +54,47 @@ namespace MicroCoin.Protocol
 
         }
 
+        public override void SaveToStream(Stream s)
+        {
+            base.SaveToStream(s);
+            using (MemoryStream ms = new MemoryStream())
+            {
+                using (BinaryWriter bw = new BinaryWriter(ms, Encoding.Default, true))
+                {
+                    bw.Write(ServerPort);
+                    AccountKey.SaveToStream(ms);
+                    bw.Write(Timestamp);
+                    TransactionBlock.SaveToStream(ms);
+                    NodeServers.SaveToStream(ms);
+                    byte[] vb = Encoding.ASCII.GetBytes(Version);
+                    bw.Write((ushort)vb.Length);
+                    bw.Write(vb);
+                    bw.Write(WorkSum);
+                }
+                DataLength = (int)ms.Length;
+                using (BinaryWriter bw = new BinaryWriter(s, Encoding.Default, true))
+                {
+                    bw.Write(DataLength);
+                }
+                ms.Position = 0;
+                ms.CopyTo(s);
+            }
+        }
+
+        public HelloResponse(HelloRequest request) : base()
+        {
+            RequestId = request.RequestId;
+            Version version = Assembly.GetEntryAssembly().GetName().Version;
+            Version = version.ToString();
+            NodeServers = Node.Instance.NodeServers;
+        }
+
         public HelloResponse(Stream stream) : base(stream)
         {
             LoadFromStream(stream);
         }
 
-        public HelloResponse(Stream stream, Response rp) : base(rp)
+        public HelloResponse(Stream stream, MessageHeader rp) : base(rp)
         {
             LoadFromStream(stream);
         }

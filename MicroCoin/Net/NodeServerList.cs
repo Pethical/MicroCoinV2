@@ -19,23 +19,27 @@
 using log4net;
 using MicroCoin.Util;
 using System;
+using System.Linq;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
+using System.Net.Sockets;
 using System.Text;
+using System.Threading;
 
 namespace MicroCoin.Net
 {
     public class NodeServer
-    {
-
+    {        
         public ByteString IP { get; set; }
         public ushort Port { get; set; }
-        public Timestamp LastConnection { get; set; } = DateTime.Now;
+        public Timestamp LastConnection { get; set; }
         public string IPAddress => Encoding.ASCII.GetString(IP);
         public IPEndPoint EndPoint => new IPEndPoint(System.Net.IPAddress.Parse(IPAddress), Port);
-
+        public TcpClient TcpClient { get; set; }
+        public bool Connected { get; set; } = false;
+        public MicroCoinClient MicroCoinClient { get; set; }
         internal static void LoadFromStream(Stream stream)
         {
             throw new NotImplementedException();
@@ -44,21 +48,78 @@ namespace MicroCoin.Net
         {
             return IP +":"+ Port.ToString();
         }
+        private object clientLock = new object();
+        public MicroCoinClient Connect()
+        {
+            lock (clientLock)
+            {
+                if (!Connected)
+                {
+                    MicroCoinClient = new MicroCoinClient();
+                    MicroCoinClient.Start(IP, Port);
+                    if (MicroCoinClient.Connected)
+                    {
+                        Connected = true;
+                        return MicroCoinClient;
+                    }
+                    else
+                    {
+                        return null;
+                    }
+                }
+                return null;
+            }
+        }
     }
 
     public class NodeServerList : ConcurrentDictionary<string, NodeServer>
     {
+        private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
         public void SaveToStream(Stream s)
         {
             using (BinaryWriter bw = new BinaryWriter(s, Encoding.ASCII, true))
             {
                 bw.Write((uint)0);
+            }            
+        }
+        public ConcurrentDictionary<string, NodeServer> BlackList { get; set; } = new ConcurrentDictionary<string, NodeServer>();
+        private object addLock = new object();
+        private object tLock = new object();
+        public void TryAddNew(string key, NodeServer nodeServer)
+        {
+            lock (addLock)
+            {
+                if (BlackList.ContainsKey(key)) return;
+                if (ContainsKey(key)) return;
+                if (TryAdd(key, nodeServer))
+                {
+                    log.Warn($"{this.Count} nodes registered");
+                    new Thread(() =>
+                    {
+                       // lock (tLock)
+                        {
+                            var m = nodeServer.Connect();
+                            if (m != null && nodeServer.Connected)
+                            {
+                                m.SendHello();
+                            }
+                            else
+                            {
+                                log.Debug($"Dead {nodeServer}");
+                                BlackList.TryAdd(key, nodeServer);
+                                TryRemove(key, out NodeServer outs);
+                                var cnt = this.Count(p => p.Value.Connected);
+                                log.Info($"{this.Count} nodes registered. {cnt} connected. {BlackList.Count} dead");
+                            }
+                        }
+                    }).Start();
+                }
             }
         }
 
         public static NodeServerList LoadFromStream(Stream stream)
-        {
-            NodeServerList ns = new NodeServerList();
+        {            
+            NodeServerList ns = new NodeServerList();            
             using (BinaryReader br = new BinaryReader(stream, Encoding.ASCII, true))
             {
                 uint serverCount = br.ReadUInt32();
@@ -69,7 +130,6 @@ namespace MicroCoin.Net
                     server.IP = br.ReadBytes(iplen);
                     server.Port = br.ReadUInt16();
                     server.LastConnection = br.ReadUInt32();              
-                    
                     ns.TryAdd(server.ToString(), server);
                 }
             }

@@ -24,7 +24,7 @@ using System.Text;
 
 namespace MicroCoin.Protocol
 {
-    public class NewBlockRequest : Response
+    public class NewBlockRequest : MessageHeader
     {
         public TransactionBlock TransactionBlock { get; set; }
 
@@ -32,7 +32,7 @@ namespace MicroCoin.Protocol
         {
         }
 
-        public NewBlockRequest(Stream stream, Response rp) :base(rp)
+        public NewBlockRequest(Stream stream, MessageHeader rp) :base(rp)
         {
             TransactionBlock = new TransactionBlock(stream);
         }

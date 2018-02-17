@@ -18,8 +18,23 @@
 
 namespace MicroCoin.Protocol
 {
-    public class Request : RequestHeader
+    public class Request : MessageHeader
     {
-        
+        public Request() : base()
+        {
+
+        }
+        public Request(MessageHeader rp)
+        {
+            Magic = rp.Magic;
+            RequestType = rp.RequestType;
+            Operation = rp.Operation;
+            Error = rp.Error;
+            RequestId = rp.RequestId;
+            ProtocolVersion = rp.ProtocolVersion;
+            AvailableProtocol = rp.AvailableProtocol;
+            DataLength = rp.DataLength;
+        }
+
     }
 }

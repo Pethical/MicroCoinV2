@@ -28,6 +28,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using log4net;
+using System.Net;
 
 namespace MicroCoin.Net
 {
@@ -81,6 +82,8 @@ namespace MicroCoin.Net
 
         protected TcpClient TcpClient;
 
+        public bool Connected { get; internal set; } = false;
+
         public void SendHello()
         {
             HelloRequest request = new HelloRequest
@@ -88,13 +91,13 @@ namespace MicroCoin.Net
                 AccountKey = ECKeyPair.CreateNew(false),
                 AvailableProtocol = 6,
                 Error = 0,
-                NodeServers = new NodeServerList(),
+                NodeServers = Node.Instance.NodeServers,
                 Operation = NetOperationType.Hello
             };
             SHA256Managed sha = new SHA256Managed();
-            Int32 unixTimestamp = (Int32)(DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1))).TotalSeconds;
+            //Int32 unixTimestamp = (Int32)(DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1))).TotalSeconds;
             byte[] h = sha.ComputeHash(Encoding.ASCII.GetBytes("(c) Peter Nemeth - Okes rendben okes"));
-            request.OperationBlock = new TransactionBlock
+            request.TransactionBlock = new TransactionBlock
             {
                 AccountKey = null,
                 AvailableProtocol = 0,
@@ -103,7 +106,7 @@ namespace MicroCoin.Net
                 Fee = 0,
                 Nonce = 0,
                 OperationHash = null,
-                Payload = null,
+                Payload = new byte[0],
                 ProofOfWork = null,
                 ProtocolVersion = 0,
                 Reward = 0,
@@ -116,7 +119,7 @@ namespace MicroCoin.Net
             request.RequestId = 1;
             request.RequestType = RequestType.Request;
             request.ServerPort = 4004;
-            request.Timestamp = unixTimestamp;
+            request.Timestamp = DateTime.UtcNow;
             request.Version = "2.0.0wN";
             request.WorkSum = 0;
             MemoryStream ms = new MemoryStream();
@@ -162,7 +165,7 @@ namespace MicroCoin.Net
             {
                 if (!Node.Instance.NodeServers.ContainsKey(n.Value.ToString()))
                 {
-                    Node.Instance.NodeServers.TryAdd(n.Value.ToString(), n.Value);
+                    Node.Instance.NodeServers.TryAddNew(n.Value.ToString(), n.Value);
                     log.Debug($"New node connection: {n.Value}");
                 }
             }
@@ -177,12 +180,58 @@ namespace MicroCoin.Net
             }
         }
 
-        public void Start()
+        protected void UpdateNodeServers(HelloRequest request)
         {
-            TcpClient = new TcpClient("127.0.0.1", 4004) {ReceiveBufferSize = 1024 * 1014 * 1024};
-            TcpClient.ReceiveBufferSize = 2 * 1024 * 1024;
+            foreach (var n in request.NodeServers)
+            {
+                if (!Node.Instance.NodeServers.ContainsKey(n.Value.ToString()))
+                {
+                    Node.Instance.NodeServers.TryAddNew(n.Value.ToString(), n.Value);
+                    log.Debug($"New node connection: {n.Value}");
+                }
+            }
+            if (Node.Instance.NodeServers.Count > 100)
+            {
+                var list = Node.Instance.NodeServers.OrderByDescending(p => p.Value.LastConnection).Take(100 - Node.Instance.NodeServers.Count);
+                foreach (var l in list)
+                {
+                    Node.Instance.NodeServers.TryRemove(l.Key, out NodeServer n);
+                    log.Debug($"Removed connection: {n}");
+                }
+            }
+        }
+
+        public void Start(string hostname, int port)
+        {
+            try
+            {
+                
+                TcpClient = new TcpClient();
+                var result = TcpClient.BeginConnect(hostname, port, null, null);
+                Connected = result.AsyncWaitHandle.WaitOne(TimeSpan.FromSeconds(1));
+                if(!Connected)
+                {
+                    throw new Exception("");
+                }
+            }
+            catch (Exception e)
+            {
+                if (TcpClient != null)
+                {
+                    TcpClient.Dispose();
+                    TcpClient = null;
+                }
+                Connected = false;
+                log.Warn($"Can't connect to {hostname}:{port}");
+                TcpClient = null;
+                return;
+            }
+            System.Timers.Timer timer = new System.Timers.Timer(30000+new Random().Next(10000));
+            timer.Elapsed += (sender, e) => SendHello();
+            timer.Start();
             Thread t = new Thread(() =>
             {
+                log.Info($"Connected to {hostname}:{port}");
                 while (true)
                 {
                     while (TcpClient.Available == 0) Thread.Sleep(1);
@@ -195,35 +244,38 @@ namespace MicroCoin.Net
                         ms.Write(buffer, 0, buffer.Length);
                     }
                     ms.Position = 0;
-                    Response rp = new Response(ms);
+                    MessageHeader rp = new MessageHeader(ms);
                     long pos = ms.Position;
+                    ms.Position = ms.Length;
                     int wt = 0;
-                    log.Debug($"Expected: {rp.DataLength} received: {ms.Length-RequestHeader.Size}");
+                    log.Debug($"Expected: {rp.DataLength + RequestHeader.Size} received: {ms.Length}");
                     while (rp.DataLength > ms.Length - RequestHeader.Size)
                     {
-                        while (TcpClient.Available == 0)
+                        do
                         {
                             Thread.Sleep(1);
                             wt++;
-                            if (wt > 1000) break;
-                        }
-                        if (wt > 1000) break;
+                            if (wt > 4000) break;
+                        } while (TcpClient.Available == 0);
+                        if (wt > 4000) break;
                         while (TcpClient.Available > 0)
                         {
+                            log.Info($"Expected: {rp.DataLength + RequestHeader.Size} received: {ms.Length}. Available: {TcpClient.Available}");
                             byte[] buffer = new byte[TcpClient.Available];
                             ns.Read(buffer, 0, buffer.Length);
                             ms.Write(buffer, 0, buffer.Length);
+                            log.Info($"Expected: {rp.DataLength + RequestHeader.Size} received: {ms.Length}. Available: {TcpClient.Available}");
                         }
                         wt = 0;
                     }
 
                     if (wt > 1000)
                     {
-                        log.Error($"Timeout. Received {ms.Length}, expected {rp.DataLength}");
+                        log.Error($"Timeout. Received {ms.Length}, expected {rp.DataLength + RequestHeader.Size}");
                         continue;
                     }
                     ms.Position = pos;
-                    log.Debug($"New {rp.Operation} {rp.RequestType} from {TcpClient.Client.RemoteEndPoint}. Data length: {rp.DataLength}");
+                    log.Info($"{TcpClient.Client.RemoteEndPoint.ToString()} => {rp.Operation} {rp.RequestType} from {TcpClient.Client.RemoteEndPoint}. Data length: {rp.DataLength}");
                     if (rp.RequestType == RequestType.Response)
                     {
                         switch (rp.Operation)
@@ -237,7 +289,7 @@ namespace MicroCoin.Net
                                 }
                                 catch (Exception e)
                                 {
-                                    log.Error(e.Message,e);
+                                    log.Error(e.Message, e);
                                 }
 
                                 break;
@@ -248,30 +300,52 @@ namespace MicroCoin.Net
                             default:
                                 break;
                         }
-                    } else if (rp.RequestType == RequestType.Request) {
+                    }
+                    else if (rp.RequestType == RequestType.Request)
+                    {
                         switch (rp.Operation)
                         {
                             case NetOperationType.Hello:
-                                /*HelloResponse response = new HelloResponse(ms, rp);
-                                UpdateNodeServers(response);
-				response.SaveToStream(ns);
-				ns.Flush();*/
-				TcpClient.Dispose();
-		                TcpClient = new TcpClient("127.0.0.1", 4004) { ReceiveBufferSize = 1024 * 1014 * 1024 };
-                            break;
+                                HelloRequest request = new HelloRequest(ms, rp);
+                                UpdateNodeServers(request);
+                                HelloResponse response = new HelloResponse(request);
+                                response.Timestamp = DateTime.UtcNow;
+                                response.Error = 0;
+                                response.ServerPort = (ushort) ((IPEndPoint)TcpClient.Client.LocalEndPoint).Port;
+                                response.TransactionBlock = BlockChain.Instance.GetLastTransactionBlock();
+                                response.WorkSum = request.WorkSum; // TODO: Csalás
+                                response.AccountKey = ECKeyPair.CreateNew(false);
+                                response.RequestType = RequestType.Response;
+                                response.Operation = NetOperationType.Hello;
+                                MemoryStream vm = new MemoryStream();
+                                response.SaveToStream(vm);
+                                vm.Position = 0;
+                                vm.CopyTo(ns);
+                                ns.Flush();
+                                ms.Close();
+                                ms.Dispose();
+                                //TcpClient = new TcpClient("127.0.0.1", 4004) { ReceiveBufferSize = 1024 * 1014 * 1024 };
+                                break;
                         }
-                    } else if (rp.RequestType == RequestType.AutoSend) {
+                    }
+                    else if (rp.RequestType == RequestType.AutoSend)
+                    {
                         switch (rp.Operation)
                         {
+                            case NetOperationType.Error:
+                                byte[] buffer = new byte[rp.DataLength];
+                                ms.Read(buffer, 0, rp.DataLength);
+                                log.Error( TcpClient.Client.RemoteEndPoint.ToString()+" => "+ Encoding.ASCII.GetString(buffer));
+                                break;
                             case NetOperationType.NewBlock:
-	                    log.Debug($"Received new block from client");
-                            NewBlockRequest response = new NewBlockRequest(ms, rp);
-			    log.Debug($"Block number {response.TransactionBlock.BlockNumber}");
-			    BlockChain.Instance.Append(response.TransactionBlock);
-                            break;
+                                log.Debug($"Received new block from client");
+                                NewBlockRequest response = new NewBlockRequest(ms, rp);
+                                log.Debug($"Block number {response.TransactionBlock.BlockNumber}");
+                                BlockChain.Instance.Append(response.TransactionBlock);
+                                break;
                         }
-			
-		    }
+
+                    }
                     ms.Dispose();
                 }
             });

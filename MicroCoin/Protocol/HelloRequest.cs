@@ -19,6 +19,7 @@
 using MicroCoin.Chain;
 using MicroCoin.Cryptography;
 using MicroCoin.Net;
+using MicroCoin.Util;
 using System;
 using System.IO;
 using System.Text;
@@ -29,11 +30,17 @@ namespace MicroCoin.Protocol
     {
         public ushort ServerPort { get; set; }
         public ECKeyPair AccountKey { get; set; }
-        public int Timestamp { get; set; }
-        public TransactionBlock OperationBlock { get; set; }
+        public Timestamp Timestamp { get; set; }
+        public TransactionBlock TransactionBlock { get; set; }
         public NodeServerList NodeServers { get; set; }
         public string Version { get; set; }
         public Int64 WorkSum { get; set; }
+        public HelloRequest() : base() { }
+        public HelloRequest(Stream stream, MessageHeader rp) : base(rp)
+        {
+            LoadFromStream(stream);
+        }
+
         public override void SaveToStream(Stream s)
         {
             base.SaveToStream(s);
@@ -44,7 +51,7 @@ namespace MicroCoin.Protocol
                     bw.Write(ServerPort);
                     AccountKey.SaveToStream(ms);
                     bw.Write(Timestamp);
-                    OperationBlock.SaveToStream(ms);
+                    TransactionBlock.SaveToStream(ms);
                     NodeServers.SaveToStream(ms);
                     byte[] vb = Encoding.ASCII.GetBytes(Version);
                     bw.Write((ushort)vb.Length);
@@ -59,6 +66,24 @@ namespace MicroCoin.Protocol
                 ms.Position = 0;
                 ms.CopyTo(s);                
            }
+        }
+
+        public void LoadFromStream(Stream stream)
+        {
+            using (BinaryReader br = new BinaryReader(stream, Encoding.ASCII, true))
+            {
+                ServerPort = br.ReadUInt16();
+                AccountKey = new ECKeyPair();
+                AccountKey.LoadFromStream(stream);
+                Timestamp = br.ReadUInt32();
+                TransactionBlock = new TransactionBlock(stream);
+                NodeServers = NodeServerList.LoadFromStream(stream);
+                ushort vlen = br.ReadUInt16();
+                byte[] vb = br.ReadBytes(vlen);
+                Version = Encoding.ASCII.GetString(vb);
+                WorkSum = br.ReadInt64();
+            }
+
         }
     }
 }

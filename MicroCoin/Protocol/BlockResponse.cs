@@ -24,7 +24,7 @@ using System.Text;
 
 namespace MicroCoin.Protocol
 {
-    public class BlockResponse : Response
+    public class BlockResponse : MessageHeader
     {
         public List<BlockTransactionList> BlockTransactions { get; set; }
         public uint TransactionCount { get; set; }
@@ -33,7 +33,7 @@ namespace MicroCoin.Protocol
         {
         }
 
-        public BlockResponse(Stream stream, Response rp) :base(rp)
+        public BlockResponse(Stream stream, MessageHeader rp) :base(rp)
         {
             BlockTransactions = new List<BlockTransactionList>();
             using (BinaryReader br = new BinaryReader(stream, Encoding.ASCII, true))
