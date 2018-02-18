@@ -17,7 +17,13 @@ namespace MicroCoin.Chain
         public uint NumberOfOperations { get; set; }
         public ByteString Name { get; set; }
         public ushort AccountType { get; set; }
-        public uint UpdatedBlock { get; set; }
+        public uint UpdatedBlock { get; set; }        
+        /// <summary>
+        /// Only reference, don't save
+        /// The block number of the account
+        /// </summary>
+        public uint BlockNumber { get; internal set; }
+
         public Account()
         {
             
@@ -26,6 +32,18 @@ namespace MicroCoin.Chain
         public Account(Stream s)
         {
             LoadFromStream(s);
+        }
+
+        public void SaveToStream(BinaryWriter bw)
+        {
+            bw.Write(AccountNumber);
+            AccountInfo.SaveToStream(bw);
+            bw.Write(Balance);
+            bw.Write(UpdatedBlock);
+            bw.Write(NumberOfOperations);
+            Name.SaveToStream(bw);
+            bw.Write(AccountType);
+            bw.Write(UpdatedByBlock);
         }
 
         public void LoadFromStream(Stream s)
@@ -39,7 +57,7 @@ namespace MicroCoin.Chain
                 NumberOfOperations = br.ReadUInt32();
                 Name = ByteString.ReadFromStream(br);
                 AccountType = br.ReadUInt16();
-                UpdatedBlock = br.ReadUInt32();
+                UpdatedByBlock = br.ReadUInt32();
             }
         }
 

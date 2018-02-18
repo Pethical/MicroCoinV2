@@ -34,6 +34,30 @@ namespace MicroCoin.Chain
     // TPCOperationsComp
     public class TransactionBlock
     {
+
+        public byte TransactionBlockSignature { get; set; } = 3;
+        public ushort ProtocolVersion { get; set; }
+        public ushort AvailableProtocol { get; set; }
+        public uint BlockNumber { get; set; }
+        public ECKeyPair AccountKey { get; set; } = new ECKeyPair();
+        public UInt64 Reward { get; set; }
+        public UInt64 Fee { get; set; }
+        public uint Timestamp { get; set; }
+        public uint CompactTarget { get; set; }
+        public uint Nonce { get; set; }
+        public ByteString Payload { get; set; }
+        public byte[] SnapshotHash { get; set; }
+        public byte[] OperationHash { get; set; }
+        public byte[] ProofOfWork { get; set; }
+        public static TransactionBlock NullBlock { get
+            {
+                return new TransactionBlock
+                {
+                    BlockNumber = 0
+                };
+            }
+        }
+
         public TransactionBlock(Stream s)
         {
             using (BinaryReader br = new BinaryReader(s, Encoding.ASCII, true))
@@ -60,7 +84,7 @@ namespace MicroCoin.Chain
                 pl = br.ReadUInt16();
                 if (pl > 0)
                 {
-                    SafeBoxHash = br.ReadBytes(pl);
+                    SnapshotHash = br.ReadBytes(pl);
                 }
                 pl = br.ReadUInt16();
                 if (pl > 0)
@@ -79,25 +103,6 @@ namespace MicroCoin.Chain
         {
 
         }
-
-        public byte TransactionBlockSignature { get; set; } = 3;
-        public ushort ProtocolVersion { get; set; }
-        public ushort AvailableProtocol { get; set; }
-        public uint BlockNumber { get; set; }
-        public ECKeyPair AccountKey { get; set; } = new ECKeyPair();
-        public UInt64 Reward { get; set; }
-        public UInt64 Fee { get; set; }
-        public uint Timestamp { get; set; }
-        public uint CompactTarget { get; set; }
-        public uint Nonce { get; set; }
-        public ByteString Payload { get; set; }
-        public string PayloadString
-        {
-            get => Payload;
-        }
-        public byte[] SafeBoxHash { get; set; }
-        public byte[] OperationHash { get; set; }
-        public byte[] ProofOfWork { get; set; }
 
         public virtual void SaveToStream(Stream s)
         {
@@ -132,10 +137,10 @@ namespace MicroCoin.Chain
                 {
                     bw.Write((ushort)0);
                 }
-                if (SafeBoxHash != null)
+                if (SnapshotHash != null)
                 {
-                    bw.Write((ushort)SafeBoxHash.Length);
-                    bw.Write(SafeBoxHash);
+                    bw.Write((ushort)SnapshotHash.Length);
+                    bw.Write(SnapshotHash);
                 }
                 else
                 {

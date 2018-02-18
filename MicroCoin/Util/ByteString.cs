@@ -44,6 +44,11 @@ namespace MicroCoin.Util
             return bs;
         }
 
+        public void SaveToStream(BinaryWriter bw)
+        {
+            value.SaveToStream(bw);
+        }
+
         override public string ToString()
         {
             return (string)this;

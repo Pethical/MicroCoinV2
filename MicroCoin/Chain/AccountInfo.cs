@@ -27,6 +27,41 @@ namespace MicroCoin.Chain
             return ai;
         }
 
+        public void SaveToStream(BinaryWriter bw)
+        {
+            ushort len = 0;
+            long pos = bw.BaseStream.Position;
+            bw.Write(len);
+            switch (State)
+            {
+                case AccountState.Normal:
+                    // bw.Write((ushort)AccountKey.CurveType);
+                    AccountKey.SaveToStream(bw.BaseStream, false);
+                    //bw.Write(LockedUntilBlock);
+                    //bw.Write(Price);
+                    //bw.Write(AccountToPayPrice);
+                    break;
+                case AccountState.Sale:
+                    bw.Write((ushort)1000);
+                    AccountKey.SaveToStream(bw.BaseStream, false);
+                    bw.Write(LockedUntilBlock);
+                    bw.Write(Price);
+                    bw.Write(AccountToPayPrice);
+                    NewPublicKey.SaveToStream(bw.BaseStream, false);
+                    break;
+                default: throw new Exception("Invalid account state");
+            }
+            long size = bw.BaseStream.Position - pos - 2;
+            long reverse = bw.BaseStream.Position;
+            bw.BaseStream.Position = pos;
+            bw.Write((ushort)size);
+            if (size > 0x46)
+            {
+
+            }
+            bw.BaseStream.Position = reverse;
+        }
+
         public void LoadFromStream(BinaryReader br)
         {
             ushort len = br.ReadUInt16();

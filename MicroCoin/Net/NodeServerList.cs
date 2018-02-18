@@ -56,7 +56,11 @@ namespace MicroCoin.Net
                 if (!Connected)
                 {
                     MicroCoinClient = new MicroCoinClient();
-                    MicroCoinClient.Start(IP, Port);
+                    if(!MicroCoinClient.Connect(IPAddress, Port))
+                    {
+                        return null;
+                    }
+                    MicroCoinClient.Start();
                     if (MicroCoinClient.Connected)
                     {
                         Connected = true;
@@ -96,22 +100,20 @@ namespace MicroCoin.Net
                     log.Warn($"{this.Count} nodes registered");
                     new Thread(() =>
                     {
-                       // lock (tLock)
+                        var m = nodeServer.Connect();
+                        if (m != null && nodeServer.Connected)
                         {
-                            var m = nodeServer.Connect();
-                            if (m != null && nodeServer.Connected)
-                            {
-                                m.SendHello();
-                            }
-                            else
-                            {
-                                log.Debug($"Dead {nodeServer}");
-                                BlackList.TryAdd(key, nodeServer);
-                                TryRemove(key, out NodeServer outs);
-                                var cnt = this.Count(p => p.Value.Connected);
-                                log.Info($"{this.Count} nodes registered. {cnt} connected. {BlackList.Count} dead");
-                            }
+                            m.SendHello();
                         }
+                        else
+                        {
+                            log.Debug($"Dead {nodeServer}");
+                            BlackList.TryAdd(key, nodeServer);
+                            TryRemove(key, out NodeServer outs);
+                            var cnt = this.Count(p => p.Value.Connected);
+                            log.Info($"{this.Count} nodes registered. {cnt} connected. {BlackList.Count} dead");
+                        }
+
                     }).Start();
                 }
             }
@@ -135,5 +137,28 @@ namespace MicroCoin.Net
             }
             return ns;
         }
+
+        public void UpdateNodeServers(NodeServerList nodeServers)
+        {
+            foreach (var n in nodeServers)
+            {
+                if (!ContainsKey(n.Value.ToString()))
+                {
+                    TryAddNew(n.Value.ToString(), n.Value);
+                    log.Debug($"New node server: {n.Value}");
+                }
+            }
+            if (Count > 100)
+            {
+                var list = this.OrderByDescending(p => p.Value.LastConnection).Take(100 - Count);
+                foreach (var l in nodeServers)
+                {
+                    TryRemove(l.Key, out NodeServer n);
+                    log.Debug($"Removed connection: {n}");
+                }
+            }
+        }
+
+
     }
 }

@@ -82,6 +82,38 @@ namespace MicroCoin.Chain
         public ByteString BlockHash { get; set; }
         public ulong AccumulatedWork { get; set; }
 
+        public void SaveToStream(Stream stream)
+        {
+            using(BinaryWriter bw = new BinaryWriter(stream, Encoding.Default, true))
+            {
+                SaveToStream(bw);
+            }
+        }
+
+        public void SaveToStream(BinaryWriter bw)
+        {
+                long s = bw.BaseStream.Position;
+                bw.Write(BlockNumber);
+                AccountKey.SaveToStream(bw.BaseStream, false);
+                bw.Write(Reward);
+                bw.Write(Fee);
+                bw.Write(ProtocolVersion);
+                bw.Write(AvailableProtocolVersion);
+                bw.Write(Timestamp);
+                bw.Write(CompactTarget);
+                bw.Write(Nonce);
+                BlockPayload.SaveToStream(bw);
+                PreviusSnaphotHash.SaveToStream(bw);
+                MerkleTreeHash.SaveToStream(bw);
+                ProofOfWork.SaveToStream(bw);
+                for(int i=0;i<5;i++)
+                {
+                    Accounts[i].SaveToStream(bw);
+                }
+                BlockHash.SaveToStream(bw);
+                bw.Write(AccumulatedWork);
+        }
+
         public Block(Stream stream)
         {
             using(BinaryReader br = new BinaryReader(stream, Encoding.Default, true))

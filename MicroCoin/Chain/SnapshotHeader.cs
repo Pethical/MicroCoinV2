@@ -16,6 +16,7 @@
 // along with MicroCoin. If not, see <http://www.gnu.org/licenses/>.
 
 
+using MicroCoin.Util;
 using System.IO;
 using System.Text;
 
@@ -23,44 +24,82 @@ namespace MicroCoin.Chain
 {
     public class SnapshotHeader
     {
-        public byte[] Magic { get; set; }
+        public ByteString Magic { get; set; }
         public ushort Protocol { get; set; }
         public ushort Version { get; set; }
         public uint BlockCount { get; set; }
         public uint StartBlock { get; set; }
         public uint EndBlock { get; set; }
         public byte[] Hash { get; set; }
+        public long HeaderEnd { get; set; }
         public string MagicString
         {
             get => Encoding.ASCII.GetString(Magic);
 
         }
-        private uint[] offsets;
+        public uint[] offsets { get; set; }
         public uint BlockOffset(uint blockNumber)
         {
-            return offsets[blockNumber];
+            if (blockNumber > offsets.Length) return uint.MaxValue;
+
+            return offsets[blockNumber];// + (int)HeaderEnd;
+
         }
         public SnapshotHeader() { }
         public SnapshotHeader(Stream s)
         {
             LoadFromStream(s);            
         }
+
+        public void SaveToStream(BinaryWriter bw)
+        {                    
+            Magic.SaveToStream(bw);
+            bw.Write(Protocol);
+            bw.Write(Version);
+            bw.Write(BlockCount);
+            bw.Write(StartBlock);
+            bw.Write(EndBlock);            
+            if (offsets != null)
+            {
+                foreach (var b in offsets)
+                {
+                    if (b > 27)
+                    {
+                        bw.Write((uint)(b-27));
+                    }
+                    else
+                    {
+                        bw.Write((uint)(b));
+                    }
+                }
+            }
+        }
+
+        public void SaveToStream(Stream s)
+        {
+            using (BinaryWriter bw = new BinaryWriter(s, Encoding.Default, true))
+            {
+                SaveToStream(bw);
+            }
+        }
+
         public void LoadFromStream(Stream s)
         {
             using (BinaryReader br = new BinaryReader(s, Encoding.Default, true))
             {
                 ushort len = br.ReadUInt16();
-                Magic      = br.ReadBytes(len);
-                Protocol   = br.ReadUInt16();
-                Version    = br.ReadUInt16();
+                Magic = br.ReadBytes(len);
+                Protocol = br.ReadUInt16();
+                Version = br.ReadUInt16();
                 BlockCount = br.ReadUInt32();
                 StartBlock = br.ReadUInt32();
-                EndBlock   = br.ReadUInt32();
-                long pos   = s.Position;
-                offsets    = new uint[(BlockCount + 1)];
-                for(int i = 0; i < offsets.Length; i++)
+                EndBlock = br.ReadUInt32();
+                long pos = s.Position;
+                HeaderEnd = pos;
+                offsets = new uint[(EndBlock-StartBlock+2)];
+                for (int i = 0; i < offsets.Length; i++)
                 {
-                    offsets[i] = (uint)(br.ReadUInt32()+pos);
+                    offsets[i] = (uint)(br.ReadUInt32() + pos);
                 }
             }
         }

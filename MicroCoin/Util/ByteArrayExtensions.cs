@@ -35,6 +35,11 @@ namespace MicroCoin.Util
 
         public static void SaveToStream(this byte[] b, BinaryWriter bw)
         {
+            if (b == null)
+            {
+                bw.Write((ushort)0);
+                return;
+            }
             bw.Write((ushort)b.Length);
             bw.Write(b, 0, b.Length);
         }

@@ -23,12 +23,15 @@ using log4net.Layout;
 using log4net.Repository.Hierarchy;
 using MicroCoin.Chain;
 using MicroCoin.Net;
+using MicroCoin.Protocol;
 using MicroCoin.Util;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Timers;
 
 namespace MicroCoin
@@ -37,7 +40,7 @@ namespace MicroCoin
     {
         private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
-        static void Main(string[] args) 
+        static async Task Main(string[] args) 
         {
             Hierarchy hierarchy = (Hierarchy)LogManager.GetRepository();
             PatternLayout patternLayout = new PatternLayout();
@@ -72,72 +75,64 @@ namespace MicroCoin
             //MemoryAppender memory = new MemoryAppender();
             //memory.ActivateOptions();
             //hierarchy.Root.AddAppender(memory);
-            hierarchy.Root.Level = Level.Info;
+            hierarchy.Root.Level = Level.All;
             hierarchy.Configured = true;
 
             MicroCoinClient microCoinClient = new MicroCoinClient();
             microCoinClient.HelloResponse += (o, e) =>
             {
-               log.DebugFormat("Network BlockHeight: {0}. My BlockHeight: {1}", e.HelloResponse.TransactionBlock.BlockNumber, BlockChain.Instance.BlockHeight());
+                log.DebugFormat("Network Block height: {0}. My Block height: {1}", e.HelloResponse.TransactionBlock.BlockNumber, BlockChain.Instance.BlockHeight());
                 microCoinClient.BlockResponse += (ob, eb) => {
                     log.DebugFormat("Received {0} Block from blockchain. BlockChain size: {1}. Block height: {2}", eb.BlockResponse.BlockTransactions.Count, BlockChain.Instance.Count, eb.BlockResponse.BlockTransactions.Last().BlockNumber);
-//                    foreach (var l in eb.BlockResponse.BlockTransactions)
-//                    {
-                        /*if (l.BlockNumber > BlockChain.Instance.BlockHeight())
-                        {
-                            log.Debug($"Appending block {l.BlockNumber}");
-                            
-                        }*/
-//                    }
                     BlockChain.Instance.AppendAll(eb.BlockResponse.BlockTransactions);
-                    //log.DebugFormat("Received {0} Block from blockchain. BlockChain size: {1}, End block: {2}", eb.BlockResponse.BlockTransactions.Count, BlockChain.Instance.Count, BlockChain.Instance.Last().BlockNumber);
                     if (BlockChain.Instance.BlockHeight() < e.HelloResponse.TransactionBlock.BlockNumber)
                     {
                         microCoinClient.RequestBlockChain((uint)(BlockChain.Instance.BlockHeight()+1), 100);
                     }
                     else
                     {
-/*                        log.Debug("Saving blockChain");
-                        FileStream fileStream = File.Open("block.chain",FileMode.OpenOrCreate,FileAccess.ReadWrite);
-                        BlockChain.Instance.SaveToStorage(fileStream);
-                        //foreach(var a in list)
-                        //{
-                        //    a.SaveToStream(fileStream);
-                        //}
-                        fileStream.Close();
-                        log.Debug("Saved");*/
                     }
-                    //await Task.Delay(0);
                 };
                 if (BlockChain.Instance.BlockHeight() < e.HelloResponse.TransactionBlock.BlockNumber)
                 {
                     microCoinClient.RequestBlockChain((uint)(BlockChain.Instance.BlockHeight()), 100);
                 }
-                /*
-                foreach (var node in Node.Instance.NodeServers)
-                {
-                    var mc = node.Value.Connect();
-                    if(mc!=null)
-                        mc.SendHello();
-                }
-                */
-                /*
-                var badNodes = Node.Instance.NodeServers.Where(p => p.Value.MicroCoinClient?.Connected == false);                
-                foreach(var b in badNodes)
-                {
-                    Node.Instance.NodeServers.TryRemove(b.Key, out NodeServer ns);
-                    log.Info($"{ns} removed");
-                }*/
-                // microCoinClient.RequestBlockChain(1, 100);
-                // await Task.Delay(1);
             };
-	        log.Debug("Start Node Client...");
-            microCoinClient.Start( "127.0.0.1" ,4004);
+
+            /*log.Debug("Start Node Client...");
+            microCoinClient.Connect("127.0.0.1", 4004);
 	        log.Debug("Sendign Hellos...");
-            microCoinClient.SendHello();
-            var t = BlockChain.Instance.GetLastTransactionBlock();
-            log.Info($"Last block: {t.BlockNumber} {t.CompactTarget} {t.Nonce} {t.PayloadString} {t.ProofOfWork.ToHexString()})");
+            HelloResponse response = await microCoinClient.SendHelloAsync();
+            uint start = (response.TransactionBlock.BlockNumber / 100) * 100;
+            var blocks = await microCoinClient.RequestBlocksAsync(start, response.TransactionBlock.BlockNumber);
+            BlockChain.Instance.AddRange(blocks.BlockTransactions);
+            using (FileStream fs = File.Create(BlockChain.Instance.BlockChainFileName)) {
+                BlockChain.Instance.SaveToStorage(fs);
+            }
+            await microCoinClient.DownloadSnaphostAsync(response.TransactionBlock.BlockNumber);         
+            FileStream file = File.Create($"snaphot");            
+            Node.Instance.Snapshot.SaveToStream(file);
+            file.Dispose();
             Console.ReadLine();
+            //var t = BlockChain.Instance.GetLastTransactionBlock();
+            //log.Info($"Last block: {t.BlockNumber} {t.CompactTarget} {t.Nonce} {t.Payload} {t.ProofOfWork.ToHexString()})");*/
+            Node node = await Node.StartNode();
+            string block;
+            do
+            {
+                block = Console.ReadLine();
+                try
+                {
+                    var t = BlockChain.Instance.Get(Convert.ToInt32(block));
+                    log.Info($"Last block: {t.BlockNumber} {t.CompactTarget} {t.Nonce} {t.Payload} {t.ProofOfWork.ToHexString()})");
+                }
+                catch (Exception e)
+                {
+                    log.Error(e.Message, e);
+                }
+            
+            } while (block != "q");
+            microCoinClient.Dispose();            
         }
     }
 }
