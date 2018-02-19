@@ -37,7 +37,9 @@ namespace MicroCoin.Chain
             get => Encoding.ASCII.GetString(Magic);
 
         }
+
         public uint[] offsets { get; set; }
+
         public uint BlockOffset(uint blockNumber)
         {
             if (blockNumber > offsets.Length) return uint.MaxValue;
@@ -104,5 +106,4 @@ namespace MicroCoin.Chain
             }
         }
     }
-
 }

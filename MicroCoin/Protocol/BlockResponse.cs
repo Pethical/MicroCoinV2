@@ -26,7 +26,9 @@ namespace MicroCoin.Protocol
 {
     public class BlockResponse : MessageHeader
     {
+
         public List<BlockTransactionList> BlockTransactions { get; set; }
+
         public uint TransactionCount { get; set; }
 
         public BlockResponse(Stream stream) : base(stream)

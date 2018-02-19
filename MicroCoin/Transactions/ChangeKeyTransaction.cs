@@ -26,9 +26,13 @@ namespace MicroCoin.Transactions
 {
     public sealed class ChangeKeyTransaction : Transaction
     {
+
         public ECKeyPair NewAccountKey { get; set; }
+
         public TransactionType TransactionType { get; set; }
+
         public ChangeKeyTransaction() { }
+
         public ChangeKeyTransaction(Stream s, TransactionType transactionType)
         {
             TransactionType = transactionType;

@@ -25,14 +25,20 @@ namespace MicroCoin.Transactions
 {
     public sealed class TransferTransaction : Transaction
     {
+
         public ulong Amount { get; set; }
+
         public ulong AccountPrice { get; set; }
+
         public uint SellerAccount { get; set; }
+
         public ECKeyPair NewAccountKey { get; set; }
+
         public TransferTransaction(Stream stream)
         {
             LoadFromStream(stream);
         }
+
         public override void SaveToStream(Stream s)
         {
             using (BinaryWriter bw = new BinaryWriter(s, Encoding.ASCII, true))

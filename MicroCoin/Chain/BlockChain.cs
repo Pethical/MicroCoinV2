@@ -136,6 +136,7 @@ namespace MicroCoin.Chain
                         fi.Position = fi.Length - 16;
                         uint blockNumber = ir.ReadUInt32();
                         long position = ir.ReadInt64();
+			log.Debug($"GetLastTransactionBlock {blockNumber} {position}");
                         FileStream f = File.Open(BlockChainFileName, FileMode.OpenOrCreate, FileAccess.ReadWrite);
                         try
                         {
@@ -170,8 +171,8 @@ namespace MicroCoin.Chain
         public void Append(TransactionBlock t)
         {
             lock (flock)
-            {                
-                uint blockHeight = GetLastTransactionBlock().BlockNumber;
+            {
+                uint blockHeight = GetLastTransactionBlock().BlockNumber+1;
                 FileStream fi = File.Open(BlockChainFileName + ".index", FileMode.OpenOrCreate, FileAccess.ReadWrite);
                 try
                 {
@@ -192,17 +193,16 @@ namespace MicroCoin.Chain
                                 count = br.ReadInt32();
                                 size = br.ReadInt64();
                                 indexSize = (int)(size + 16);
-                            }                            
+                            }
                             if (blockHeight < t.BlockNumber-1)
                             {
-                                throw new Exception($"Bad block. My count {blockHeight}. BlockNumber: {t.BlockNumber}. Need to download new chain");
+                                throw new Exception($"Bad block. My count {blockHeight}. BlockNumber: {t.BlockNumber}. Need to download a new chain?");
                             }
                             else if (blockHeight > t.BlockNumber)
                             {
-                                log.Warn($"Double block. My count {blockHeight}. BlockNumber: {t.BlockNumber}. Need to download new chain");
+                                log.Warn($"Block already added to chain. My block height: #{blockHeight}. Received block: #{t.BlockNumber}");
                                 return;
                             }
-                            
                             using (BinaryWriter iw = new BinaryWriter(fi, Encoding.Default, true))
                             {
                                 iw.BaseStream.Position = iw.BaseStream.Length;
@@ -220,7 +220,7 @@ namespace MicroCoin.Chain
                         }
                     }
                     finally
-                    {                    
+                    {
                         f.Dispose();
                     }
                 }
@@ -259,7 +259,6 @@ namespace MicroCoin.Chain
                         iw.Write(count);
                         iw.Write(size);
                         iw.Write((ulong)0);
-
                         foreach (var t in ts)
                         {
                             f.Position = f.Length;
@@ -269,10 +268,10 @@ namespace MicroCoin.Chain
                             iw.Write(t.BlockNumber);
                             iw.Write(pos);
                             iw.Write((uint)(f.Position - pos));
-                            iw.BaseStream.Position = 0; //iw.BaseStream.Length;
-			                count++;
+                            iw.BaseStream.Position = 0;
+			    count++;
                             iw.Write(count);
-                            iw.Write(fi.Length);                            
+                            iw.Write(fi.Length);
                         }
                         log.Info($"Saved {ts.Count} blocks. From {ts.FirstOrDefault()?.BlockNumber} to {ts.LastOrDefault()?.BlockNumber}. New count: {count}");
                     }

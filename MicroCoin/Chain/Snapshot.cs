@@ -27,9 +27,13 @@ namespace MicroCoin.Chain
 {
     public class Snapshot : IEnumerable<Block>, IEnumerator<Block>
     {
+
+        private static object loadLock = new object();
         private uint currentIndex = 0;
         private Stream stream;
+
         public SnapshotHeader Header { get; set; }
+
         public uint BlockCount
         {
             get
@@ -43,7 +47,7 @@ namespace MicroCoin.Chain
         public Block Current => this[currentIndex];
 
         object IEnumerator.Current => this[currentIndex];
-                
+
         public Block this[uint i]
         {
             get
@@ -58,10 +62,12 @@ namespace MicroCoin.Chain
             {
             }
         }
+
         public Snapshot()
         {
-            
+
         }
+
         public Snapshot(Stream s)
         {
             LoadFromStream(s);
@@ -113,7 +119,7 @@ namespace MicroCoin.Chain
             }
 
         }
-        private static object loadLock = new object();
+
         public void Append(Snapshot snapshot)
         {
             lock (loadLock)

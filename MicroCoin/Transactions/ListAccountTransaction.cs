@@ -30,15 +30,23 @@ namespace MicroCoin.Transactions
             ListAccount = 4,
             DeListAccount = 5
         };
+
         public AccountTransactionType TransactionType { get; set; }
+
         public ulong AccountPrice { get; set; }
+
         public uint AccountToPay { get; set; }
+
         public ECKeyPair NewPublicKey { get; set; }
+
         public uint LockedUntilBlock { get; set; }
+
         public ListAccountTransaction() { }
+
         public ListAccountTransaction(Stream stream) {
             LoadFromStream(stream);
         }
+
         public override void SaveToStream(Stream s)
         {
             using (BinaryWriter bw = new BinaryWriter(s, Encoding.ASCII, true))

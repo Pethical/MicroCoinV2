@@ -24,8 +24,11 @@ namespace MicroCoin.Protocol
 {
     public class BlockRequest : Request
     {
+
         public uint StartBlock { get; set; }
+
         public uint BlockNumber { get; set; }
+
         public BlockRequest()
         {
             RequestType = RequestType.Request;

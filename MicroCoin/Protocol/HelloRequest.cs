@@ -28,14 +28,23 @@ namespace MicroCoin.Protocol
 {
     public class HelloRequest : Request
     {
+
         public ushort ServerPort { get; set; }
+
         public ECKeyPair AccountKey { get; set; }
+
         public Timestamp Timestamp { get; set; }
+
         public TransactionBlock TransactionBlock { get; set; }
+
         public NodeServerList NodeServers { get; set; }
+
         public string Version { get; set; }
+
         public Int64 WorkSum { get; set; }
+
         public HelloRequest() : base() { }
+
         public HelloRequest(Stream stream, MessageHeader rp) : base(rp)
         {
             LoadFromStream(stream);

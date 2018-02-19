@@ -6,7 +6,9 @@ namespace MicroCoin.Util
 {
     public struct ByteString
     {
+
         private byte[] value;
+
         public ByteString(byte[] b)
         {
             value = b;
@@ -32,10 +34,12 @@ namespace MicroCoin.Util
         {
             return s.value;
         }
+
         public static implicit operator ByteString(byte[] s)
         {
             return new ByteString(s);
         }
+
         public static ByteString ReadFromStream(BinaryReader br)
         {
             ByteString bs = new ByteString();

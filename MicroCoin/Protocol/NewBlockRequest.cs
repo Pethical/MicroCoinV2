@@ -26,6 +26,7 @@ namespace MicroCoin.Protocol
 {
     public class NewBlockRequest : MessageHeader
     {
+
         public TransactionBlock TransactionBlock { get; set; }
 
         public NewBlockRequest(Stream stream) : base(stream)

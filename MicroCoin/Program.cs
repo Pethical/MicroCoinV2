@@ -121,10 +121,15 @@ namespace MicroCoin
             do
             {
                 block = Console.ReadLine();
+		if(block=="l"){
+                    var t = BlockChain.Instance.GetLastTransactionBlock();
+                    log.Info($"Last block: {t.BlockNumber} {t.CompactTarget} {t.Nonce} {t.Payload} {t.ProofOfWork.ToHexString()}");
+		    continue;
+		}
                 try
                 {
                     var t = BlockChain.Instance.Get(Convert.ToInt32(block));
-                    log.Info($"Last block: {t.BlockNumber} {t.CompactTarget} {t.Nonce} {t.Payload} {t.ProofOfWork.ToHexString()})");
+                    log.Info($"Last block: {t.BlockNumber} {t.CompactTarget} {t.Nonce} {t.Payload} {t.ProofOfWork.ToHexString()}");
                 }
                 catch (Exception e)
                 {

@@ -33,6 +33,7 @@ namespace MicroCoin.Net
 {
 
     public enum RequestType : ushort { None = 0, Request, Response, AutoSend, Unknown };
+
     public enum NetOperationType : ushort
     {
         Hello = 1,

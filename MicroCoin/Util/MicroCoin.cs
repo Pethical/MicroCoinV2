@@ -27,26 +27,32 @@ namespace MicroCoin.Util
         {
             return new MCC( m / 10000M );
         }
+
         public static MCC operator +(MCC a, MCC b)
         {
             return new MCC(a.value + b.value);
         }
+
         public static MCC operator -(MCC a, MCC b)
         {
             return new MCC(a.value - b.value);
         }
+
         public static MCC operator -(MCC a, ulong b)
         {
             return new MCC(a.value - b);
         }
+
         public static MCC operator +(MCC a, ulong b)
         {
             return new MCC(a.value + b);
         }
+
         public override bool Equals(object obj)
         {
             return ((ulong)this).Equals(obj);
         }
+
         public override string ToString()
         {
             return value.ToString();

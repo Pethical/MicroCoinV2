@@ -25,10 +25,15 @@ namespace MicroCoin.Transactions
 {
     public sealed class ChangeAccountInfoTransaction : Transaction
     {
+
         public enum AccountInfoChangeType : byte { PublicKey = 1, AccountName = 2, AccountType = 3 };
+
         public byte ChangeType { get; set; }
+
         public ECKeyPair NewAccountKey { get; set; }
+
         public byte[] NewName { get; set; }
+
         public ushort NewType { get; set; }
 
         public ChangeAccountInfoTransaction() { }
@@ -37,6 +42,7 @@ namespace MicroCoin.Transactions
         {
             LoadFromStream(stream);
         }
+
         public override void SaveToStream(Stream s)
         {
             using(BinaryWriter bw = new BinaryWriter(s, Encoding.ASCII, true))

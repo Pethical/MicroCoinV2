@@ -24,9 +24,13 @@ namespace MicroCoin.Protocol
 {
     public class NewTransactionMessage : MessageHeader
     {
+
         public uint TransactionCount { get; set; }
+
         public TransactionType[] TransactionTypes { get; set; }
+
         private object[] transactions;
+
         protected Stream stream;
 
         public NewTransactionMessage(Stream stream, MessageHeader rp) : base(rp)
@@ -38,8 +42,9 @@ namespace MicroCoin.Protocol
                 TransactionTypes = new TransactionType[TransactionCount];
                 for (int i = 0; i < TransactionCount; i++)
                 {
+
                     TransactionTypes[i] = (TransactionType)br.ReadByte();
-                    
+
                     switch (TransactionTypes[i])
                     {
                         case TransactionType.Transaction:

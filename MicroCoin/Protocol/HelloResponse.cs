@@ -29,13 +29,21 @@ namespace MicroCoin.Protocol
 {
     public class HelloResponse : MessageHeader
     {
+
         public ushort ServerPort { get; set; }
+
         public ECKeyPair AccountKey { get; set; }
+
         public Timestamp Timestamp { get; set; }
+
         public TransactionBlock TransactionBlock { get; set; }
+
         public NodeServerList NodeServers { get; set; }
+
         public string Version { get; set; }
+
         public Int64 WorkSum { get; set; }
+
         public void LoadFromStream(Stream stream)
         {
             using (BinaryReader br = new BinaryReader(stream, Encoding.ASCII, true))
