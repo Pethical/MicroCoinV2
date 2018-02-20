@@ -23,6 +23,9 @@ using System.Text;
 
 namespace MicroCoin.Chain
 {
+    /// <summary>
+    /// Block transaction list.
+    /// </summary>
     public class BlockTransactionList : TransactionBlock
     {
         public uint TransactionCount { get; set; }
