@@ -23,16 +23,11 @@ using log4net.Layout;
 using log4net.Repository.Hierarchy;
 using MicroCoin.Chain;
 using MicroCoin.Net;
-using MicroCoin.Protocol;
 using MicroCoin.Util;
 using System;
-using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Timers;
 
 namespace MicroCoin
 {
@@ -40,11 +35,12 @@ namespace MicroCoin
     {
         private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
-        static async Task Main(string[] args) 
+        static async Task<int> Main(string[] args) 
         {
+            Thread.CurrentThread.Name = "Main";
             Hierarchy hierarchy = (Hierarchy)LogManager.GetRepository();
             PatternLayout patternLayout = new PatternLayout();
-            patternLayout.ConversionPattern = "%date{yyyy-MM-dd HH:mm:ss} %-5level %logger - %message%newline";
+            patternLayout.ConversionPattern = "%date{yyyy-MM-dd HH:mm:ss} %-5level %logger [%thread] %message%newline";
             patternLayout.ActivateOptions();
             ManagedColoredConsoleAppender consoleAppender = new ManagedColoredConsoleAppender();
             consoleAppender.Layout = patternLayout;
@@ -75,7 +71,7 @@ namespace MicroCoin
             //MemoryAppender memory = new MemoryAppender();
             //memory.ActivateOptions();
             //hierarchy.Root.AddAppender(memory);
-            hierarchy.Root.Level = Level.All;
+            hierarchy.Root.Level = Level.Info;
             hierarchy.Configured = true;
 
             MicroCoinClient microCoinClient = new MicroCoinClient();
@@ -121,11 +117,13 @@ namespace MicroCoin
             do
             {
                 block = Console.ReadLine();
-		if(block=="l"){
+                if (block == "l")
+                {
                     var t = BlockChain.Instance.GetLastTransactionBlock();
                     log.Info($"Last block: {t.BlockNumber} {t.CompactTarget} {t.Nonce} {t.Payload} {t.ProofOfWork.ToHexString()}");
-		    continue;
-		}
+                    continue;
+                }
+                if (block == "q") break;
                 try
                 {
                     var t = BlockChain.Instance.Get(Convert.ToInt32(block));
@@ -135,9 +133,12 @@ namespace MicroCoin
                 {
                     log.Error(e.Message, e);
                 }
-            
             } while (block != "q");
-            microCoinClient.Dispose();            
+            Node.Instance.Dispose();
+            microCoinClient.Dispose();
+            Console.ReadLine();
+            return 0;
         }
+        
     }
 }

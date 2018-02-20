@@ -20,7 +20,7 @@ namespace MicroCoin
     {        
         private static Node s_instance;
         public ECKeyPair AccountKey { get; } = ECKeyPair.CreateNew(false);
-        private MicroCoinClient MicroCoinClient { get; set; }
+        private static MicroCoinClient MicroCoinClient { get; set; }
         public NodeServerList NodeServers { get; set; } = new NodeServerList();
         public Snapshot Snapshot { get; set; } = new Snapshot();
         public BlockChain BlockChain { get; set; } = BlockChain.Instance;
@@ -39,26 +39,32 @@ namespace MicroCoin
         }
         public static async Task<Node> StartNode()
         {
-            MicroCoinClient microCoinClient = new MicroCoinClient();
-            microCoinClient.Connect("127.0.0.1", 4004);
-            HelloResponse response = await microCoinClient.SendHelloAsync();
+            MicroCoinClient = new MicroCoinClient();
+            MicroCoinClient.Connect("127.0.0.1", 4004);
+            HelloResponse response = await MicroCoinClient.SendHelloAsync();
             uint start = (response.TransactionBlock.BlockNumber / 100) * 100;
-            var blocks = await microCoinClient.RequestBlocksAsync(start, response.TransactionBlock.BlockNumber);
+            var blocks = await MicroCoinClient.RequestBlocksAsync(start, response.TransactionBlock.BlockNumber);
             BlockChain.Instance.AddRange(blocks.BlockTransactions);
             using (FileStream fs = File.Create(BlockChain.Instance.BlockChainFileName))
             {
                 BlockChain.Instance.SaveToStorage(fs);
             }
-            await microCoinClient.DownloadSnaphostAsync(response.TransactionBlock.BlockNumber);
+            await MicroCoinClient.DownloadSnaphostAsync(response.TransactionBlock.BlockNumber);
             FileStream file = File.Create($"snaphot");
             Instance.Snapshot.SaveToStream(file);            
             file.Dispose();
             Instance.Snapshot.LoadFromFile("snaphot");
             GC.Collect();
-            microCoinClient.Start();
-            microCoinClient.SendHello();
+            MicroCoinClient.Start();
+            MicroCoinClient.SendHello();
             return Instance;
         }
 
+        internal void Dispose()
+        {
+            MicroCoinClient.Dispose();
+            NodeServers.Dispose();            
+            Snapshot.Dispose();
+        }
     }
 }

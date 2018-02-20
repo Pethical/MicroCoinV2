@@ -108,13 +108,13 @@ namespace MicroCoin.Net
 
         public void TryAddNew(string key, NodeServer nodeServer)
         {
-            lock (addLock)
+            //lock (addLock)
             {
                 if (BlackList.ContainsKey(key)) return;
                 if (ContainsKey(key)) return;
                 if (TryAdd(key, nodeServer))
                 {
-                    log.Warn($"{this.Count} nodes registered");
+                    log.Debug($"{this.Count} nodes registered");
                     new Thread(() =>
                     {
                         var m = nodeServer.Connect();
@@ -128,10 +128,14 @@ namespace MicroCoin.Net
                             BlackList.TryAdd(key, nodeServer);
                             TryRemove(key, out NodeServer outs);
                             var cnt = this.Count(p => p.Value.Connected);
-                            log.Info($"{this.Count} nodes registered. {cnt} connected. {BlackList.Count} dead");
+                            log.Debug($"{this.Count} nodes registered. {cnt} connected. {BlackList.Count} dead");
                         }
 
-                    }).Start();
+                    })
+                    {
+                        Name = nodeServer.ToString()
+                    }
+                    .Start();
                 }
             }
         }
@@ -176,6 +180,12 @@ namespace MicroCoin.Net
             }
         }
 
-
+        internal void Dispose()
+        {
+            foreach(var n in this)
+            {
+                n.Value.MicroCoinClient.Dispose();
+            }
+        }
     }
 }

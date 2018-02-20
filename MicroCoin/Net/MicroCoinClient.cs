@@ -211,11 +211,11 @@ namespace MicroCoin.Net
 
                     while (TcpClient.Available > 0)
                     {
-                        log.Info($"Expected: {rp.DataLength + RequestHeader.Size} received: {responseStream.Length}. Available: {TcpClient.Available}  Memory {GC.GetTotalMemory(true)}");
+                        log.Debug($"Expected: {rp.DataLength + RequestHeader.Size} received: {responseStream.Length}. Available: {TcpClient.Available}  Memory {GC.GetTotalMemory(true)}");
                         byte[] buffer = new byte[TcpClient.Available];
                         ns.Read(buffer, 0, buffer.Length);
                         responseStream.Write(buffer, 0, buffer.Length);
-                        log.Info($"Expected: {rp.DataLength + RequestHeader.Size} received: {responseStream.Length}. Available: {TcpClient.Available}  Memory {GC.GetTotalMemory(true)}");
+                        log.Debug($"Expected: {rp.DataLength + RequestHeader.Size} received: {responseStream.Length}. Available: {TcpClient.Available}  Memory {GC.GetTotalMemory(true)}");
                     }
                     wt = 0;
                 }
@@ -480,24 +480,33 @@ namespace MicroCoin.Net
                     TcpClient = null;
                 }
                 Connected = false;
-                log.Warn($"Can't connect to {hostname}:{port}. {e.Message}");
+                log.Debug($"Can't connect to {hostname}:{port}. {e.Message}");
                 TcpClient = null;
                 return false;
             }
             return Connected;
         }
+        private Thread listenerThread;
+        private bool stop = false;
         public void Start()
         {
-            Thread t = new Thread(() =>
+            listenerThread = new Thread(() =>
             {
                 while (true)
                 {
-                    while (TcpClient.Available == 0) Thread.Sleep(1);
+                    while (TcpClient.Available == 0)
+                    {
+                        if (stop)
+                        {
+                            log.Info("Stopping Thread");
+                            return;
+                        }
+                        Thread.Sleep(1);
+                    }
                     var ms = new MemoryStream();
                     NetworkStream ns = TcpClient.GetStream();
                     while (TcpClient.Available > 0)
                     {
-
                         byte[] buffer = new byte[TcpClient.Available];
                         ns.Read(buffer, 0, buffer.Length);
                         ms.Write(buffer, 0, buffer.Length);
@@ -519,11 +528,11 @@ namespace MicroCoin.Net
                         if (wt > 4000) break;
                         while (TcpClient.Available > 0)
                         {
-                            log.Info($"Expected: {rp.DataLength + RequestHeader.Size} received: {ms.Length}. Available: {TcpClient.Available}");
+                            log.Debug($"Expected: {rp.DataLength + RequestHeader.Size} received: {ms.Length}. Available: {TcpClient.Available}");
                             byte[] buffer = new byte[TcpClient.Available];
                             ns.Read(buffer, 0, buffer.Length);
                             ms.Write(buffer, 0, buffer.Length);
-                            log.Info($"Expected: {rp.DataLength + RequestHeader.Size} received: {ms.Length}. Available: {TcpClient.Available}");
+                            log.Debug($"Expected: {rp.DataLength + RequestHeader.Size} received: {ms.Length}. Available: {TcpClient.Available}");
                         }
                         wt = 0;
                     }
@@ -622,7 +631,8 @@ namespace MicroCoin.Net
                     ms = null;
                 }
             });
-            t.Start();
+            listenerThread.Name = TcpClient.Client.RemoteEndPoint.ToString();
+            listenerThread.Start();
         }
         public void Dispose()
         {
@@ -634,7 +644,13 @@ namespace MicroCoin.Net
         {
             if (disposing)
             {
-                TcpClient.Dispose();
+                stop = true;                
+                while(listenerThread!=null && listenerThread.IsAlive)
+                {                    
+                    Thread.Sleep(1);
+                }
+                if(TcpClient!=null)
+                    TcpClient.Dispose();                
             }
         }
     }

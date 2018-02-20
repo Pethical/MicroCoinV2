@@ -122,7 +122,6 @@ namespace MicroCoin.Chain
             }
         }
 
-
         public TransactionBlock GetLastTransactionBlock()
         {
             lock (flock)
@@ -136,7 +135,7 @@ namespace MicroCoin.Chain
                         fi.Position = fi.Length - 16;
                         uint blockNumber = ir.ReadUInt32();
                         long position = ir.ReadInt64();
-			log.Debug($"GetLastTransactionBlock {blockNumber} {position}");
+			            log.Debug($"GetLastTransactionBlock {blockNumber} {position}");
                         FileStream f = File.Open(BlockChainFileName, FileMode.OpenOrCreate, FileAccess.ReadWrite);
                         try
                         {
