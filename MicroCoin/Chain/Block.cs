@@ -25,7 +25,9 @@ using System.Text;
 
 namespace MicroCoin.Chain
 {
-
+    /// <summary>
+    /// One entry in the snapshot
+    /// </summary>
     public class Block
     {
         
@@ -69,6 +71,10 @@ namespace MicroCoin.Chain
         /// Previus snapshot hash
         /// </summary>
         public byte[] PreviusSnaphotHash { get; set; }
+        /// <summary>
+        /// Gets or sets the block payload.
+        /// </summary>
+        /// <value>The block payload.</value>
         public byte[] BlockPayload { get; set; }
         /// <summary>
         /// Merkle Tree hash for checkpointing
@@ -78,8 +84,20 @@ namespace MicroCoin.Chain
         /// Proof of work
         /// </summary>
         public byte[] ProofOfWork { get; set; }
+        /// <summary>
+        /// List of all accounts
+        /// </summary>
+        /// <value>The accounts.</value>
         public List<Account> Accounts { get; set; } = new List<Account>();
+        /// <summary>
+        /// The block hash
+        /// </summary>
+        /// <value>The block hash.</value>
         public ByteString BlockHash { get; set; }
+        /// <summary>
+        /// Gets or sets the accumulated work.
+        /// </summary>
+        /// <value>The accumulated work.</value>
         public ulong AccumulatedWork { get; set; }
 
         public void SaveToStream(Stream stream)

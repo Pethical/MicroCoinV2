@@ -18,6 +18,7 @@
 
 using log4net;
 using MicroCoin.Util;
+using MicroCoin.Chain;
 using System;
 using System.Linq;
 using System.Collections.Concurrent;
@@ -117,10 +118,22 @@ namespace MicroCoin.Net
                     log.Debug($"{this.Count} nodes registered");
                     new Thread(() =>
                     {
-                        var m = nodeServer.Connect();
-                        if (m != null && nodeServer.Connected)
+                        var MicroCoinClient = nodeServer.Connect();
+                        if (MicroCoinClient != null && nodeServer.Connected)
                         {
-                            m.SendHello();
+                            MicroCoinClient.HelloResponse += (o, e) =>
+                            {
+                                log.DebugFormat("Network Block height: {0}. My Block height: {1}", e.HelloResponse.TransactionBlock.BlockNumber, BlockChain.Instance.BlockHeight());
+                                if (BlockChain.Instance.BlockHeight() < e.HelloResponse.TransactionBlock.BlockNumber)
+                                {
+                                    MicroCoinClient.RequestBlockChain((uint)(BlockChain.Instance.BlockHeight()), 100);
+                                }
+                            };
+                            MicroCoinClient.BlockResponse += (ob, eb) => {
+                                log.DebugFormat("Received {0} Block from blockchain. BlockChain size: {1}. Block height: {2}", eb.BlockResponse.BlockTransactions.Count, BlockChain.Instance.Count, eb.BlockResponse.BlockTransactions.Last().BlockNumber);
+                                BlockChain.Instance.AppendAll(eb.BlockResponse.BlockTransactions);
+                            };
+                            MicroCoinClient.SendHello();
                         }
                         else
                         {

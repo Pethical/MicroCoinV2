@@ -167,7 +167,7 @@ namespace MicroCoin.Chain
             }
         }
 
-        public void Append(TransactionBlock t)
+        public bool Append(TransactionBlock t)
         {
             lock (flock)
             {
@@ -195,12 +195,12 @@ namespace MicroCoin.Chain
                             }
                             if (blockHeight < t.BlockNumber-1)
                             {
-                                throw new Exception($"Bad block. My count {blockHeight}. BlockNumber: {t.BlockNumber}. Need to download a new chain?");
+                                return false;
                             }
                             else if (blockHeight > t.BlockNumber)
                             {
                                 log.Warn($"Block already added to chain. My block height: #{blockHeight}. Received block: #{t.BlockNumber}");
-                                return;
+                                return true;
                             }
                             using (BinaryWriter iw = new BinaryWriter(fi, Encoding.Default, true))
                             {
@@ -216,6 +216,7 @@ namespace MicroCoin.Chain
                                 iw.Write((uint)(f.Position - pos));
                                 log.Info($"Added new block #{t.BlockNumber}");
                             }
+                            return true;
                         }
                     }
                     finally

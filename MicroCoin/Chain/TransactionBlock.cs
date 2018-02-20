@@ -32,6 +32,9 @@ namespace MicroCoin.Chain
 
     
     // TPCOperationsComp
+    /// <summary>
+    /// One block in the blockchain
+    /// </summary>
     public class TransactionBlock
     {
 

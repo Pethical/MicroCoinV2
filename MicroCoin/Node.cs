@@ -18,6 +18,7 @@ namespace MicroCoin
 {
     public class Node
     {        
+        private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
         private static Node s_instance;
         public ECKeyPair AccountKey { get; } = ECKeyPair.CreateNew(false);
         private static MicroCoinClient MicroCoinClient { get; set; }
@@ -40,7 +41,7 @@ namespace MicroCoin
         public static async Task<Node> StartNode()
         {
             MicroCoinClient = new MicroCoinClient();
-            MicroCoinClient.Connect("127.0.0.1", 4004);
+            MicroCoinClient.Connect("micro-225.microbyte.cloud", 4004);
             HelloResponse response = await MicroCoinClient.SendHelloAsync();
             uint start = (response.TransactionBlock.BlockNumber / 100) * 100;
             var blocks = await MicroCoinClient.RequestBlocksAsync(start, response.TransactionBlock.BlockNumber);
@@ -55,6 +56,18 @@ namespace MicroCoin
             file.Dispose();
             Instance.Snapshot.LoadFromFile("snaphot");
             GC.Collect();
+            MicroCoinClient.HelloResponse += (o, e) =>
+            {
+                log.DebugFormat("Network Block height: {0}. My Block height: {1}", e.HelloResponse.TransactionBlock.BlockNumber, BlockChain.Instance.BlockHeight());
+                if (BlockChain.Instance.BlockHeight() < e.HelloResponse.TransactionBlock.BlockNumber)
+                {
+                    MicroCoinClient.RequestBlockChain((uint)(BlockChain.Instance.BlockHeight()), 100);
+                }
+            };
+            MicroCoinClient.BlockResponse += (ob, eb) => {
+                log.DebugFormat("Received {0} Block from blockchain. BlockChain size: {1}. Block height: {2}", eb.BlockResponse.BlockTransactions.Count, BlockChain.Instance.Count, eb.BlockResponse.BlockTransactions.Last().BlockNumber);
+                BlockChain.Instance.AppendAll(eb.BlockResponse.BlockTransactions);
+            };
             MicroCoinClient.Start();
             MicroCoinClient.SendHello();
             return Instance;
