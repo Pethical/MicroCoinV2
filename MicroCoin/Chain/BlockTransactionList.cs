@@ -30,7 +30,7 @@ namespace MicroCoin.Chain
     {
         public uint TransactionCount { get; set; }
         public TransactionType TransactionsType { get; set; }
-        public List<Transaction> Transactions;
+        public List<Transaction> Transactions {get; set;}  = new List<Transaction>();
         public static new BlockTransactionList NullBlock
         {
             get
@@ -80,11 +80,13 @@ namespace MicroCoin.Chain
                                 s.Position = s.Length;
                                 return;
                         }
+			t.TransactionType = TransactionsType;
                         Transactions.Add(t);
                     }
                 }
             }
         }
+
         public override void SaveToStream(Stream s)
         {
             base.SaveToStream(s);
@@ -93,11 +95,13 @@ namespace MicroCoin.Chain
                 if (Transactions == null)
                 {
                     bw.Write((uint)0);
+                    bw.Write((uint)TransactionsType);
                     return;
                 }
                 bw.Write((uint)Transactions.Count);
                 foreach (var t in Transactions)
                 {
+                    bw.Write((uint)t.TransactionType);
                     t.SaveToStream(s);
                 }
             }

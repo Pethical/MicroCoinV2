@@ -21,6 +21,15 @@ using System.IO;
 
 namespace MicroCoin.Transactions
 {
+
+
+    public enum TransactionType : uint
+    {
+        Transaction = 1, ChangeKey, RecoverFounds, ListAccountForSale,
+        DeListAccountForSale, BuyAccount, ChangeKeySigned, ChangeAccountInfo
+    };
+
+
     public abstract class Transaction
     {
 
@@ -41,6 +50,8 @@ namespace MicroCoin.Transactions
         public abstract void SaveToStream(Stream s);
 
         public abstract void LoadFromStream(Stream s);
+
+	public TransactionType TransactionType{ get; set; }
 
         protected void ReadPayLoad(BinaryReader br)
         {

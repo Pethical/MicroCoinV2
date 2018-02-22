@@ -53,25 +53,51 @@ namespace MicroCoin
                 MicroCoinClient.ServerPort = (ushort)((IPEndPoint)MicroCoinClient.TcpClient.Client.LocalEndPoint).Port;
                 HelloResponse response = await MicroCoinClient.SendHelloAsync();
                 uint start = (response.TransactionBlock.BlockNumber / 100) * 100;
-                var blocks = await MicroCoinClient.RequestBlocksAsync(start, response.TransactionBlock.BlockNumber);
-                /*BlockChain.Instance.AddRange(blocks.BlockTransactions);
+		uint bl = 0;
+		while(bl<response.TransactionBlock.BlockNumber) {
+            	    var blocks = await MicroCoinClient.RequestBlocksAsync(bl, 1000);//response.TransactionBlock.BlockNumber);
+		    log.Info($"BlockChain downloading {bl} => {bl+999}");
+		    log.Info(blocks.BlockTransactions.First().BlockNumber.ToString()+" "+blocks.BlockTransactions.Last().BlockNumber.ToString());
+		    log.Info(blocks.BlockTransactions.Count.ToString());
+            	    BlockChain.Instance.AddRange(blocks.BlockTransactions);
+		    bl+=1000;
+		}
+//		Console.ReadLine();
                 using (FileStream fs = File.Create(BlockChain.Instance.BlockChainFileName))
                 {
                     BlockChain.Instance.SaveToStorage(fs);
-                }*/
+                }
                 using (FileStream s = File.OpenRead(BlockChain.Instance.BlockChainFileName))
                 {
-                    BlockChain.Instance.LoadFromStream(s);
+		    log.Info("BlockChain loading");
+//                    BlockChain.Instance.LoadFromStream(s);
+		    log.Info("BlockChain loaded");
                 }
-                /*
-                Instance.Snapshot.LoadFromFile("snaphot");                
-                await MicroCoinClient.DownloadSnaphostAsync(response.TransactionBlock.BlockNumber);
-                FileStream file = File.Create($"snaphot");
-                Instance.Snapshot.SaveToStream(file);
-                file.Dispose();
-                */
-                Instance.Snapshot.LoadFromFile("snaphot");
+		log.Info("BlockChain downloaded");
+		if(File.Exists("snaphot")){
+            	    Instance.Snapshot.LoadFromFile("snaphot");
+		    log.Info($"{Instance.Snapshot.Header.EndBlock} {start} {response.TransactionBlock.BlockNumber}");
+		}else{
+            	    await MicroCoinClient.DownloadSnaphostAsync(response.TransactionBlock.BlockNumber);
+            	    FileStream file = File.Create($"snaphot");
+            	    Instance.Snapshot.SaveToStream(file);
+            	    file.Dispose();
+            	    Instance.Snapshot.LoadFromFile("snaphot");
+		}
+		if(Instance.Snapshot.Header.EndBlock<start-1) {
+		    Instance.Snapshot.Dispose();
+		    Instance.Snapshot = new Snapshot();
+            	    await MicroCoinClient.DownloadSnaphostAsync(response.TransactionBlock.BlockNumber);
+            	    FileStream file = File.Create($"snaphot");
+            	    Instance.Snapshot.SaveToStream(file);
+            	    file.Dispose();
+            	    Instance.Snapshot.LoadFromFile("snaphot");
+		}
                 GC.Collect();
+		foreach(Account a in Instance.Snapshot.Accounts) {
+		    if(a.Balance!=1000000 && a.Balance!=0)
+			log.Info($"{a.AccountNumber} => {a.Balance}");
+		}
                 MicroCoinClient.HelloResponse += (o, e) =>
                 {
                     log.DebugFormat("Network Block height: {0}. My Block height: {1}", e.HelloResponse.TransactionBlock.BlockNumber, BlockChain.Instance.BlockHeight());
@@ -92,7 +118,7 @@ namespace MicroCoin
             {
 
             }
-            Instance.Listen();
+//            Instance.Listen();
             return Instance;
         }
 
@@ -102,11 +128,11 @@ namespace MicroCoin
             {
                 try
                 {
-                    TcpListener tcpListener = new TcpListener(IPAddress.Any, 4004); //
+                    TcpListener tcpListener = new TcpListener(IPAddress.Any, 4040); //
                     try
                     {
                         // TcpListener tcpListener = new TcpListener((IPEndPoint)MicroCoinClient.TcpClient.Client.LocalEndPoint);
-                        MicroCoinClient.ServerPort = 4004;
+                        MicroCoinClient.ServerPort = 4040;
                         tcpListener.AllowNatTraversal(true);
                         tcpListener.Start();
                         ManualResetEvent connected = new ManualResetEvent(false);

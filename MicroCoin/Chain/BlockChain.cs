@@ -47,10 +47,10 @@ namespace MicroCoin.Chain
         public void SaveToStream(Stream s)
         {
             foreach (var t in this)
-            {                
+            {
                 t.SaveToStream(s);
             }
-        }       
+        }
 
         public string BlockChainFileName { get; set; } = "block.chain";
         public int BlockHeight()
@@ -207,7 +207,7 @@ namespace MicroCoin.Chain
                             {
                                 iw.BaseStream.Position = iw.BaseStream.Length;
                                 fi.Position = 0;
-                                iw.Write(count + 1);
+                                iw.Write(count+1);
                                 f.Position = f.Length;
                                 fi.Position = fi.Length;
                                 long pos = f.Position;
@@ -270,7 +270,7 @@ namespace MicroCoin.Chain
                             iw.Write(pos);
                             iw.Write((uint)(f.Position - pos));
                             iw.BaseStream.Position = 0;
-			                count++;
+			    count++;
                             iw.Write(count);
                             iw.Write(fi.Length);
                         }
@@ -281,14 +281,13 @@ namespace MicroCoin.Chain
                 f.Dispose();
                 f = null;
             }
-
         }
 
         public void SaveToStorage(Stream s)
         {
             lock (flock)
             {
-                byte[] b;
+//                byte[] b;
                 int count = 0;
                 int size = 0;
                 FileStream f = File.Open(BlockChainFileName + ".index", FileMode.OpenOrCreate, FileAccess.ReadWrite);
@@ -299,26 +298,26 @@ namespace MicroCoin.Chain
                         count = br.ReadInt32();
                         size = br.ReadInt32();
                         int indexSize = size > Count * 16 ? size : Count * 16;
-                        b = new byte[indexSize + 16];
+                        //b = new byte[indexSize + 16];
                         br.ReadUInt64(); // Padding
-                        br.Read(b, 0, size);
-                        log.Debug($"Loaded index for {count} blocks. We have {Count} blocks");
+                        //br.Read(b, 0, size);
+                        //log.Debug($"Loaded index for {count} blocks. We have {Count} blocks");
                     }
                 }
                 else
                 {
-                    b = new byte[Count * 16];
+                    //b = new byte[Count * 16];
                 }
                 using (BinaryWriter iw = new BinaryWriter(f))
                 {
                     using (BinaryWriter bw = new BinaryWriter(s, Encoding.Default, true))
                     {
                         f.Position = 0;
-                        s.Position = 0;
+                        s.Position = s.Length;
                         iw.Write((uint)Count);
-                        iw.Write(b.Length);
+                        iw.Write((uint)0);//b.Length);
                         iw.Write((ulong)0);
-                        b = null;
+//                        b = null;
                         foreach (var t in this)
                         {
                             long pos = s.Position;

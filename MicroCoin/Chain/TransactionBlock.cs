@@ -24,12 +24,6 @@ using System.Text;
 
 namespace MicroCoin.Chain
 {
-    public enum TransactionType : uint
-    {
-        Transaction = 1, ChangeKey, RecoverFounds, ListAccountForSale,
-        DeListAccountForSale, BuyAccount, ChangeKeySigned, ChangeAccountInfo
-    };
-
     
     // TPCOperationsComp
     /// <summary>
