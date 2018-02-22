@@ -16,6 +16,7 @@
 // along with MicroCoin. If not, see <http://www.gnu.org/licenses/>.
 
 
+using log4net;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -27,11 +28,12 @@ namespace MicroCoin.Chain
 {
     public class Snapshot : IEnumerable<Block>, IEnumerator<Block>
     {
+        private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         private static object loadLock = new object();
         private uint currentIndex = 0;
         private Stream stream;
-
+        public ulong WorkSum { get; set; }
         public SnapshotHeader Header { get; set; }
 
         public uint BlockCount
@@ -84,10 +86,13 @@ namespace MicroCoin.Chain
             GC.Collect();
             Header = new SnapshotHeader(stream);
             Accounts = new List<Account>();
+            WorkSum = 0;
             for (uint i = 0; i < Header.EndBlock - Header.StartBlock; i++)
             {
+                WorkSum += this[i].CompactTarget;
                 foreach (Account a in this[i].Accounts)
                 {
+                    
                     Accounts.Add(new Account
                     {
                         AccountNumber = a.AccountNumber,
@@ -111,13 +116,15 @@ namespace MicroCoin.Chain
             // stream = s;
             stream.Position = 0;
             Header = new SnapshotHeader(stream);
-            Accounts = new List<Account>();           
+            Accounts = new List<Account>();
+            WorkSum = 0;
             for (uint i = 0; i < Header.EndBlock - Header.StartBlock; i++)
             {
                 var b = this[i];
-                Accounts.AddRange(b.Accounts);
+                WorkSum += b.CompactTarget;
+                Accounts.AddRange(b.Accounts);                
             }
-
+            log.Info(WorkSum);
         }
 
         public void Append(Snapshot snapshot)
@@ -165,6 +172,7 @@ namespace MicroCoin.Chain
                 Header.SaveToStream(memoryStream);
                 ms.Position = 0;
                 ms.CopyTo(memoryStream);
+                memoryStream.Write(Header.Hash, 0, Header.Hash.Length);
                 if (stream != null)
                 {
                     stream.Dispose();
@@ -224,5 +232,53 @@ namespace MicroCoin.Chain
         {
             currentIndex = 0;
         }
+
+        public Snapshot SaveChunk(uint startBlock, uint endBlock)
+        {
+            lock (loadLock)
+            {
+                List<Block> list = new List<Block>();
+                SnapshotHeader Header = new SnapshotHeader();
+                Header.StartBlock = startBlock;
+                Header.EndBlock = endBlock;
+                Header.BlockCount = endBlock - startBlock + 1;
+                for (uint i = startBlock; i <= endBlock; i++)
+                    list.Add(this[i]);
+                MemoryStream ms = new MemoryStream();
+                Header.offsets = new uint[list.Count + 1];
+                Header.SaveToStream(ms);
+                long headerSize = ms.Position;
+                ms.Position = 0;
+                using (BinaryWriter bw = new BinaryWriter(ms, Encoding.Default, true))
+                {
+                    uint i = 0;
+                    foreach (Block b in list)
+                    {
+                        Header.offsets[i] = (uint)(ms.Position + headerSize);
+                        b.SaveToStream(ms);
+                        i++;
+                    }
+                }
+                MemoryStream memoryStream = new MemoryStream();
+                Header.SaveToStream(memoryStream);
+                ms.Position = 0;
+                ms.CopyTo(memoryStream);
+                memoryStream.Write(Header.Hash, 0, Header.Hash.Length);
+                if (stream != null)
+                {
+                    stream.Dispose();
+                    stream = null;
+                }
+                memoryStream.Position = 0;
+                Snapshot snapshot = new Snapshot(memoryStream);
+                ms.Dispose();
+                memoryStream.Dispose();
+                ms = null;
+                memoryStream = null;
+                GC.Collect();
+                return snapshot;
+            }
+        }
+
     }
 }

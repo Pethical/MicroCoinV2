@@ -13,6 +13,9 @@ using MicroCoin.Chain;
 using System.IO;
 using MicroCoin.Protocol;
 using MicroCoin.Cryptography;
+using System.Net.Sockets;
+using System.Net;
+using System.Threading;
 
 namespace MicroCoin
 {
@@ -34,47 +37,128 @@ namespace MicroCoin
             }
             set => s_instance = value;
         }
+        public Thread listenerThread { get; set; }
+        public List<MicroCoinClient> Clients { get; set; } = new List<MicroCoinClient>();
         public Node()
         {
             
         }
         public static async Task<Node> StartNode()
-        {
+        {           
             MicroCoinClient = new MicroCoinClient();
-            MicroCoinClient.Connect("micro-225.microbyte.cloud", 4004);
-            HelloResponse response = await MicroCoinClient.SendHelloAsync();
-            uint start = (response.TransactionBlock.BlockNumber / 100) * 100;
-            var blocks = await MicroCoinClient.RequestBlocksAsync(start, response.TransactionBlock.BlockNumber);
-            BlockChain.Instance.AddRange(blocks.BlockTransactions);
-            using (FileStream fs = File.Create(BlockChain.Instance.BlockChainFileName))
+            //MicroCoinClient.Connect("micro-225.microbyte.cloud", 4004);
+            try
             {
-                BlockChain.Instance.SaveToStorage(fs);
-            }
-            await MicroCoinClient.DownloadSnaphostAsync(response.TransactionBlock.BlockNumber);
-            FileStream file = File.Create($"snaphot");
-            Instance.Snapshot.SaveToStream(file);            
-            file.Dispose();
-            Instance.Snapshot.LoadFromFile("snaphot");
-            GC.Collect();
-            MicroCoinClient.HelloResponse += (o, e) =>
-            {
-                log.DebugFormat("Network Block height: {0}. My Block height: {1}", e.HelloResponse.TransactionBlock.BlockNumber, BlockChain.Instance.BlockHeight());
-                if (BlockChain.Instance.BlockHeight() < e.HelloResponse.TransactionBlock.BlockNumber)
+                MicroCoinClient.Connect("127.0.0.1", 4004);
+                MicroCoinClient.ServerPort = (ushort)((IPEndPoint)MicroCoinClient.TcpClient.Client.LocalEndPoint).Port;
+                HelloResponse response = await MicroCoinClient.SendHelloAsync();
+                uint start = (response.TransactionBlock.BlockNumber / 100) * 100;
+                var blocks = await MicroCoinClient.RequestBlocksAsync(start, response.TransactionBlock.BlockNumber);
+                /*BlockChain.Instance.AddRange(blocks.BlockTransactions);
+                using (FileStream fs = File.Create(BlockChain.Instance.BlockChainFileName))
                 {
-                    MicroCoinClient.RequestBlockChain((uint)(BlockChain.Instance.BlockHeight()), 100);
+                    BlockChain.Instance.SaveToStorage(fs);
+                }*/
+                using (FileStream s = File.OpenRead(BlockChain.Instance.BlockChainFileName))
+                {
+                    BlockChain.Instance.LoadFromStream(s);
                 }
-            };
-            MicroCoinClient.BlockResponse += (ob, eb) => {
-                log.DebugFormat("Received {0} Block from blockchain. BlockChain size: {1}. Block height: {2}", eb.BlockResponse.BlockTransactions.Count, BlockChain.Instance.Count, eb.BlockResponse.BlockTransactions.Last().BlockNumber);
-                BlockChain.Instance.AppendAll(eb.BlockResponse.BlockTransactions);
-            };
-            MicroCoinClient.Start();
-            MicroCoinClient.SendHello();
+                /*
+                Instance.Snapshot.LoadFromFile("snaphot");                
+                await MicroCoinClient.DownloadSnaphostAsync(response.TransactionBlock.BlockNumber);
+                FileStream file = File.Create($"snaphot");
+                Instance.Snapshot.SaveToStream(file);
+                file.Dispose();
+                */
+                Instance.Snapshot.LoadFromFile("snaphot");
+                GC.Collect();
+                MicroCoinClient.HelloResponse += (o, e) =>
+                {
+                    log.DebugFormat("Network Block height: {0}. My Block height: {1}", e.HelloResponse.TransactionBlock.BlockNumber, BlockChain.Instance.BlockHeight());
+                    if (BlockChain.Instance.BlockHeight() < e.HelloResponse.TransactionBlock.BlockNumber)
+                    {
+                        MicroCoinClient.RequestBlockChain((uint)(BlockChain.Instance.BlockHeight()), 100);
+                    }
+                };
+                MicroCoinClient.BlockResponse += (ob, eb) =>
+                {
+                    log.DebugFormat("Received {0} Block from blockchain. BlockChain size: {1}. Block height: {2}", eb.BlockResponse.BlockTransactions.Count, BlockChain.Instance.Count, eb.BlockResponse.BlockTransactions.Last().BlockNumber);
+                    BlockChain.Instance.AppendAll(eb.BlockResponse.BlockTransactions);
+                };
+                MicroCoinClient.Start();
+                MicroCoinClient.SendHello();
+            }
+            catch
+            {
+
+            }
+            Instance.Listen();
             return Instance;
+        }
+
+        protected void Listen()
+        {
+            listenerThread = new Thread(() =>
+            {
+                try
+                {
+                    TcpListener tcpListener = new TcpListener(IPAddress.Any, 4004); //
+                    try
+                    {
+                        // TcpListener tcpListener = new TcpListener((IPEndPoint)MicroCoinClient.TcpClient.Client.LocalEndPoint);
+                        MicroCoinClient.ServerPort = 4004;
+                        tcpListener.AllowNatTraversal(true);
+                        tcpListener.Start();
+                        ManualResetEvent connected = new ManualResetEvent(false);
+                        while (true)
+                        {
+                            connected.Reset();
+                            var asyncResult = tcpListener.BeginAcceptTcpClient((state) =>
+                            {
+                                try
+                                {
+                                    var client = tcpListener.EndAcceptTcpClient(state);
+                                    MicroCoinClient mClient = new MicroCoinClient();
+                                    Clients.Add(mClient);
+                                    mClient.Handle(client);
+                                }
+                                catch (ObjectDisposedException)
+                                {
+                                    return;
+                                }
+                            }, null);
+                            while (true)
+                            {
+                                connected.WaitOne(1);
+                            }
+                        }
+                    }
+                    catch (ThreadAbortException ta)
+                    {
+                        tcpListener.Stop();
+                        return;
+                    }
+                }
+                catch
+                {
+                    return;
+                }
+
+            });
+            listenerThread.Start();
         }
 
         internal void Dispose()
         {
+            foreach (var c in Clients)
+            {
+                if (!c.IsDisposed)
+                {
+                    c.Dispose();
+                    Clients.Remove(c);
+                }
+            }
+            listenerThread.Abort();
             MicroCoinClient.Dispose();
             NodeServers.Dispose();            
             Snapshot.Dispose();

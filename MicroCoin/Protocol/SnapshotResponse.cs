@@ -21,7 +21,7 @@ namespace MicroCoin.Protocol
 
         public SnapshotResponse() : base()
         {
-
+            RequestType = Net.RequestType.Response;
         }
 
         public static void DecompressData(byte[] inData, out byte[] outData)
@@ -36,7 +36,19 @@ namespace MicroCoin.Protocol
             }
         }
 
-        public static void CopyStream(System.IO.Stream input, System.IO.Stream output)
+        public static void CompressData(byte[] inData, out byte[] outData)
+        {
+            using (MemoryStream outMemoryStream = new MemoryStream())
+            using (ZOutputStream outZStream = new ZOutputStream(outMemoryStream, zlibConst.Z_DEFAULT_COMPRESSION))
+            using (Stream inMemoryStream = new MemoryStream(inData))
+            {
+                CopyStream(inMemoryStream, outZStream);
+                outZStream.finish();
+                outData = outMemoryStream.ToArray();
+            }
+        }
+
+        public static void CopyStream(Stream input, Stream output)
         {
             byte[] buffer = new byte[2000];
             int len;
@@ -45,6 +57,24 @@ namespace MicroCoin.Protocol
                 output.Write(buffer, 0, len);
             }
             output.Flush();
+        }
+
+        public override void SaveToStream(Stream s)
+        {
+            base.SaveToStream(s);
+            using(BinaryWriter bw  = new BinaryWriter(s, Encoding.Default, true))
+            {                
+                using (MemoryStream ms = new MemoryStream())
+                {
+                    Snapshot.SaveToStream(ms);
+                    CompressData(ms.GetBuffer(), out byte[] compressed);
+                    bw.Write("SafeBoxChunk");
+                    bw.Write(Version);
+                    bw.Write((uint)ms.Length);
+                    bw.Write((uint)compressed.Length);
+                    bw.Write(compressed);
+                }                
+            }
         }
 
         public SnapshotResponse(Stream s) : base(s)

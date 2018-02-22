@@ -24,8 +24,8 @@ namespace MicroCoin.Protocol
 {
     public class BlockRequest : Request
     {
-
         public uint StartBlock { get; set; }
+        public uint EndBlock { get; set; }
 
         public uint BlockNumber { get; set; }
 
@@ -34,6 +34,14 @@ namespace MicroCoin.Protocol
             RequestType = RequestType.Request;
             Operation = NetOperationType.GetBlocks;
             RequestId = 2;
+        }
+
+        public BlockRequest(MemoryStream ms, MessageHeader rp) : base(rp)
+        {
+            using (BinaryReader br = new BinaryReader(ms)) {
+                StartBlock = br.ReadUInt32();
+                EndBlock = br.ReadUInt32();
+            }
         }
 
         public override void SaveToStream(Stream s)

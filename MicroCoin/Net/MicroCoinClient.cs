@@ -99,11 +99,12 @@ namespace MicroCoin.Net
         public event EventHandler<BlockResponseEventArgs> BlockResponse;
         public event EventHandler<TransactionBlockResponseEventArgs> TransactionBlockResponse;
         public event EventHandler<NewTransactionEventArgs> NewTransaction;
-
-        protected TcpClient TcpClient;
+        public static ushort ServerPort { get; set; }
+        public TcpClient TcpClient { get; set; }
         private static object netLock = new object();
 
         public bool Connected { get; internal set; } = false;
+        public bool IsDisposed { get; internal set; } = false;
 
         public void OnHelloResponse(HelloResponse helloResponse)
         {
@@ -126,6 +127,10 @@ namespace MicroCoin.Net
             TransactionBlockResponse?.Invoke(this, new TransactionBlockResponseEventArgs(transactionBlockResponse));
         }
 
+        public MicroCoinClient()
+        {
+
+        }
 
         public void SendHello()
         {
@@ -159,7 +164,7 @@ namespace MicroCoin.Net
             request.ProtocolVersion = 6;
             request.RequestId = 1;
             request.RequestType = RequestType.Request;
-            request.ServerPort = 4004;
+            request.ServerPort = ServerPort;
             request.Timestamp = DateTime.UtcNow;
             request.Version = "2.0.0wN";
             request.WorkSum = 0;
@@ -261,7 +266,7 @@ namespace MicroCoin.Net
             request.ProtocolVersion = 6;
             request.RequestId = 1;
             request.RequestType = RequestType.Request;
-            request.ServerPort = 4004;
+            request.ServerPort = ServerPort;
             request.Timestamp = DateTime.UtcNow;
             request.Version = "2.0.0wN";
             request.WorkSum = 0;
@@ -462,10 +467,10 @@ namespace MicroCoin.Net
         {
             try
             {
-                TcpClient = new TcpClient();
+                TcpClient = new TcpClient();                
                 var result = TcpClient.BeginConnect(hostname, port, null, null);
                 Connected = result.AsyncWaitHandle.WaitOne(TimeSpan.FromSeconds(1));
-                TcpClient.EndConnect(result);
+                TcpClient.EndConnect(result);                
                 if (!Connected)
                 {
                     throw new Exception("");
@@ -486,8 +491,18 @@ namespace MicroCoin.Net
             }
             return Connected;
         }
+
+        public void Handle(TcpClient client)
+        {
+            TcpClient = client;
+            Connected = true;
+            Start();
+        }
+
         private Thread listenerThread;
+
         private bool stop = false;
+
         public void Start()
         {
             listenerThread = new Thread(() =>
@@ -582,6 +597,46 @@ namespace MicroCoin.Net
                     {
                         switch (rp.Operation)
                         {
+                            case NetOperationType.GetBlocks:
+                                BlockRequest blockRequest = new BlockRequest(ms, rp);
+                                var blockResponse = new BlockResponse
+                                {
+                                    RequestId = blockRequest.RequestId,
+                                    BlockTransactions = BlockChain.Instance.GetBlocks(blockRequest.StartBlock, blockRequest.EndBlock)
+                                };
+                                using (MemoryStream memoryStream = new MemoryStream())
+                                {
+                                    blockResponse.SaveToStream(memoryStream);
+                                    memoryStream.Position = 0;
+                                    ms.CopyTo(ns);
+                                }
+                                break;
+                            case NetOperationType.GetOperationBlocks:
+                                BlockRequest transactionBlockRequest = new BlockRequest(ms, rp);
+                                TransactionBlockResponse transactionBlockResponse = new TransactionBlockResponse()
+                                {
+                                    RequestId = transactionBlockRequest.RequestId
+                                };
+                                transactionBlockResponse.List = BlockChain.Instance.GetBlocks(transactionBlockRequest.StartBlock, transactionBlockRequest.EndBlock).ToList<TransactionBlock>();
+                                using (MemoryStream memoryStream = new MemoryStream()) {
+                                    transactionBlockResponse.SaveToStream(memoryStream);
+                                    memoryStream.Position = 0;
+                                    memoryStream.CopyTo(ns);
+                                }
+                                break;
+                            case NetOperationType.GetSafeBox:
+                                SnapshopRequest snapshopRequest = new SnapshopRequest(ms, rp);
+                                SnapshotResponse snapshotResponse = new SnapshotResponse();                                
+                                snapshotResponse.RequestId = snapshopRequest.RequestId;
+                                using (MemoryStream m = new MemoryStream())
+                                {
+                                    var Snapshot = Node.Instance.Snapshot.SaveChunk(snapshopRequest.StartBlock, snapshopRequest.EndBlock);
+                                    snapshotResponse.Snapshot = Snapshot;
+                                    snapshotResponse.SaveToStream(m);
+                                    m.Position = 0;
+                                    m.CopyTo(ns);
+                                }
+                                break;
                             case NetOperationType.Hello:
                                 HelloRequest request = new HelloRequest(ms, rp);
                                 Node.Instance.NodeServers.UpdateNodeServers(request.NodeServers);
@@ -590,7 +645,7 @@ namespace MicroCoin.Net
                                 response.Error = 0;
                                 response.ServerPort = (ushort)((IPEndPoint)TcpClient.Client.LocalEndPoint).Port;
                                 response.TransactionBlock = BlockChain.Instance.GetLastTransactionBlock();
-                                response.WorkSum = request.WorkSum; // TODO: Csalás
+                                response.WorkSum = Node.Instance.Snapshot.WorkSum; // TODO: Csalás
                                 response.AccountKey = Node.Instance.AccountKey;
                                 response.RequestType = RequestType.Response;
                                 response.Operation = NetOperationType.Hello;
@@ -642,7 +697,7 @@ namespace MicroCoin.Net
         }
         private void Dispose(bool disposing)
         {
-            if (disposing)
+            if (disposing && !IsDisposed)
             {
                 stop = true;                
                 while(listenerThread!=null && listenerThread.IsAlive)
@@ -652,6 +707,7 @@ namespace MicroCoin.Net
                 if(TcpClient!=null)
                     TcpClient.Dispose();                
             }
+            IsDisposed = true;
         }
     }
 

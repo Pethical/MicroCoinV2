@@ -35,6 +35,32 @@ namespace MicroCoin.Protocol
         {
         }
 
+        public BlockResponse() : base()
+        {
+            this.RequestType = Net.RequestType.Response;
+        }
+
+        public override void SaveToStream(Stream s)
+        {
+            MemoryStream ms = new MemoryStream();
+            base.SaveToStream(s);
+            using (BinaryWriter bw = new BinaryWriter(ms))
+            {
+                bw.Write((uint)BlockTransactions.Count);
+                foreach (var b in BlockTransactions)
+                {
+                    b.SaveToStream(s);
+                }
+                ms.Position = 0;
+                DataLength = (int)ms.Length;
+                using (BinaryWriter bw2 = new BinaryWriter(s, Encoding.Default, true))
+                {
+                    bw2.Write(DataLength);
+                }
+                ms.CopyTo(s);
+            }
+        }
+
         public BlockResponse(Stream stream, MessageHeader rp) :base(rp)
         {
             BlockTransactions = new List<BlockTransactionList>();
@@ -44,9 +70,8 @@ namespace MicroCoin.Protocol
                 for(int i = 0; i < TransactionCount; i++)
                 {
                     if (stream.Position >= stream.Length - 1) {
-                        Console.WriteLine("Position");
                         break;
-                    }                    
+                    }
                     BlockTransactionList op = new BlockTransactionList(stream);
                     BlockTransactions.Add(op);
                 }

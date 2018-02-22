@@ -89,6 +89,10 @@ namespace MicroCoin.Chain
         {
             using (BinaryReader br = new BinaryReader(s, Encoding.Default, true))
             {
+                long position = s.Position;
+                s.Position = s.Length - 34;
+                Hash = ByteString.ReadFromStream(br);
+                s.Position = position;
                 ushort len = br.ReadUInt16();
                 Magic = br.ReadBytes(len);
                 Protocol = br.ReadUInt16();

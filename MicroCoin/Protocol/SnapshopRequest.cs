@@ -14,7 +14,20 @@ namespace MicroCoin.Protocol
         public ByteString SnapshotHash { get; set; }
         public uint StartBlock { get; set; }
         public uint EndBlock { get; set; }
+        public SnapshopRequest(Stream s, MessageHeader rp) : base(rp)
+        {
+            using(BinaryReader br = new BinaryReader(s, Encoding.Default, true))
+            {
+                SnapshotBlockCount = br.ReadUInt32();
+                SnapshotHash = ByteString.ReadFromStream(br);
+                StartBlock = br.ReadUInt32();
+                EndBlock = br.ReadUInt32();
+            }
+        }
+        public SnapshopRequest()
+        {
 
+        }
         public override void SaveToStream(Stream s)
         {
             base.SaveToStream(s);

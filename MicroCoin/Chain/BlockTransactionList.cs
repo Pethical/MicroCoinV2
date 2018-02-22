@@ -31,6 +31,22 @@ namespace MicroCoin.Chain
         public uint TransactionCount { get; set; }
         public TransactionType TransactionsType { get; set; }
         public List<Transaction> Transactions;
+        public static new BlockTransactionList NullBlock
+        {
+            get
+            {
+                return new BlockTransactionList
+                {
+                    BlockNumber = 0
+                };
+            }
+        }
+
+        public BlockTransactionList() : base()
+        {
+
+        }
+
         public BlockTransactionList(Stream s) : base(s)
         {
             using (BinaryReader br = new BinaryReader(s, Encoding.Default, true))

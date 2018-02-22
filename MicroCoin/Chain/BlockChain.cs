@@ -25,7 +25,7 @@ using System.Text;
 
 namespace MicroCoin.Chain
 {
-    public class BlockChain : List<TransactionBlock>
+    public class BlockChain : List<BlockTransactionList>
     {
         private static BlockChain _sInstance;
         private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
@@ -41,7 +41,7 @@ namespace MicroCoin.Chain
         {
             while (s.Position < s.Length - 1)
             {
-                Add(new TransactionBlock(s));
+                Add(new BlockTransactionList(s));
             }
         }
         public void SaveToStream(Stream s)
@@ -62,7 +62,7 @@ namespace MicroCoin.Chain
                     FileStream fi = File.Open(BlockChainFileName + ".index", FileMode.OpenOrCreate, FileAccess.ReadWrite);
                     try
                     {
-                        using (BinaryReader br = new BinaryReader(fi,Encoding.Default, true))
+                        using (BinaryReader br = new BinaryReader(fi, Encoding.Default, true))
                         {
                             if (fi.Length == 0) return 0;
                             fi.Position = fi.Length - 16;
@@ -80,7 +80,7 @@ namespace MicroCoin.Chain
         }
         private static object flock = new object();
 
-        public TransactionBlock Get(int blockNumber)
+        public BlockTransactionList Get(int blockNumber)
         {
             lock (flock)
             {
@@ -102,7 +102,7 @@ namespace MicroCoin.Chain
                         try
                         {
                             f.Position = pos;
-                            TransactionBlock tb = new TransactionBlock(f);
+                            BlockTransactionList tb = new BlockTransactionList(f);
                             return tb;
                         }
                         finally
@@ -122,7 +122,9 @@ namespace MicroCoin.Chain
             }
         }
 
-        public TransactionBlock GetLastTransactionBlock()
+        
+
+        public BlockTransactionList GetLastTransactionBlock()
         {
             lock (flock)
             {
@@ -131,7 +133,7 @@ namespace MicroCoin.Chain
                 {
                     using (BinaryReader ir = new BinaryReader(fi, Encoding.Default, true))
                     {
-                        if (fi.Length == 0) return TransactionBlock.NullBlock;
+                        if (fi.Length == 0) return BlockTransactionList.NullBlock;
                         fi.Position = fi.Length - 16;
                         uint blockNumber = ir.ReadUInt32();
                         long position = ir.ReadInt64();
@@ -143,11 +145,10 @@ namespace MicroCoin.Chain
                             {
                                 throw new Exception("No blockchain file.");
                             }
-                                using (BinaryReader br = new BinaryReader(f, Encoding.Default, true))
+                            using (BinaryReader br = new BinaryReader(f, Encoding.Default, true))
                             {
-                                
                                 f.Position = position;
-                                return new TransactionBlock(f);
+                                return new BlockTransactionList(f);
                             }
                         }
                         finally
@@ -167,7 +168,7 @@ namespace MicroCoin.Chain
             }
         }
 
-        public bool Append(TransactionBlock t)
+        public bool Append(BlockTransactionList t)
         {
             lock (flock)
             {
@@ -269,7 +270,7 @@ namespace MicroCoin.Chain
                             iw.Write(pos);
                             iw.Write((uint)(f.Position - pos));
                             iw.BaseStream.Position = 0;
-			    count++;
+			                count++;
                             iw.Write(count);
                             iw.Write(fi.Length);
                         }
@@ -329,6 +330,11 @@ namespace MicroCoin.Chain
                     }
                 }
             }
+        }
+
+        internal List<BlockTransactionList> GetBlocks(uint startBlock, uint endBlock)
+        {
+            return this.Where(p => p.BlockNumber >= startBlock && p.BlockNumber <= endBlock).ToList();
         }
     }
 }

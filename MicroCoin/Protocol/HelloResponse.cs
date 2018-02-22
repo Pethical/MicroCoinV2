@@ -42,7 +42,7 @@ namespace MicroCoin.Protocol
 
         public string Version { get; set; }
 
-        public Int64 WorkSum { get; set; }
+        public ulong WorkSum { get; set; }
 
         public void LoadFromStream(Stream stream)
         {
@@ -57,7 +57,7 @@ namespace MicroCoin.Protocol
                 ushort vlen = br.ReadUInt16();
                 byte[] vb = br.ReadBytes(vlen);
                 Version = Encoding.ASCII.GetString(vb);
-                WorkSum = br.ReadInt64();
+                WorkSum = br.ReadUInt64();
             }
 
         }
