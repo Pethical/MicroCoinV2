@@ -8,9 +8,10 @@ using System.Threading.Tasks;
 
 namespace MicroCoin.Protocol
 {
+    [Obsolete("Use BlockRespose")]
     public class TransactionBlockResponse : MessageHeader
     {
-        public List<TransactionBlock> List { get; set; }
+        public List<Block> List { get; set; }
 
         public TransactionBlockResponse()
         {
@@ -27,7 +28,7 @@ namespace MicroCoin.Protocol
                     bw.Write((uint)List.Count);
                     foreach (var c in List)
                     {
-                        (c as TransactionBlock).SaveToStream(ms);
+                        c.SaveToStream(ms);
                     }
                 }                
                 using(BinaryWriter bw = new BinaryWriter(s, Encoding.Default, true))
@@ -47,12 +48,12 @@ namespace MicroCoin.Protocol
         {
             using(BinaryReader br = new BinaryReader(stream, Encoding.Default, true))
             {
-                List = new List<TransactionBlock>(br.ReadInt32());
+                List = new List<Block>(br.ReadInt32());
             }
             
             for(int i = 0; i < List.Capacity; i++)
             {
-                List.Add(new TransactionBlock(stream));
+                List.Add(new Block(stream));
             }
         }
 

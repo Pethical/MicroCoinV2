@@ -32,7 +32,7 @@ namespace MicroCoin.Protocol
         public BlockRequest()
         {
             RequestType = RequestType.Request;
-            Operation = NetOperationType.GetBlocks;
+            Operation = NetOperationType.Blocks;
             RequestId = 2;
         }
 

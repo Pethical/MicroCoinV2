@@ -27,7 +27,7 @@ namespace MicroCoin.Protocol
     public class NewBlockRequest : MessageHeader
     {
 
-        public BlockTransactionList TransactionBlock { get; set; }
+        public Block Block { get; set; }
 
         public NewBlockRequest(Stream stream) : base(stream)
         {
@@ -35,7 +35,7 @@ namespace MicroCoin.Protocol
 
         public NewBlockRequest(Stream stream, MessageHeader rp) :base(rp)
         {
-            TransactionBlock = new BlockTransactionList(stream);
+            Block = new Block(stream);
         }
     }
 }

@@ -26,7 +26,7 @@ namespace MicroCoin
         public ECKeyPair AccountKey { get; } = ECKeyPair.CreateNew(false);
         private static MicroCoinClient MicroCoinClient { get; set; }
         public NodeServerList NodeServers { get; set; } = new NodeServerList();
-        public Snapshot Snapshot { get; set; } = new Snapshot();
+        public CheckPoint CheckPoint { get; set; } = new CheckPoint();
         public BlockChain BlockChain { get; set; } = BlockChain.Instance;
         public static Node Instance
         {
@@ -52,64 +52,62 @@ namespace MicroCoin
                 MicroCoinClient.Connect("127.0.0.1", 4004);
                 MicroCoinClient.ServerPort = (ushort)((IPEndPoint)MicroCoinClient.TcpClient.Client.LocalEndPoint).Port;
                 HelloResponse response = await MicroCoinClient.SendHelloAsync();
-                uint start = (response.TransactionBlock.BlockNumber / 100) * 100;
-		uint bl = 0;
-		while(bl<response.TransactionBlock.BlockNumber) {
-            	    var blocks = await MicroCoinClient.RequestBlocksAsync(bl, 1000);//response.TransactionBlock.BlockNumber);
-		    log.Info($"BlockChain downloading {bl} => {bl+999}");
-		    log.Info(blocks.BlockTransactions.First().BlockNumber.ToString()+" "+blocks.BlockTransactions.Last().BlockNumber.ToString());
-		    log.Info(blocks.BlockTransactions.Count.ToString());
-            	    BlockChain.Instance.AddRange(blocks.BlockTransactions);
-		    bl+=1000;
-		}
-//		Console.ReadLine();
-                using (FileStream fs = File.Create(BlockChain.Instance.BlockChainFileName))
-                {
-                    BlockChain.Instance.SaveToStorage(fs);
+                uint start = (response.Block.BlockNumber / 100) * 100;
+                int bl = BlockChain.Instance.BlockHeight();
+		        while(bl < response.Block.BlockNumber) {
+            	    var blocks = await MicroCoinClient.RequestBlocksAsync((uint)bl, 1000); //response.TransactionBlock.BlockNumber);
+		            log.Info($"BlockChain downloading {bl} => {bl+999}");
+		            log.Info(blocks.Blocks.First().BlockNumber.ToString()+" "+blocks.Blocks.Last().BlockNumber.ToString());
+		            log.Info(blocks.Blocks.Count.ToString());
+            	    BlockChain.Instance.AppendAll(blocks.Blocks);
+		            bl+=1000;
+                    using (FileStream fs = File.Open(BlockChain.Instance.BlockChainFileName, FileMode.OpenOrCreate, FileAccess.ReadWrite))
+                    {
+                        BlockChain.Instance.SaveToStorage(fs);
+                    }
                 }
-                using (FileStream s = File.OpenRead(BlockChain.Instance.BlockChainFileName))
+		        log.Info("BlockChain OK");
+                if (File.Exists(CheckPoint.CheckPointFileName))
                 {
-		    log.Info("BlockChain loading");
-//                    BlockChain.Instance.LoadFromStream(s);
-		    log.Info("BlockChain loaded");
+                    Instance.CheckPoint.LoadFromFile(CheckPoint.CheckPointFileName);
+                    log.Info($"{Instance.CheckPoint.Header.EndBlock} {start} {response.Block.BlockNumber}");
                 }
-		log.Info("BlockChain downloaded");
-		if(File.Exists("snaphot")){
-            	    Instance.Snapshot.LoadFromFile("snaphot");
-		    log.Info($"{Instance.Snapshot.Header.EndBlock} {start} {response.TransactionBlock.BlockNumber}");
-		}else{
-            	    await MicroCoinClient.DownloadSnaphostAsync(response.TransactionBlock.BlockNumber);
-            	    FileStream file = File.Create($"snaphot");
-            	    Instance.Snapshot.SaveToStream(file);
-            	    file.Dispose();
-            	    Instance.Snapshot.LoadFromFile("snaphot");
-		}
-		if(Instance.Snapshot.Header.EndBlock<start-1) {
-		    Instance.Snapshot.Dispose();
-		    Instance.Snapshot = new Snapshot();
-            	    await MicroCoinClient.DownloadSnaphostAsync(response.TransactionBlock.BlockNumber);
-            	    FileStream file = File.Create($"snaphot");
-            	    Instance.Snapshot.SaveToStream(file);
-            	    file.Dispose();
-            	    Instance.Snapshot.LoadFromFile("snaphot");
-		}
+                else
+                {
+                    await MicroCoinClient.DownloadCheckPointAsync(response.Block.BlockNumber);
+                    FileStream file = File.Create(CheckPoint.CheckPointFileName);
+                    Instance.CheckPoint.SaveToStream(file);
+                    file.Dispose();
+                    Instance.CheckPoint.LoadFromFile(CheckPoint.CheckPointFileName);
+                }
+                if (Instance.CheckPoint.Header.EndBlock < start - 1)
+                {
+                    Instance.CheckPoint.Dispose();
+                    Instance.CheckPoint = new CheckPoint();
+                    await MicroCoinClient.DownloadCheckPointAsync(response.Block.BlockNumber);
+                    FileStream file = File.Create(CheckPoint.CheckPointFileName);
+                    Instance.CheckPoint.SaveToStream(file);
+                    file.Dispose();
+                    Instance.CheckPoint.LoadFromFile(CheckPoint.CheckPointFileName);
+                }
                 GC.Collect();
-		foreach(Account a in Instance.Snapshot.Accounts) {
-		    if(a.Balance!=1000000 && a.Balance!=0)
-			log.Info($"{a.AccountNumber} => {a.Balance}");
-		}
+                foreach (Account a in Instance.CheckPoint.Accounts)
+                {
+                    if (a.Balance != 1000000 && a.Balance != 0)
+                        log.Info($"{a.AccountNumber} => {a.Balance}");
+                }
                 MicroCoinClient.HelloResponse += (o, e) =>
                 {
-                    log.DebugFormat("Network Block height: {0}. My Block height: {1}", e.HelloResponse.TransactionBlock.BlockNumber, BlockChain.Instance.BlockHeight());
-                    if (BlockChain.Instance.BlockHeight() < e.HelloResponse.TransactionBlock.BlockNumber)
+                    log.DebugFormat("Network CheckPointBlock height: {0}. My CheckPointBlock height: {1}", e.HelloResponse.Block.BlockNumber, BlockChain.Instance.BlockHeight());
+                    if (BlockChain.Instance.BlockHeight() < e.HelloResponse.Block.BlockNumber)
                     {
                         MicroCoinClient.RequestBlockChain((uint)(BlockChain.Instance.BlockHeight()), 100);
                     }
                 };
                 MicroCoinClient.BlockResponse += (ob, eb) =>
                 {
-                    log.DebugFormat("Received {0} Block from blockchain. BlockChain size: {1}. Block height: {2}", eb.BlockResponse.BlockTransactions.Count, BlockChain.Instance.Count, eb.BlockResponse.BlockTransactions.Last().BlockNumber);
-                    BlockChain.Instance.AppendAll(eb.BlockResponse.BlockTransactions);
+                    log.DebugFormat("Received {0} CheckPointBlock from blockchain. BlockChain size: {1}. CheckPointBlock height: {2}", eb.BlockResponse.Blocks.Count, BlockChain.Instance.Count, eb.BlockResponse.Blocks.Last().BlockNumber);
+                    BlockChain.Instance.AppendAll(eb.BlockResponse.Blocks);
                 };
                 MicroCoinClient.Start();
                 MicroCoinClient.SendHello();
@@ -187,7 +185,7 @@ namespace MicroCoin
             listenerThread.Abort();
             MicroCoinClient.Dispose();
             NodeServers.Dispose();            
-            Snapshot.Dispose();
+            CheckPoint.Dispose();
         }
     }
 }

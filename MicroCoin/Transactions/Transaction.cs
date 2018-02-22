@@ -17,6 +17,7 @@
 
 
 using MicroCoin.Cryptography;
+using MicroCoin.Util;
 using System.IO;
 
 namespace MicroCoin.Transactions
@@ -39,7 +40,7 @@ namespace MicroCoin.Transactions
 
         public uint TargetAccount { get; set; }
 
-        public byte[] Payload { get; set; }
+        public ByteString Payload { get; set; }
 
         public ECSig Signature { get; set; }
 

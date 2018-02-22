@@ -22,7 +22,7 @@ using System.Text;
 
 namespace MicroCoin.Chain
 {
-    public class SnapshotHeader
+    public class CheckPointHeader
     {
         public ByteString Magic { get; set; }
         public ushort Protocol { get; set; }
@@ -30,7 +30,7 @@ namespace MicroCoin.Chain
         public uint BlockCount { get; set; }
         public uint StartBlock { get; set; }
         public uint EndBlock { get; set; }
-        public byte[] Hash { get; set; }
+        public Hash Hash { get; set; }
         public long HeaderEnd { get; set; }
         public string MagicString
         {
@@ -47,8 +47,8 @@ namespace MicroCoin.Chain
             return offsets[blockNumber];// + (int)HeaderEnd;
 
         }
-        public SnapshotHeader() { }
-        public SnapshotHeader(Stream s)
+        public CheckPointHeader() { }
+        public CheckPointHeader(Stream s)
         {
             LoadFromStream(s);            
         }

@@ -29,38 +29,38 @@ namespace MicroCoin.Chain
     /// <summary>
     /// One block in the blockchain
     /// </summary>
-    public class TransactionBlock
+    public class BlockBase
     {
 
-        public byte TransactionBlockSignature { get; set; } = 3;
+        public byte BlockSignature { get; set; } = 3;
         public ushort ProtocolVersion { get; set; }
         public ushort AvailableProtocol { get; set; }
         public uint BlockNumber { get; set; }
         public ECKeyPair AccountKey { get; set; } = new ECKeyPair();
-        public UInt64 Reward { get; set; }
-        public UInt64 Fee { get; set; }
-        public uint Timestamp { get; set; }
+        public ulong Reward { get; set; }
+        public ulong Fee { get; set; }
+        public Timestamp Timestamp { get; set; }
         public uint CompactTarget { get; set; }
         public uint Nonce { get; set; }
         public ByteString Payload { get; set; }
-        public byte[] SnapshotHash { get; set; }
-        public byte[] OperationHash { get; set; }
-        public byte[] ProofOfWork { get; set; }
-        public static TransactionBlock NullBlock { get
+        public Hash CheckPointHash { get; set; }
+        public Hash TransactionHash { get; set; }
+        public Hash ProofOfWork { get; set; }
+        public static BlockBase NullBlock { get
             {
-                return new TransactionBlock
+                return new BlockBase
                 {
                     BlockNumber = 0
                 };
             }
         }
 
-        public TransactionBlock(Stream s)
+        internal BlockBase(Stream s)
         {
             using (BinaryReader br = new BinaryReader(s, Encoding.ASCII, true))
             {
-                TransactionBlockSignature = br.ReadByte();
-                if (TransactionBlockSignature > 0)
+                BlockSignature = br.ReadByte();
+                if (BlockSignature > 0)
                 {
                     ProtocolVersion = br.ReadUInt16();
                     AvailableProtocol = br.ReadUInt16();
@@ -81,12 +81,12 @@ namespace MicroCoin.Chain
                 pl = br.ReadUInt16();
                 if (pl > 0)
                 {
-                    SnapshotHash = br.ReadBytes(pl);
+                    CheckPointHash = br.ReadBytes(pl);
                 }
                 pl = br.ReadUInt16();
                 if (pl > 0)
                 {
-                    OperationHash = br.ReadBytes(pl);
+                    TransactionHash = br.ReadBytes(pl);
                 }
                 pl = br.ReadUInt16();
                 if (pl > 0)
@@ -96,7 +96,7 @@ namespace MicroCoin.Chain
             }
         }
 
-        public TransactionBlock()
+        internal BlockBase()
         {
 
         }
@@ -105,7 +105,7 @@ namespace MicroCoin.Chain
         {
             using (BinaryWriter bw = new BinaryWriter(s, Encoding.ASCII, true))
             {
-                bw.Write(TransactionBlockSignature);
+                bw.Write(BlockSignature);
                 bw.Write(ProtocolVersion);
                 bw.Write(AvailableProtocol);
                 bw.Write(BlockNumber);
@@ -134,19 +134,19 @@ namespace MicroCoin.Chain
                 {
                     bw.Write((ushort)0);
                 }
-                if (SnapshotHash != null)
+                if (CheckPointHash != null)
                 {
-                    bw.Write((ushort)SnapshotHash.Length);
-                    bw.Write(SnapshotHash);
+                    bw.Write((ushort)CheckPointHash.Length);
+                    bw.Write((byte[])CheckPointHash);
                 }
                 else
                 {
                     bw.Write((ushort)0);
                 }
-                if (OperationHash != null)
+                if (TransactionHash != null)
                 {
-                    bw.Write((ushort)OperationHash.Length);
-                    bw.Write(OperationHash);
+                    bw.Write((ushort)TransactionHash.Length);
+                    bw.Write((byte[])TransactionHash);
                 }
                 else
                 {
@@ -155,7 +155,7 @@ namespace MicroCoin.Chain
                 if (ProofOfWork != null)
                 {
                     bw.Write((ushort)ProofOfWork.Length);
-                    bw.Write(ProofOfWork);
+                    bw.Write((byte[])ProofOfWork);
                 }
                 else
                 {

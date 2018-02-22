@@ -11,15 +11,15 @@ using zlib;
 
 namespace MicroCoin.Protocol
 {
-    public class SnapshotResponse : MessageHeader
+    public class CheckPointResponse : MessageHeader
     {
-        public ByteString SnapshotResponseMagic { get; set; }
+        public ByteString CheckPointResponseMagic { get; set; }
         public ushort Version { get; set; }
         public uint UncompressedSize { get; set; }
         public uint CompressedSize { get; set; }
-        public Snapshot Snapshot { get; set; }
+        public CheckPoint CheckPoint { get; set; }
 
-        public SnapshotResponse() : base()
+        public CheckPointResponse() : base()
         {
             RequestType = Net.RequestType.Response;
         }
@@ -66,7 +66,7 @@ namespace MicroCoin.Protocol
             {                
                 using (MemoryStream ms = new MemoryStream())
                 {
-                    Snapshot.SaveToStream(ms);
+                    CheckPoint.SaveToStream(ms);
                     CompressData(ms.GetBuffer(), out byte[] compressed);
                     bw.Write("SafeBoxChunk");
                     bw.Write(Version);
@@ -77,11 +77,11 @@ namespace MicroCoin.Protocol
             }
         }
 
-        public SnapshotResponse(Stream s) : base(s)
+        public CheckPointResponse(Stream s) : base(s)
         {
             MemoryStream unCompressed;
             using (BinaryReader br = new BinaryReader(s, Encoding.Default, true)) {
-                SnapshotResponseMagic = ByteString.ReadFromStream(br);
+                CheckPointResponseMagic = ByteString.ReadFromStream(br);
                 Version = br.ReadUInt16();
                 UncompressedSize = br.ReadUInt32();
                 CompressedSize = br.ReadUInt32();
@@ -89,12 +89,12 @@ namespace MicroCoin.Protocol
                 unCompressed = new MemoryStream(decompressed);
             }
             unCompressed.Position = 0;
-            Snapshot = new Snapshot(unCompressed);
+            CheckPoint = new CheckPoint(unCompressed);
             unCompressed.Dispose();
             unCompressed = null;
-            Node.Instance.Snapshot.Append(Snapshot);
-            Snapshot.Dispose();
-            Snapshot = null;
+            Node.Instance.CheckPoint.Append(CheckPoint);
+            CheckPoint.Dispose();
+            CheckPoint = null;
         }
     }
 }

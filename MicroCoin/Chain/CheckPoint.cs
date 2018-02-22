@@ -26,15 +26,15 @@ using System.Text;
 
 namespace MicroCoin.Chain
 {
-    public class Snapshot : IEnumerable<Block>, IEnumerator<Block>
+    public class CheckPoint : IEnumerable<CheckPointBlock>, IEnumerator<CheckPointBlock>
     {
         private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
-
         private static object loadLock = new object();
         private uint currentIndex = 0;
         private Stream stream;
+        public const string CheckPointFileName = "checkpoint";
         public ulong WorkSum { get; set; }
-        public SnapshotHeader Header { get; set; }
+        public CheckPointHeader Header { get; set; }
 
         public uint BlockCount
         {
@@ -46,17 +46,17 @@ namespace MicroCoin.Chain
         }
         public List<Account> Accounts { get; set; } = new List<Account>();
 
-        public Block Current => this[currentIndex];
+        public CheckPointBlock Current => this[currentIndex];
 
         object IEnumerator.Current => this[currentIndex];
 
-        public Block this[uint i]
+        public CheckPointBlock this[uint i]
         {
             get
             {
                 long p = stream.Position;
                 stream.Position = Header.BlockOffset(i);
-                Block block = new Block(stream);
+                CheckPointBlock block = new CheckPointBlock(stream);
                 stream.Position = p;
                 return block;
             }
@@ -65,15 +65,39 @@ namespace MicroCoin.Chain
             }
         }
 
-        public Snapshot()
+        public CheckPoint()
         {
 
         }
 
-        public Snapshot(Stream s)
+        public CheckPoint(Stream s)
         {
             LoadFromStream(s);
         }
+        /*
+        public static CheckPoint BuildFromBlockChain(BlockChain blockChain)
+        {
+            CheckPoint checkPoint = new CheckPoint();
+            foreach(var b in blockChain)
+            {
+                CheckPointBlock checkPointBlock = new CheckPointBlock();
+                checkPointBlock.AccountKey = b.AccountKey;
+                for (int i = 0; i < 5; i++) {
+                    checkPointBlock.Accounts.Add(new Account
+                    {
+                        AccountInfo = new AccountInfo
+                        {
+                            AccountKey = b.AccountKey,
+                            State = AccountInfo.AccountState.Normal
+                        }
+                    });
+                    checkPointBlock.AccumulatedWork = b.CompactTarget;
+                    checkPointBlock.AvailableProtocolVersion = b.AvailableProtocol;
+                    checkPointBlock.BlockHash = // TODO
+                }
+            }
+        }
+        */
 
         public void LoadFromFile(string filename)
         {
@@ -84,7 +108,7 @@ namespace MicroCoin.Chain
             Accounts.Clear();
             Accounts = null;
             GC.Collect();
-            Header = new SnapshotHeader(stream);
+            Header = new CheckPointHeader(stream);
             Accounts = new List<Account>();
             WorkSum = 0;
             for (uint i = 0; i < Header.EndBlock - Header.StartBlock; i++)
@@ -115,7 +139,7 @@ namespace MicroCoin.Chain
             s.CopyTo(stream);
             // stream = s;
             stream.Position = 0;
-            Header = new SnapshotHeader(stream);
+            Header = new CheckPointHeader(stream);
             Accounts = new List<Account>();
             WorkSum = 0;
             for (uint i = 0; i < Header.EndBlock - Header.StartBlock; i++)
@@ -127,31 +151,31 @@ namespace MicroCoin.Chain
             log.Info(WorkSum);
         }
 
-        public void Append(Snapshot snapshot)
+        public void Append(CheckPoint checkPoint)
         {
             lock (loadLock)
             {
-                List<Block> list = new List<Block>();
+                List<CheckPointBlock> list = new List<CheckPointBlock>();
                 if (Header != null)
                 {
                     for (uint i = Header.StartBlock; i < Header.EndBlock+1; i++)
                     {
                         list.Add(this[i]);
                     }
-                    if (Header.BlockCount > snapshot.Header.BlockCount)
+                    if (Header.BlockCount > checkPoint.Header.BlockCount)
                     {
                         return;
                     }
-                    Header.BlockCount = snapshot.Header.BlockCount;
-                    Header.Hash = snapshot.Header.Hash;
-                    Header.EndBlock = snapshot.Header.EndBlock;
+                    Header.BlockCount = checkPoint.Header.BlockCount;
+                    Header.Hash = checkPoint.Header.Hash;
+                    Header.EndBlock = checkPoint.Header.EndBlock;
                 }
                 else
                 {
-                    Header = snapshot.Header;
+                    Header = checkPoint.Header;
                 }
-                for (uint i = 0; i != snapshot.Header.EndBlock- snapshot.Header.StartBlock + 1; i++)
-                    list.Add(snapshot[i]);
+                for (uint i = 0; i != checkPoint.Header.EndBlock- checkPoint.Header.StartBlock + 1; i++)
+                    list.Add(checkPoint[i]);
                 MemoryStream ms = new MemoryStream();
                 uint[] h = Header.offsets;
                 Header.offsets = new uint[list.Count + 1];
@@ -161,7 +185,7 @@ namespace MicroCoin.Chain
                 using (BinaryWriter bw = new BinaryWriter(ms, Encoding.Default, true))
                 {
                     uint i = 0;
-                    foreach (Block b in list)
+                    foreach (CheckPointBlock b in list)
                     {
                         Header.offsets[i] = (uint)(ms.Position + headerSize);
                         b.SaveToStream(ms);
@@ -196,7 +220,7 @@ namespace MicroCoin.Chain
             stream.Position = pos;
         }
 
-        public IEnumerator<Block> GetEnumerator()
+        public IEnumerator<CheckPointBlock> GetEnumerator()
         {
             return this;
         }
@@ -233,12 +257,12 @@ namespace MicroCoin.Chain
             currentIndex = 0;
         }
 
-        public Snapshot SaveChunk(uint startBlock, uint endBlock)
+        public CheckPoint SaveChunk(uint startBlock, uint endBlock)
         {
             lock (loadLock)
             {
-                List<Block> list = new List<Block>();
-                SnapshotHeader Header = new SnapshotHeader();
+                List<CheckPointBlock> list = new List<CheckPointBlock>();
+                CheckPointHeader Header = new CheckPointHeader();
                 Header.StartBlock = startBlock;
                 Header.EndBlock = endBlock;
                 Header.BlockCount = endBlock - startBlock + 1;
@@ -252,7 +276,7 @@ namespace MicroCoin.Chain
                 using (BinaryWriter bw = new BinaryWriter(ms, Encoding.Default, true))
                 {
                     uint i = 0;
-                    foreach (Block b in list)
+                    foreach (CheckPointBlock b in list)
                     {
                         Header.offsets[i] = (uint)(ms.Position + headerSize);
                         b.SaveToStream(ms);
@@ -270,13 +294,13 @@ namespace MicroCoin.Chain
                     stream = null;
                 }
                 memoryStream.Position = 0;
-                Snapshot snapshot = new Snapshot(memoryStream);
+                CheckPoint checkPoint = new CheckPoint(memoryStream);
                 ms.Dispose();
                 memoryStream.Dispose();
                 ms = null;
                 memoryStream = null;
                 GC.Collect();
-                return snapshot;
+                return checkPoint;
             }
         }
 

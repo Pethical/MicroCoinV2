@@ -24,11 +24,11 @@ namespace MicroCoin.Chain
     class BlockStream
     {
         public List<BlockStreamHeader> Header { get; set; }
-        public List<Block> Blocks { get; set; }
+        public List<CheckPointBlock> Blocks { get; set; }
         public BlockStream(Stream stream)
         {
             Header = new List<BlockStreamHeader>();
-            Blocks = new List<Block>();
+            Blocks = new List<CheckPointBlock>();
             using (BinaryReader br = new BinaryReader(stream))
             {
                 for(int i = 0; i < 1000; i++)

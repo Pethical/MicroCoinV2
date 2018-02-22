@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 
 namespace MicroCoin.Chain
 {
-
     public class Account
     {
         public uint AccountNumber { get; set; }
@@ -17,7 +16,7 @@ namespace MicroCoin.Chain
         public uint NumberOfOperations { get; set; }
         public ByteString Name { get; set; }
         public ushort AccountType { get; set; }
-        public uint UpdatedBlock { get; set; }        
+        public uint UpdatedBlock { get; set; }
         /// <summary>
         /// Only reference, don't save
         /// The block number of the account
@@ -34,16 +33,16 @@ namespace MicroCoin.Chain
             LoadFromStream(s);
         }
 
-        public void SaveToStream(BinaryWriter bw)
+        public void SaveToStream(BinaryWriter bw, bool writeLengths = true)
         {
             bw.Write(AccountNumber);
-            AccountInfo.SaveToStream(bw);
+            AccountInfo.SaveToStream(bw, writeLengths);
             bw.Write(Balance);
             bw.Write(UpdatedBlock);
             bw.Write(NumberOfOperations);
-            Name.SaveToStream(bw);
+            Name.SaveToStream(bw, writeLengths);
             bw.Write(AccountType);
-            bw.Write(UpdatedByBlock);
+            if(writeLengths) bw.Write(UpdatedByBlock);
         }
 
         public void LoadFromStream(Stream s)

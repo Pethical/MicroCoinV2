@@ -35,7 +35,7 @@ namespace MicroCoin.Protocol
 
         public Timestamp Timestamp { get; set; }
 
-        public TransactionBlock TransactionBlock { get; set; }
+        public Block Block { get; set; }
 
         public NodeServerList NodeServers { get; set; }
 
@@ -60,7 +60,7 @@ namespace MicroCoin.Protocol
                     bw.Write(ServerPort);
                     AccountKey.SaveToStream(ms);
                     bw.Write(Timestamp);
-                    TransactionBlock.SaveToStream(ms);
+                    Block.SaveToStream(ms);
                     NodeServers.SaveToStream(ms);
                     byte[] vb = Encoding.ASCII.GetBytes(Version);
                     bw.Write((ushort)vb.Length);
@@ -85,7 +85,7 @@ namespace MicroCoin.Protocol
                 AccountKey = new ECKeyPair();
                 AccountKey.LoadFromStream(stream);
                 Timestamp = br.ReadUInt32();
-                TransactionBlock = new TransactionBlock(stream);
+                Block = new Block(stream);
                 NodeServers = NodeServerList.LoadFromStream(stream);
                 ushort vlen = br.ReadUInt16();
                 byte[] vb = br.ReadBytes(vlen);

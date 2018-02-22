@@ -28,6 +28,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using log4net;
 using System.Net;
+using MicroCoin.Util;
 
 namespace MicroCoin.Net
 {
@@ -39,11 +40,11 @@ namespace MicroCoin.Net
         Hello = 1,
         Error = 2,
         Message = 3,
-        GetOperationBlocks = 0x05,
-        GetBlocks = 0x10,
+        Transactions = 0x05,
+        Blocks = 0x10,
         NewBlock = 0x11,
         AddOperations = 0x20,
-        GetSafeBox = 0x21
+        CheckPoint = 0x21
     }
 
     public class HelloRequestEventArgs : EventArgs
@@ -70,7 +71,7 @@ namespace MicroCoin.Net
             BlockResponse = blockResponse;
         }
     }
-    public class TransactionBlockResponseEventArgs
+    /*public class TransactionBlockResponseEventArgs
     {
         public TransactionBlockResponse transactionBlockResponse { get; }
 
@@ -79,7 +80,7 @@ namespace MicroCoin.Net
             this.transactionBlockResponse = transactionBlockResponse;
         }
     }
-
+    */
     public class NewTransactionEventArgs
     {
         public NewTransactionMessage Transaction { get; }
@@ -97,7 +98,7 @@ namespace MicroCoin.Net
         public event EventHandler<HelloRequestEventArgs> HelloRequest;
         public event EventHandler<HelloResponseEventArgs> HelloResponse;
         public event EventHandler<BlockResponseEventArgs> BlockResponse;
-        public event EventHandler<TransactionBlockResponseEventArgs> TransactionBlockResponse;
+        //public event EventHandler<BlockResponseEventArgs> TransactionBlockResponse;
         public event EventHandler<NewTransactionEventArgs> NewTransaction;
         public static ushort ServerPort { get; set; }
         public TcpClient TcpClient { get; set; }
@@ -122,10 +123,10 @@ namespace MicroCoin.Net
         {
             HelloRequest?.Invoke(this, new HelloRequestEventArgs(helloRequest));
         }
-        private void OnGetTransactionBlockResponse(TransactionBlockResponse transactionBlockResponse)
+        /*private void OnGetTransactionBlockResponse(BlockResponse blockResponse)
         {
-            TransactionBlockResponse?.Invoke(this, new TransactionBlockResponseEventArgs(transactionBlockResponse));
-        }
+            TransactionBlockResponse?.Invoke(this, new BlockResponseEventArgs(blockResponse));
+        }*/
 
         public MicroCoinClient()
         {
@@ -143,8 +144,8 @@ namespace MicroCoin.Net
                 Operation = NetOperationType.Hello
             };
             SHA256Managed sha = new SHA256Managed();
-            byte[] h = sha.ComputeHash(Encoding.ASCII.GetBytes("(c) Peter Nemeth - Okes rendben okes"));
-            request.TransactionBlock = new TransactionBlock
+            Hash h = sha.ComputeHash(Encoding.ASCII.GetBytes("(c) Peter Nemeth - Okes rendben okes"));
+            request.Block = new Block
             {
                 AccountKey = null,
                 AvailableProtocol = 0,
@@ -152,13 +153,13 @@ namespace MicroCoin.Net
                 CompactTarget = 0,
                 Fee = 0,
                 Nonce = 0,
-                OperationHash = null,
+                TransactionHash = new byte[0],
                 Payload = new byte[0],
-                ProofOfWork = null,
+                ProofOfWork = new byte[0],
                 ProtocolVersion = 0,
                 Reward = 0,
-                SnapshotHash = h,
-                TransactionBlockSignature = 3,
+                CheckPointHash = h,
+                BlockSignature = 3,
                 Timestamp = 0
             };
             request.ProtocolVersion = 6;
@@ -246,7 +247,7 @@ namespace MicroCoin.Net
             };
             SHA256Managed sha = new SHA256Managed();
             byte[] h = sha.ComputeHash(Encoding.ASCII.GetBytes("(c) Peter Nemeth - Okes rendben okes"));
-            request.TransactionBlock = new TransactionBlock
+            request.Block = new Block
             {
                 AccountKey = null,
                 AvailableProtocol = 0,
@@ -254,13 +255,13 @@ namespace MicroCoin.Net
                 CompactTarget = 0,
                 Fee = 0,
                 Nonce = 0,
-                OperationHash = null,
+                TransactionHash = new byte[0],
                 Payload = new byte[0],
-                ProofOfWork = null,
+                ProofOfWork = new byte[0],
                 ProtocolVersion = 0,
                 Reward = 0,
-                SnapshotHash = h,
-                TransactionBlockSignature = 3,
+                CheckPointHash = h,
+                BlockSignature = 3,
                 Timestamp = 0
             };
             request.ProtocolVersion = 6;
@@ -290,32 +291,32 @@ namespace MicroCoin.Net
                 throw new InvalidDataException("Not hello");
             }
         }
-        public async Task<bool> DownloadSnaphostAsync(uint blockCount)
+        public async Task<bool> DownloadCheckPointAsync(uint blockCount)
         {
             {
                 uint endBlock = (blockCount / 100) * 100;
-                var transactionBlockResponse = await RequestTransactionBlocksAsync(endBlock, 1, null);
+                var blockResponse = await RequestTransactionBlocksAsync(endBlock, 1, null);
                 var ns = TcpClient.GetStream();
                 using (var ms = new MemoryStream())
                 {
                     //log.Debug(transactionBlockResponse.List.First().BlockNumber);
-                    for (uint i = 0; i <= transactionBlockResponse.List.Last().BlockNumber / 10000; i++)
+                    for (uint i = 0; i <= blockResponse.Blocks.Last().BlockNumber / 10000; i++)
                     {
-                        SnapshopRequest snapshopRequest = new SnapshopRequest();
-                        snapshopRequest.Operation = NetOperationType.GetSafeBox;
-                        snapshopRequest.RequestType = RequestType.Request;
-                        snapshopRequest.StartBlock = (uint)(i * 10000);
-                        snapshopRequest.EndBlock = (uint)(((i + 1) * 10000) - 1);
-                        if (snapshopRequest.EndBlock > transactionBlockResponse.List.Last().BlockNumber - 1)
+                        CheckPointRequest checkPointRequest = new CheckPointRequest();
+                        checkPointRequest.Operation = NetOperationType.CheckPoint;
+                        checkPointRequest.RequestType = RequestType.Request;
+                        checkPointRequest.StartBlock = (uint)(i * 10000);
+                        checkPointRequest.EndBlock = (uint)(((i + 1) * 10000) - 1);
+                        if (checkPointRequest.EndBlock > blockResponse.Blocks.Last().BlockNumber - 1)
                         {
-                            snapshopRequest.EndBlock = transactionBlockResponse.List.Last().BlockNumber - 1;
+                            checkPointRequest.EndBlock = blockResponse.Blocks.Last().BlockNumber - 1;
                         }
-                        snapshopRequest.SnapshotBlockCount = endBlock;
-                        snapshopRequest.RequestId = 12345;
-                        snapshopRequest.SnapshotHash = transactionBlockResponse.List.Last().SnapshotHash;
+                        checkPointRequest.checkPointBlockCount = endBlock;
+                        checkPointRequest.RequestId = 12345;
+                        checkPointRequest.CheckPointHash = blockResponse.Blocks.Last().CheckPointHash;
                         using (MemoryStream requestStream = new MemoryStream())
                         {
-                            snapshopRequest.SaveToStream(requestStream);
+                            checkPointRequest.SaveToStream(requestStream);
                             requestStream.Position = 0;
                             requestStream.CopyTo(ns);
                             ns.Flush();
@@ -325,7 +326,7 @@ namespace MicroCoin.Net
                         {
                             var rp = await ReadResponse(responseStream);
                             responseStream.Position = 0;
-                            SnapshotResponse response = new SnapshotResponse(responseStream);
+                            CheckPointResponse response = new CheckPointResponse(responseStream);
                             response = null;
                         }
                     }
@@ -333,31 +334,31 @@ namespace MicroCoin.Net
                 }
             }
         }
-        public void DownloadSnaphost(uint blockCount)
+        public void DownloadCheckPoint(uint blockCount)
         {
             const uint REQUEST_ID = 123456;
-            void handler(object o, TransactionBlockResponseEventArgs e)
+            void handler(object o, BlockResponseEventArgs e)
             {
-                if (e.transactionBlockResponse.RequestId == REQUEST_ID)
+                if (e.BlockResponse.RequestId == REQUEST_ID)
                 {
-                    log.Debug(e.transactionBlockResponse.List.First().BlockNumber);
-                    for (uint i = 0; i <= e.transactionBlockResponse.List.Last().BlockNumber / 10000; i++)
+                    log.Debug(e.BlockResponse.Blocks.First().BlockNumber);
+                    for (uint i = 0; i <= e.BlockResponse.Blocks.Last().BlockNumber / 10000; i++)
                     {
-                        SnapshopRequest snapshopRequest = new SnapshopRequest();
-                        snapshopRequest.Operation = NetOperationType.GetSafeBox;
-                        snapshopRequest.RequestType = RequestType.Request;
-                        snapshopRequest.StartBlock = (uint)(i * 10000);
-                        snapshopRequest.EndBlock = (uint)(((i + 1) * 10000) - 1);
-                        if (snapshopRequest.EndBlock > e.transactionBlockResponse.List.Last().BlockNumber - 1)
+                        CheckPointRequest checkPointRequest = new CheckPointRequest();
+                        checkPointRequest.Operation = NetOperationType.CheckPoint;
+                        checkPointRequest.RequestType = RequestType.Request;
+                        checkPointRequest.StartBlock = (uint)(i * 10000);
+                        checkPointRequest.EndBlock = (uint)(((i + 1) * 10000) - 1);
+                        if (checkPointRequest.EndBlock > e.BlockResponse.Blocks.Last().BlockNumber - 1)
                         {
-                            snapshopRequest.EndBlock = e.transactionBlockResponse.List.Last().BlockNumber - 1;
+                            checkPointRequest.EndBlock = e.BlockResponse.Blocks.Last().BlockNumber - 1;
                         }
-                        snapshopRequest.SnapshotBlockCount = 14700;
-                        snapshopRequest.RequestId = 12345;
-                        snapshopRequest.SnapshotHash = e.transactionBlockResponse.List.Last().SnapshotHash;
+                        checkPointRequest.checkPointBlockCount = 14700;
+                        checkPointRequest.RequestId = 12345;
+                        checkPointRequest.CheckPointHash = e.BlockResponse.Blocks.Last().CheckPointHash;
                         using (MemoryStream ms = new MemoryStream())
                         {
-                            snapshopRequest.SaveToStream(ms);
+                            checkPointRequest.SaveToStream(ms);
                             NetworkStream ns = TcpClient.GetStream();
                             ms.Position = 0;
                             ms.CopyTo(ns);
@@ -366,9 +367,9 @@ namespace MicroCoin.Net
                     }
                 }
             }
-            TransactionBlockResponse += handler;
+            BlockResponse += handler;
             uint endBlock = (blockCount / 100) * 100;
-            RequestBlockChain(blockCount, 1, REQUEST_ID, NetOperationType.GetOperationBlocks);
+            RequestBlockChain(blockCount, 1, REQUEST_ID, NetOperationType.Transactions);
         }
         public async Task<BlockResponse> RequestBlocksAsync(uint startBlock, uint quantity, uint? requestId = null)
         {
@@ -377,7 +378,7 @@ namespace MicroCoin.Net
                 {
                     StartBlock = startBlock,
                     BlockNumber = quantity,
-                    Operation = NetOperationType.GetBlocks
+                    Operation = NetOperationType.Blocks
                 };
                 if (requestId != null)
                 {
@@ -398,7 +399,7 @@ namespace MicroCoin.Net
                     var rp = await ReadResponse(rs);
                     switch (rp.Operation)
                     {
-                        case NetOperationType.GetBlocks:
+                        case NetOperationType.Blocks:
                             return new BlockResponse(rs, rp);
                         default:
                             throw new InvalidDataException();
@@ -406,14 +407,14 @@ namespace MicroCoin.Net
                 }
             }
         }
-        public async Task<TransactionBlockResponse> RequestTransactionBlocksAsync(uint startBlock, uint quantity, uint? requestId = null)
+        public async Task<BlockResponse> RequestTransactionBlocksAsync(uint startBlock, uint quantity, uint? requestId = null)
         {
             {
                 BlockRequest br = new BlockRequest
                 {
                     StartBlock = startBlock,
                     BlockNumber = quantity,
-                    Operation = NetOperationType.GetOperationBlocks
+                    Operation = NetOperationType.Transactions
                 };
                 if (requestId != null)
                 {
@@ -434,15 +435,15 @@ namespace MicroCoin.Net
                     var rp = await ReadResponse(rs);
                     switch (rp.Operation)
                     {
-                        case NetOperationType.GetOperationBlocks:
-                            return new TransactionBlockResponse(rs, rp);
+                        case NetOperationType.Transactions:
+                            return new BlockResponse(rs, rp);
                         default:
                             throw new InvalidDataException();
                     }
                 }
             }
         }
-        public void RequestBlockChain(uint startBlock, uint quantity, uint? requestId = null, NetOperationType netOperationType = NetOperationType.GetBlocks)
+        public void RequestBlockChain(uint startBlock, uint quantity, uint? requestId = null, NetOperationType netOperationType = NetOperationType.Blocks)
         {
             BlockRequest br = new BlockRequest
             {
@@ -577,17 +578,17 @@ namespace MicroCoin.Net
                                 }
 
                                 break;
-                            case NetOperationType.GetOperationBlocks:
-                                TransactionBlockResponse transactionBlockResponse = new TransactionBlockResponse(ms, rp);
-                                OnGetTransactionBlockResponse(transactionBlockResponse);
+                            case NetOperationType.Transactions:
+                                BlockResponse transactionBlockResponse = new BlockResponse(ms, rp);
+                                OnGetBlockResponse(transactionBlockResponse);
                                 break;
-                            case NetOperationType.GetBlocks:
+                            case NetOperationType.Blocks:
                                 BlockResponse blockResponse = new BlockResponse(ms, rp);
                                 OnGetBlockResponse(blockResponse);
                                 break;
-                            case NetOperationType.GetSafeBox:
+                            case NetOperationType.CheckPoint:
                                 ms.Position = 0;
-                                SnapshotResponse snapshotResponse = new SnapshotResponse(ms);
+                                CheckPointResponse checkPointResponse = new CheckPointResponse(ms);
                                 break;
                             default:
                                 break;
@@ -597,12 +598,12 @@ namespace MicroCoin.Net
                     {
                         switch (rp.Operation)
                         {
-                            case NetOperationType.GetBlocks:
+                            case NetOperationType.Blocks:
                                 BlockRequest blockRequest = new BlockRequest(ms, rp);
                                 var blockResponse = new BlockResponse
                                 {
                                     RequestId = blockRequest.RequestId,
-                                    BlockTransactions = BlockChain.Instance.GetBlocks(blockRequest.StartBlock, blockRequest.EndBlock)
+                                    Blocks = BlockChain.Instance.GetBlocks(blockRequest.StartBlock, blockRequest.EndBlock)
                                 };
                                 using (MemoryStream memoryStream = new MemoryStream())
                                 {
@@ -611,28 +612,31 @@ namespace MicroCoin.Net
                                     ms.CopyTo(ns);
                                 }
                                 break;
-                            case NetOperationType.GetOperationBlocks:
-                                BlockRequest transactionBlockRequest = new BlockRequest(ms, rp);
-                                TransactionBlockResponse transactionBlockResponse = new TransactionBlockResponse()
+                            case NetOperationType.Transactions:
                                 {
-                                    RequestId = transactionBlockRequest.RequestId
-                                };
-                                transactionBlockResponse.List = BlockChain.Instance.GetBlocks(transactionBlockRequest.StartBlock, transactionBlockRequest.EndBlock).ToList<TransactionBlock>();
-                                using (MemoryStream memoryStream = new MemoryStream()) {
-                                    transactionBlockResponse.SaveToStream(memoryStream);
-                                    memoryStream.Position = 0;
-                                    memoryStream.CopyTo(ns);
+                                    BlockRequest transactionBlockRequest = new BlockRequest(ms, rp);
+                                    BlockResponse transactionBlockResponse = new BlockResponse()
+                                    {
+                                        RequestId = transactionBlockRequest.RequestId
+                                    };
+                                    transactionBlockResponse.Blocks = BlockChain.Instance.GetBlocks(transactionBlockRequest.StartBlock, transactionBlockRequest.EndBlock).ToList<Block>();
+                                    using (MemoryStream memoryStream = new MemoryStream())
+                                    {
+                                        transactionBlockResponse.SaveToStream(memoryStream);
+                                        memoryStream.Position = 0;
+                                        memoryStream.CopyTo(ns);
+                                    }
+                                    break;
                                 }
-                                break;
-                            case NetOperationType.GetSafeBox:
-                                SnapshopRequest snapshopRequest = new SnapshopRequest(ms, rp);
-                                SnapshotResponse snapshotResponse = new SnapshotResponse();                                
-                                snapshotResponse.RequestId = snapshopRequest.RequestId;
+                            case NetOperationType.CheckPoint:
+                                CheckPointRequest checkPointRequest = new CheckPointRequest(ms, rp);
+                                CheckPointResponse checkPointResponse = new CheckPointResponse();                                
+                                checkPointResponse.RequestId = checkPointRequest.RequestId;
                                 using (MemoryStream m = new MemoryStream())
                                 {
-                                    var Snapshot = Node.Instance.Snapshot.SaveChunk(snapshopRequest.StartBlock, snapshopRequest.EndBlock);
-                                    snapshotResponse.Snapshot = Snapshot;
-                                    snapshotResponse.SaveToStream(m);
+                                    var CheckPoint = Node.Instance.CheckPoint.SaveChunk(checkPointRequest.StartBlock, checkPointRequest.EndBlock);
+                                    checkPointResponse.CheckPoint = CheckPoint;
+                                    checkPointResponse.SaveToStream(m);
                                     m.Position = 0;
                                     m.CopyTo(ns);
                                 }
@@ -644,8 +648,8 @@ namespace MicroCoin.Net
                                 response.Timestamp = DateTime.UtcNow;
                                 response.Error = 0;
                                 response.ServerPort = (ushort)((IPEndPoint)TcpClient.Client.LocalEndPoint).Port;
-                                response.TransactionBlock = BlockChain.Instance.GetLastTransactionBlock();
-                                response.WorkSum = Node.Instance.Snapshot.WorkSum; // TODO: Csalás
+                                response.Block = BlockChain.Instance.GetLastBlock();
+                                response.WorkSum = Node.Instance.CheckPoint.WorkSum; // TODO: Csalás
                                 response.AccountKey = Node.Instance.AccountKey;
                                 response.RequestType = RequestType.Response;
                                 response.Operation = NetOperationType.Hello;
@@ -671,8 +675,8 @@ namespace MicroCoin.Net
                             case NetOperationType.NewBlock:
                                 log.Info($"Received new block from client");
                                 NewBlockRequest response = new NewBlockRequest(ms, rp);
-                                log.Debug($"Block number {response.TransactionBlock.BlockNumber}");
-                                BlockChain.Instance.Append(response.TransactionBlock);
+                                log.Debug($"CheckPointBlock number {response.Block.BlockNumber}");
+                                BlockChain.Instance.Append(response.Block);
                                 break;
                             case NetOperationType.AddOperations:
                                 log.Info($"Received new operation");

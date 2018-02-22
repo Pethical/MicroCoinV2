@@ -123,15 +123,15 @@ namespace MicroCoin.Net
                         {
                             MicroCoinClient.HelloResponse += (o, e) =>
                             {
-                                log.DebugFormat("Network Block height: {0}. My Block height: {1}", e.HelloResponse.TransactionBlock.BlockNumber, BlockChain.Instance.BlockHeight());
-                                if (BlockChain.Instance.BlockHeight() < e.HelloResponse.TransactionBlock.BlockNumber)
+                                log.DebugFormat("Network CheckPointBlock height: {0}. My CheckPointBlock height: {1}", e.HelloResponse.Block.BlockNumber, BlockChain.Instance.BlockHeight());
+                                if (BlockChain.Instance.BlockHeight() < e.HelloResponse.Block.BlockNumber)
                                 {
                                     MicroCoinClient.RequestBlockChain((uint)(BlockChain.Instance.BlockHeight()), 100);
                                 }
                             };
                             MicroCoinClient.BlockResponse += (ob, eb) => {
-                                log.DebugFormat("Received {0} Block from blockchain. BlockChain size: {1}. Block height: {2}", eb.BlockResponse.BlockTransactions.Count, BlockChain.Instance.Count, eb.BlockResponse.BlockTransactions.Last().BlockNumber);
-                                BlockChain.Instance.AppendAll(eb.BlockResponse.BlockTransactions);
+                                log.DebugFormat("Received {0} CheckPointBlock from blockchain. BlockChain size: {1}. CheckPointBlock height: {2}", eb.BlockResponse.Blocks.Count, BlockChain.Instance.Count, eb.BlockResponse.Blocks.Last().BlockNumber);
+                                BlockChain.Instance.AppendAll(eb.BlockResponse.Blocks);
                             };
                             MicroCoinClient.SendHello();
                         }

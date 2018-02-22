@@ -19,7 +19,6 @@ namespace MicroCoin.Chain
 
         }
 
-
         public static AccountInfo CreateFromStream(BinaryReader br)
         {
             AccountInfo ai = new AccountInfo();
@@ -27,11 +26,14 @@ namespace MicroCoin.Chain
             return ai;
         }
 
-        public void SaveToStream(BinaryWriter bw)
+        public void SaveToStream(BinaryWriter bw, bool writeLengths = true)
         {
             ushort len = 0;
             long pos = bw.BaseStream.Position;
-            bw.Write(len);
+            if (writeLengths)
+            {
+                bw.Write(len);
+            }
             switch (State)
             {
                 case AccountState.Normal:
@@ -54,11 +56,7 @@ namespace MicroCoin.Chain
             long size = bw.BaseStream.Position - pos - 2;
             long reverse = bw.BaseStream.Position;
             bw.BaseStream.Position = pos;
-            bw.Write((ushort)size);
-            if (size > 0x46)
-            {
-
-            }
+            if(writeLengths) bw.Write((ushort)size);
             bw.BaseStream.Position = reverse;
         }
 
