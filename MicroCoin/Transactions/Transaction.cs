@@ -22,8 +22,6 @@ using System.IO;
 
 namespace MicroCoin.Transactions
 {
-
-
     public enum TransactionType : uint
     {
         Transaction = 1, ChangeKey, RecoverFounds, ListAccountForSale,
