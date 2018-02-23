@@ -302,6 +302,7 @@ namespace MicroCoin.Net
                     //log.Debug(transactionBlockResponse.List.First().BlockNumber);
                     for (uint i = 0; i <= blockResponse.Blocks.Last().BlockNumber / 10000; i++)
                     {
+			log.Info(i);
                         CheckPointRequest checkPointRequest = new CheckPointRequest();
                         checkPointRequest.Operation = NetOperationType.CheckPoint;
                         checkPointRequest.RequestType = RequestType.Request;
@@ -322,9 +323,11 @@ namespace MicroCoin.Net
                             ns.Flush();
                         }
                         WaitForData(10000);
+			log.Info("Data received");
                         using (var responseStream = new MemoryStream())
                         {
                             var rp = await ReadResponse(responseStream);
+			    log.Info("All Data received");
                             responseStream.Position = 0;
                             CheckPointResponse response = new CheckPointResponse(responseStream);
                             response = null;

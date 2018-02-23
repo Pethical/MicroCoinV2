@@ -56,6 +56,7 @@ namespace MicroCoin.Chain
             get
             {
                 long p = stream.Position;
+//		log.Info(Header.BlockOffset(i));
                 stream.Position = Header.BlockOffset(i);
                 CheckPointBlock block = new CheckPointBlock(stream);
                 stream.Position = p;
@@ -111,12 +112,13 @@ namespace MicroCoin.Chain
                 checkPoint.Add(checkPointBlock);
                 foreach(var t in b.Transactions)
                 {
+		    CheckPointBlock sender, target;
                     switch (t.TransactionType)
                     {
                         case TransactionType.Transaction:
                             TransferTransaction transfer = (TransferTransaction)t;
-                            CheckPointBlock sender = checkPoint.FirstOrDefault(p => p.Accounts.Count(a => a.AccountNumber == t.SignerAccount) > 0);
-                            CheckPointBlock target = checkPoint.FirstOrDefault(p => p.Accounts.Count(a => a.AccountNumber == t.TargetAccount) > 0);
+                            sender = checkPoint.FirstOrDefault(p => p.Accounts.Count(a => a.AccountNumber == t.SignerAccount) > 0);
+                            target = checkPoint.FirstOrDefault(p => p.Accounts.Count(a => a.AccountNumber == t.TargetAccount) > 0);
                             if(sender!=null && target != null)
                             {
                                 sender.Accounts.First(p => p.AccountNumber == t.SignerAccount).Balance -= (transfer.Fee + transfer.Amount);
@@ -125,7 +127,13 @@ namespace MicroCoin.Chain
                             break;
                         case TransactionType.ListAccountForSale:
                             ListAccountTransaction listAccountTransaction = (ListAccountTransaction)t;
-                            listAccountTransaction.TransactionType ==
+                            sender = checkPoint.FirstOrDefault(p => p.Accounts.Count(a => a.AccountNumber == t.SignerAccount) > 0);
+                            target = checkPoint.FirstOrDefault(p => p.Accounts.Count(a => a.AccountNumber == t.TargetAccount) > 0);
+                            if(sender!=null && target != null)
+                            {
+                                sender.Accounts.First(p => p.AccountNumber == t.SignerAccount).Balance -= listAccountTransaction.Fee;
+				
+                            }
                             break;
                     }
                 }
@@ -178,9 +186,16 @@ namespace MicroCoin.Chain
             WorkSum = 0;
             for (uint i = 0; i < Header.EndBlock - Header.StartBlock; i++)
             {
-                var b = this[i];
+//		log.Info(i);
+		try{
+                    var b = this[i];
+//		log.Info($"checkP {b.CompactTarget}");
                 WorkSum += b.CompactTarget;
-                Accounts.AddRange(b.Accounts);                
+//		log.Info($"checkP {i}");
+                Accounts.AddRange(b.Accounts);
+		}catch(Exception e){
+		    log.Error(e.Message, e);
+		}
             }
             log.Info(WorkSum);
         }
@@ -208,14 +223,17 @@ namespace MicroCoin.Chain
                 {
                     Header = checkPoint.Header;
                 }
-                for (uint i = 0; i != checkPoint.Header.EndBlock- checkPoint.Header.StartBlock + 1; i++)
+                for (uint i = 0; i != checkPoint.Header.EndBlock- checkPoint.Header.StartBlock + 1; i++){
+//		    log.Info($"Added block {i}");
                     list.Add(checkPoint[i]);
+		}
                 MemoryStream ms = new MemoryStream();
                 uint[] h = Header.offsets;
                 Header.offsets = new uint[list.Count + 1];
                 Header.SaveToStream(ms);
                 long headerSize = ms.Position;
                 ms.Position = 0;
+//		log.Info("checkPoint 1");
                 using (BinaryWriter bw = new BinaryWriter(ms, Encoding.Default, true))
                 {
                     uint i = 0;
@@ -226,6 +244,7 @@ namespace MicroCoin.Chain
                         i++;
                     }
                 }
+//		log.Info("checkPoint 2");
                 MemoryStream memoryStream = new MemoryStream();
                 Header.SaveToStream(memoryStream);
                 ms.Position = 0;
@@ -237,12 +256,15 @@ namespace MicroCoin.Chain
                     stream = null;
                 }
                 memoryStream.Position = 0;
+//		log.Info("checkPoint 3");
                 LoadFromStream(memoryStream);
+//		log.Info("checkPoint 4");
                 ms.Dispose();
                 memoryStream.Dispose();
                 ms = null;
                 memoryStream = null;
                 GC.Collect();
+//		log.Info("checkPoint appended");
             }
         }
 

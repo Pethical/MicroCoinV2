@@ -37,11 +37,7 @@ namespace MicroCoin.Chain
             switch (State)
             {
                 case AccountState.Normal:
-                    // bw.Write((ushort)AccountKey.CurveType);
                     AccountKey.SaveToStream(bw.BaseStream, false);
-                    //bw.Write(LockedUntilBlock);
-                    //bw.Write(Price);
-                    //bw.Write(AccountToPayPrice);
                     break;
                 case AccountState.Sale:
                     bw.Write((ushort)1000);

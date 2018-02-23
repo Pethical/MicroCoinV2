@@ -132,7 +132,8 @@ namespace MicroCoin.Chain
                 BlockHash = Hash.ReadFromStream(br);
                 AccumulatedWork = br.ReadUInt64();
             }
-            Hash h = CalculateBlockHash();
+//            Hash h = CalculateBlockHash();
+//	    log.Info("Hash calculated");
         }
     }
 }

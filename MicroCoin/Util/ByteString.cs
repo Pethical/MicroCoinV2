@@ -61,7 +61,9 @@ namespace MicroCoin.Util
 
         internal void SaveToStream(BinaryWriter bw, bool writeLengths)
         {
-            bw.Write(value);
+	    if(writeLengths) value.SaveToStream(bw);
+	    else bw.Write(value);
+//            bw.Write(value);
         }
     }
 
@@ -145,7 +147,8 @@ namespace MicroCoin.Util
 
         internal void SaveToStream(BinaryWriter bw, bool writeLengths)
         {
-            bw.Write(value);
+	    if(writeLengths) value.SaveToStream(bw);
+	    else bw.Write(value);
         }
     }
 

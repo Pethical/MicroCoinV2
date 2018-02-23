@@ -75,6 +75,7 @@ namespace MicroCoin
                 else
                 {
                     await MicroCoinClient.DownloadCheckPointAsync(response.Block.BlockNumber);
+		    log.Info("CheckPoints ok");
                     FileStream file = File.Create(CheckPoint.CheckPointFileName);
                     Instance.CheckPoint.SaveToStream(file);
                     file.Dispose();
