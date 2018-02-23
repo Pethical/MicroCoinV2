@@ -17,6 +17,7 @@
 
 
 using log4net;
+using MicroCoin.Transactions;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -74,11 +75,11 @@ namespace MicroCoin.Chain
         {
             LoadFromStream(s);
         }
-        /*
+        
         public static CheckPoint BuildFromBlockChain(BlockChain blockChain)
         {
-            CheckPoint checkPoint = new CheckPoint();
-            foreach(var b in blockChain)
+            List<CheckPointBlock> checkPoint = new List<CheckPointBlock>();
+            foreach (var b in blockChain)
             {
                 CheckPointBlock checkPointBlock = new CheckPointBlock();
                 checkPointBlock.AccountKey = b.AccountKey;
@@ -91,13 +92,46 @@ namespace MicroCoin.Chain
                             State = AccountInfo.AccountState.Normal
                         }
                     });
-                    checkPointBlock.AccumulatedWork = b.CompactTarget;
-                    checkPointBlock.AvailableProtocolVersion = b.AvailableProtocol;
-                    checkPointBlock.BlockHash = // TODO
+                }
+                checkPointBlock.AccumulatedWork = b.CompactTarget;
+                checkPointBlock.AvailableProtocol = b.AvailableProtocol;
+                checkPointBlock.BlockNumber = b.BlockNumber;
+                checkPointBlock.BlockSignature = b.BlockSignature;
+                checkPointBlock.CheckPointHash = b.CheckPointHash;
+                checkPointBlock.CompactTarget = b.CompactTarget;
+                checkPointBlock.Fee = b.Fee;
+                checkPointBlock.Nonce = b.Nonce;
+                checkPointBlock.Payload = b.Payload;
+                checkPointBlock.ProofOfWork = b.ProofOfWork;
+                checkPointBlock.ProtocolVersion = b.ProtocolVersion;
+                checkPointBlock.Reward = b.Reward;
+                checkPointBlock.Timestamp = b.Timestamp;
+                checkPointBlock.TransactionHash = b.TransactionHash;
+                checkPointBlock.BlockHash = checkPointBlock.CalculateBlockHash();
+                checkPoint.Add(checkPointBlock);
+                foreach(var t in b.Transactions)
+                {
+                    switch (t.TransactionType)
+                    {
+                        case TransactionType.Transaction:
+                            TransferTransaction transfer = (TransferTransaction)t;
+                            CheckPointBlock sender = checkPoint.FirstOrDefault(p => p.Accounts.Count(a => a.AccountNumber == t.SignerAccount) > 0);
+                            CheckPointBlock target = checkPoint.FirstOrDefault(p => p.Accounts.Count(a => a.AccountNumber == t.TargetAccount) > 0);
+                            if(sender!=null && target != null)
+                            {
+                                sender.Accounts.First(p => p.AccountNumber == t.SignerAccount).Balance -= (transfer.Fee + transfer.Amount);
+                                target.Accounts.First(p => p.AccountNumber == t.SignerAccount).Balance += transfer.Amount;
+                            }
+                            break;
+                        case TransactionType.ListAccountForSale:
+                            ListAccountTransaction listAccountTransaction = (ListAccountTransaction)t;
+                            listAccountTransaction.TransactionType ==
+                            break;
+                    }
                 }
             }
+            return null;
         }
-        */
 
         public void LoadFromFile(string filename)
         {

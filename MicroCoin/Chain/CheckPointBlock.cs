@@ -87,7 +87,7 @@ namespace MicroCoin.Chain
 
         }
 
-        public byte[] CalculateBlockHash()
+        public Hash CalculateBlockHash()
         {
             MemoryStream ms = new MemoryStream();
             using (BinaryWriter bw = new BinaryWriter(ms))

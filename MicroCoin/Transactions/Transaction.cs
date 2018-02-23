@@ -28,10 +28,8 @@ namespace MicroCoin.Transactions
         DeListAccountForSale, BuyAccount, ChangeKeySigned, ChangeAccountInfo
     };
 
-
     public abstract class Transaction
     {
-
         public uint SignerAccount { get; set; }
 
         public uint NumberOfOperations { get; set; }
