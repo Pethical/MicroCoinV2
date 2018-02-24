@@ -25,7 +25,7 @@ namespace MicroCoin.Transactions
 {
     public sealed class TransferTransaction : Transaction
     {
-
+        public enum TransferType : byte { Transaction, TransactionAndBuyAccount, BuyAccount };
         public ulong Amount { get; set; }
 
         public ulong AccountPrice { get; set; }
@@ -33,6 +33,7 @@ namespace MicroCoin.Transactions
         public uint SellerAccount { get; set; }
 
         public ECKeyPair NewAccountKey { get; set; }
+        public TransferType TransactionStyle { get; set; }
 
         public TransferTransaction(Stream stream)
         {
@@ -50,6 +51,13 @@ namespace MicroCoin.Transactions
                 bw.Write(Fee);
                 Payload.SaveToStream(bw);
                 AccountKey.SaveToStream(s, false);
+                if(TransactionStyle == TransferType.BuyAccount || TransactionStyle == TransferType.TransactionAndBuyAccount)
+                {
+                    bw.Write((byte)TransactionStyle);
+                    bw.Write(AccountPrice);
+                    bw.Write(SellerAccount);
+                    NewAccountKey.SaveToStream(s, false);
+                }
                 Signature.SaveToStream(s);
             }
         }
@@ -61,12 +69,17 @@ namespace MicroCoin.Transactions
                 SignerAccount = br.ReadUInt32();
                 NumberOfOperations = br.ReadUInt32();
                 TargetAccount = br.ReadUInt32();
+                if (TargetAccount == 530)
+                {
+                    TargetAccount.ToString();
+                }
                 Amount = br.ReadUInt64();
                 Fee = br.ReadUInt64();
                 ReadPayLoad(br);
                 AccountKey = new ECKeyPair();
                 AccountKey.LoadFromStream(stream, false);
                 byte b = br.ReadByte();
+                TransactionStyle = (TransferType)b;
                 if (b > 2) { stream.Position -= 1; }
                 if (b > 0 && b < 3)
                 {

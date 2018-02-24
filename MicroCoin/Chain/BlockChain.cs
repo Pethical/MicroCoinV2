@@ -236,6 +236,7 @@ namespace MicroCoin.Chain
         {
             lock (flock)
             {
+                var blockHeight = GetLastBlock().BlockNumber;
                 FileStream f = File.Open(BlockChainFileName, FileMode.OpenOrCreate, FileAccess.ReadWrite);
                 FileStream fi = File.Open(BlockChainFileName + ".index", FileMode.OpenOrCreate, FileAccess.ReadWrite);
                 using (BinaryReader br = new BinaryReader(fi))
@@ -262,6 +263,8 @@ namespace MicroCoin.Chain
                         iw.Write((ulong)0);
                         foreach (var t in ts)
                         {
+                            if(t.BlockNumber!=0 ||blockHeight>0)
+                                if (t.BlockNumber <= blockHeight) continue;
                             f.Position = f.Length;
                             fi.Position = fi.Length;
                             long pos = f.Position;
@@ -298,15 +301,8 @@ namespace MicroCoin.Chain
                         count = br.ReadInt32();
                         size = br.ReadInt32();
                         int indexSize = size > Count * 16 ? size : Count * 16;
-                        //b = new byte[indexSize + 16];
                         br.ReadUInt64(); // Padding
-                        //br.Read(b, 0, size);
-                        //log.Debug($"Loaded index for {count} blocks. We have {Count} blocks");
                     }
-                }
-                else
-                {
-                    //b = new byte[Count * 16];
                 }
                 using (BinaryWriter iw = new BinaryWriter(f))
                 {
@@ -315,7 +311,7 @@ namespace MicroCoin.Chain
                         f.Position = 0;
                         s.Position = s.Length;
                         iw.Write((uint)Count);
-                        iw.Write((uint)0);//b.Length);
+                        iw.Write((uint)0);
                         iw.Write((ulong)0);
 //                        b = null;
                         foreach (var t in this)
@@ -333,7 +329,12 @@ namespace MicroCoin.Chain
 
         internal List<Block> GetBlocks(uint startBlock, uint endBlock)
         {
-            return this.Where(p => p.BlockNumber >= startBlock && p.BlockNumber <= endBlock).ToList();
+            List<Block> list = new List<Block>();
+            for(uint i = startBlock; i != endBlock; i++)
+            {
+                list.Add(Get((int)i));
+            }
+            return list;
         }
     }
 }

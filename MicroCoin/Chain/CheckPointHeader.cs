@@ -43,9 +43,7 @@ namespace MicroCoin.Chain
         public uint BlockOffset(uint blockNumber)
         {
             if (blockNumber > offsets.Length) return uint.MaxValue;
-
             return offsets[blockNumber];// + (int)HeaderEnd;
-
         }
         public CheckPointHeader() { }
         public CheckPointHeader(Stream s)
@@ -60,7 +58,7 @@ namespace MicroCoin.Chain
             bw.Write(Version);
             bw.Write(BlockCount);
             bw.Write(StartBlock);
-            bw.Write(EndBlock);            
+            bw.Write(EndBlock);
             if (offsets != null)
             {
                 foreach (var b in offsets)
@@ -107,6 +105,10 @@ namespace MicroCoin.Chain
                 {
                     offsets[i] = (uint)(br.ReadUInt32() + pos);
                 }
+                long pos1 = s.Position;
+                s.Position = s.Length - 32;
+                Hash = br.ReadBytes(32);
+                s.Position = pos1;
             }
         }
     }

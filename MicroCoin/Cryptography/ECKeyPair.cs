@@ -36,7 +36,7 @@ namespace MicroCoin.Cryptography
         Secp521R1 = 716,
         Sect283K1 = 729
     };
-    public class ECKeyPair
+    public class ECKeyPair : IEquatable<ECKeyPair>
     {
         public BigInteger PrivateKey { get; set; }
         public bool Compressed { get; set; }
@@ -87,31 +87,28 @@ namespace MicroCoin.Cryptography
                     return;
                 }
                 ushort xLen = (ushort)PublicKey.AffineXCoord.GetEncoded().Length;
-                bw.Write((ushort)xLen);                
-                bw.Write(PublicKey.AffineXCoord.GetEncoded());
-                ushort yLen = (ushort)PublicKey.AffineYCoord.GetEncoded().Length;
+                byte[] x = PublicKey.AffineXCoord.GetEncoded();
+                xLen = (ushort)PublicKey.AffineXCoord.GetEncoded().Length;
+                if (x[0] == 0) xLen--;
+                bw.Write((ushort)xLen);
+                bw.Write(x, x[0] == 0 ? 1 : 0, x.Length - (x[0] == 0 ? 1 : 0));
+                ushort yLen;
                 if (CurveType == CurveType.Sect283K1)
                 {
-                    /*
-                        bw.Write((ushort)35);
-                        bw.Write(PublicKey.AffineYCoord.GetEncoded(), yLen == 36 ? 1 : 0, 35);
-                    */
+                    byte[] b = PublicKey.AffineYCoord.GetEncoded();                                        
                     yLen = (ushort)PublicKey.AffineYCoord.GetEncoded().Length;
+                    if (b[0] == 0) yLen--;
                     bw.Write((ushort)yLen);
-                    bw.Write(PublicKey.AffineYCoord.GetEncoded());
+                    bw.Write(b, b[0] == 0 ? 1 : 0, b.Length - (b[0] == 0 ? 1 : 0));
                 }
                 else
                 {
+                    byte[] b = PublicKey.AffineYCoord.GetEncoded();
                     yLen = (ushort)PublicKey.AffineYCoord.GetEncoded().Length;
+                    if (b[0] == 0) yLen--;
                     bw.Write((ushort)yLen);
-                    bw.Write(PublicKey.AffineYCoord.GetEncoded());
-                    if (yLen > 32)
-                    {
-                        //Console.Write(yLen);
-                    }
-
+                    bw.Write(b, b[0] == 0 ? 1 : 0, b.Length - (b[0] == 0 ? 1 : 0));
                 }
-
             }
         }
 
@@ -167,6 +164,13 @@ namespace MicroCoin.Cryptography
             }
         }
 
-        
+        public bool Equals(ECKeyPair other)
+        {
+            if (other.Compressed != Compressed) return false;
+            if (other.CurveType != CurveType) return false;
+            if (other.PrivateKey != PrivateKey) return false;
+            if (!other.PublicKey.Equals(PublicKey)) return false;
+            return true;
+        }
     }
 }

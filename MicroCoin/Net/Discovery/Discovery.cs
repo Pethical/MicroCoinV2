@@ -72,14 +72,12 @@ namespace MicroCoin.Net.Discovery
             if (Message.Command==DiscoveryCommand.HelloRequest)
             {
                 // byte[] send = Encoding.ASCII.GetBytes("server");
-                Console.WriteLine("Server response");
                 Response.Command = DiscoveryCommand.NodeListRequest;
                 Response.Payload = null;
                 udp.Send(Response.ToByteArray(), Response.Length, ip);
             }
             if (Message.Command == DiscoveryCommand.HelloResponse)
             {
-                Console.WriteLine("Request nodelist");
                 Response.Command = DiscoveryCommand.NodeListRequest;
                 Response.Payload = null;
                 udp.Send(Response.ToByteArray(), Response.Length, ip);
@@ -105,14 +103,12 @@ namespace MicroCoin.Net.Discovery
             }
             else if (Message.Command == DiscoveryCommand.NodeListResponse)
             {
-                Console.WriteLine("Got nodelist");
                 lock (lockObject)
                 {
                     string[] ips = Message.ToString().Split(';');
                     foreach (string p in ips)
                     {
                         if (p == "") continue;
-                        Console.WriteLine("Node: " + p);
                         string[] ps = p.Split(':');
                         if (endPoints.Count(p1 => p1.Address.ToString() == ps[0] && p1.Port==Convert.ToInt32(ps[1]))==0)
                         {
@@ -123,7 +119,6 @@ namespace MicroCoin.Net.Discovery
             }
             else
             {                
-                Console.WriteLine(message);
             }
             lock (lockObject)
             {

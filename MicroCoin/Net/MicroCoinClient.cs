@@ -288,7 +288,7 @@ namespace MicroCoin.Net
                     HelloResponse response = new HelloResponse(responseStream, rp);
                     return response;
                 }
-                throw new InvalidDataException("Not hello");
+                throw new InvalidDataException($"Not hello {rp.Operation}");
             }
         }
         public async Task<bool> DownloadCheckPointAsync(uint blockCount)
@@ -572,6 +572,7 @@ namespace MicroCoin.Net
                                 try
                                 {
                                     HelloResponse response = new HelloResponse(ms, rp);
+                                    log.Info($"{response.WorkSum} {CheckPoints.WorkSum}");
                                     Node.Instance.NodeServers.UpdateNodeServers(response.NodeServers);
                                     OnHelloResponse(response);
                                 }
@@ -637,11 +638,11 @@ namespace MicroCoin.Net
                                 checkPointResponse.RequestId = checkPointRequest.RequestId;
                                 using (MemoryStream m = new MemoryStream())
                                 {
-                                    var CheckPoint = Node.Instance.CheckPoint.SaveChunk(checkPointRequest.StartBlock, checkPointRequest.EndBlock);
+                                    /*var CheckPoint = Node.Instance.CheckPoint.SaveChunk(checkPointRequest.StartBlock, checkPointRequest.EndBlock);
                                     checkPointResponse.CheckPoint = CheckPoint;
                                     checkPointResponse.SaveToStream(m);
                                     m.Position = 0;
-                                    m.CopyTo(ns);
+                                    m.CopyTo(ns);*/
                                 }
                                 break;
                             case NetOperationType.Hello:
@@ -652,7 +653,7 @@ namespace MicroCoin.Net
                                 response.Error = 0;
                                 response.ServerPort = (ushort)((IPEndPoint)TcpClient.Client.LocalEndPoint).Port;
                                 response.Block = BlockChain.Instance.GetLastBlock();
-                                response.WorkSum = Node.Instance.CheckPoint.WorkSum; // TODO: Csalás
+                                response.WorkSum = CheckPoints.WorkSum;
                                 response.AccountKey = Node.Instance.AccountKey;
                                 response.RequestType = RequestType.Response;
                                 response.Operation = NetOperationType.Hello;

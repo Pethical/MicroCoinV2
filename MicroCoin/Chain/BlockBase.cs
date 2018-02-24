@@ -41,7 +41,7 @@ namespace MicroCoin.Chain
         public ulong Fee { get; set; }
         public Timestamp Timestamp { get; set; }
         public uint CompactTarget { get; set; }
-        public uint Nonce { get; set; }
+        public int Nonce { get; set; }
         public ByteString Payload { get; set; }
         public Hash CheckPointHash { get; set; }
         public Hash TransactionHash { get; set; }
@@ -72,7 +72,7 @@ namespace MicroCoin.Chain
                 Fee = br.ReadUInt64();
                 Timestamp = br.ReadUInt32();
                 CompactTarget = br.ReadUInt32();
-                Nonce = br.ReadUInt32();
+                Nonce = br.ReadInt32();
                 ushort pl = br.ReadUInt16();
                 if (pl > 0)
                 {

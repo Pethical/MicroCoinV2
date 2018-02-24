@@ -92,7 +92,7 @@ namespace MicroCoin.Protocol
             CheckPoint = new CheckPoint(unCompressed);
             unCompressed.Dispose();
             unCompressed = null;
-            Node.Instance.CheckPoint.Append(CheckPoint);
+            //Node.Instance.CheckPoint.Append(CheckPoint);
             CheckPoint.Dispose();
             CheckPoint = null;
         }

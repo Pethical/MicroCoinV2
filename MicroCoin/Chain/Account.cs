@@ -1,4 +1,5 @@
 ﻿using MicroCoin.Util;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -7,8 +8,10 @@ using System.Threading.Tasks;
 
 namespace MicroCoin.Chain
 {
-    public class Account
+    public class Account : IEquatable<Account>
     {
+        private uint _updatedBlock;
+
         public uint AccountNumber { get; set; }
         public AccountInfo AccountInfo { get; set; }
         public ulong Balance { get; set; }
@@ -16,7 +19,21 @@ namespace MicroCoin.Chain
         public uint NumberOfOperations { get; set; }
         public ByteString Name { get; set; }
         public ushort AccountType { get; set; }
-        public uint UpdatedBlock { get; set; }
+        public uint UpdatedBlock
+        {
+            get => _updatedBlock;
+            set
+            {
+                if (_updatedBlock != value)
+                {
+                    if (_updatedBlock != BlockNumber)
+                    {                        
+                        UpdatedByBlock = _updatedBlock;
+                    }
+                    _updatedBlock = value;
+                }
+            }
+        }
         /// <summary>
         /// Only reference, don't save
         /// The block number of the account
@@ -25,7 +42,7 @@ namespace MicroCoin.Chain
 
         public Account()
         {
-            
+
         }
 
         public Account(Stream s)
@@ -42,7 +59,7 @@ namespace MicroCoin.Chain
             bw.Write(NumberOfOperations);
             Name.SaveToStream(bw, writeLengths);
             bw.Write(AccountType);
-            if(writeLengths) bw.Write(UpdatedByBlock);
+            if (writeLengths) bw.Write(UpdatedByBlock);
         }
 
         public void LoadFromStream(Stream s)
@@ -60,5 +77,16 @@ namespace MicroCoin.Chain
             }
         }
 
+        public bool Equals(Account other)
+        {
+            if (other.AccountNumber != AccountNumber) return false;
+            if (other.AccountType != AccountType) return false;
+            if (other.Balance != Balance) return false;
+            if (other.Name != Name) return false;
+            if (other.NumberOfOperations != NumberOfOperations) return false;
+            if (other.UpdatedBlock != UpdatedBlock) return false;
+            //if (other.UpdatedByBlock != UpdatedByBlock) return false;
+            return other.AccountInfo.Equals(AccountInfo);            
+        }
     }
 }

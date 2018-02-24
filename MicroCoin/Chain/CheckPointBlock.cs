@@ -29,13 +29,13 @@ namespace MicroCoin.Chain
     /// <summary>
     /// One entry in the checkpoint
     /// </summary>
-    public class CheckPointBlock : BlockBase
+    public class CheckPointBlock : BlockBase, IEquatable<CheckPointBlock>
     {
         /// <summary>
         /// List of all accounts
         /// </summary>
         /// <value>The accounts.</value>
-        public List<Account> Accounts { get; set; } = new List<Account>();
+        public List<Account> Accounts { get; set; } = new List<Account>(5);
         /// <summary>
         /// The block hash
         /// </summary>
@@ -90,20 +90,54 @@ namespace MicroCoin.Chain
         public Hash CalculateBlockHash()
         {
             MemoryStream ms = new MemoryStream();
-            using (BinaryWriter bw = new BinaryWriter(ms))
+            try
             {
-                SaveToStream(bw, false);
-                ms.Position = 0;
-                using (SHA256Managed sha = new SHA256Managed())
+                using (BinaryWriter bw = new BinaryWriter(ms))
                 {
-                    return sha.ComputeHash(ms);
+                    SaveToStream(bw, false);
+                    ms.Position = 0;
+                    using (SHA256Managed sha = new SHA256Managed())
+                    {
+                        return sha.ComputeHash(ms);
+                    }
                 }
             }
+            finally
+            {
+                ms.Dispose();
+                ms = null;
+            }
+        }
+
+        public bool Equals(CheckPointBlock other)
+        {
+            if (other.AccumulatedWork != AccumulatedWork) return false;
+            if (other.AvailableProtocol != AvailableProtocol) return false;
+            if (other.BlockNumber != BlockNumber) return false;
+        //    if (other.BlockSignature != BlockSignature) return false;            
+            if (other.CheckPointHash != CheckPointHash) return false;
+            if (other.CompactTarget != CompactTarget) return false;
+            if (other.Fee != Fee) return false;
+            if (other.Nonce != Nonce) return false;
+            if (other.Payload != Payload) return false;
+            if (other.ProofOfWork != ProofOfWork) return false;
+            if (other.ProtocolVersion != ProtocolVersion) return false;
+            if (other.Reward != Reward) return false;
+            if (other.Timestamp != Timestamp) return false;
+            if (other.TransactionHash != TransactionHash) return false;
+            if (other.Accounts.Count != Accounts.Count) return false;
+            if (!other.AccountKey.Equals(AccountKey)) return false;
+            for (int i = 0; i < Accounts.Count; i++)
+            {
+                if (!Accounts[i].Equals(other.Accounts[i])) return false;
+            }
+            return true;
         }
 
         public CheckPointBlock(Stream stream) : base()
         {
-            using(BinaryReader br = new BinaryReader(stream, Encoding.Default, true))
+            long s = stream.Position;
+            using (BinaryReader br = new BinaryReader(stream, Encoding.Default, true))
             {
                 BlockNumber = br.ReadUInt32();
                 AccountKey = new ECKeyPair();
@@ -115,7 +149,7 @@ namespace MicroCoin.Chain
                 Timestamp = br.ReadUInt32();
                 DateTime t = Timestamp;
                 CompactTarget = br.ReadUInt32();
-                Nonce = br.ReadUInt32();
+                Nonce = br.ReadInt32();
                 ushort len = br.ReadUInt16();
                 Payload = br.ReadBytes(len);
                 len = br.ReadUInt16();
@@ -124,7 +158,7 @@ namespace MicroCoin.Chain
                 TransactionHash = br.ReadBytes(len);
                 len = br.ReadUInt16();
                 ProofOfWork = br.ReadBytes(len);
-                for(int i = 0; i < 5; i++)
+                for (int i = 0; i < 5; i++)
                 {
                     Account acc = new Account(stream);
                     Accounts.Add(acc);
@@ -133,7 +167,7 @@ namespace MicroCoin.Chain
                 AccumulatedWork = br.ReadUInt64();
             }
 //            Hash h = CalculateBlockHash();
-//	    log.Info("Hash calculated");
+            // log.Info("Hash calculated");
         }
     }
 }

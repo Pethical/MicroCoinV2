@@ -4,7 +4,7 @@ using System.IO;
 
 namespace MicroCoin.Chain
 {
-    public class AccountInfo
+    public class AccountInfo : IEquatable<AccountInfo>
     {
         public enum AccountState { Unknown, Normal, Sale}
         public AccountState State { get; set; }
@@ -90,5 +90,23 @@ namespace MicroCoin.Chain
             }
         }
 
+        public bool Equals(AccountInfo other)
+        {
+            if (other.AccountToPayPrice != AccountToPayPrice) return false;
+            if (other.LockedUntilBlock != LockedUntilBlock) return false;
+            if (other.Price != Price) return false;
+            if (other.State != State) return false;
+            if (!other.AccountKey.Equals(AccountKey)) return false;
+            if (other.NewPublicKey == null)
+            {
+                if (NewPublicKey != null && (NewPublicKey.PrivateKey!=null|| NewPublicKey.PublicKey!=null))
+                    return false;
+            }
+            else
+            {
+                if (!other.NewPublicKey.Equals(NewPublicKey)) return false;
+            }
+            return true;
+        }
     }
 }

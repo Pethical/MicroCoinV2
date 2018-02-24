@@ -16,6 +16,7 @@ using MicroCoin.Cryptography;
 using System.Net.Sockets;
 using System.Net;
 using System.Threading;
+using MicroCoin.Util;
 
 namespace MicroCoin
 {
@@ -25,8 +26,7 @@ namespace MicroCoin
         private static Node s_instance;
         public ECKeyPair AccountKey { get; } = ECKeyPair.CreateNew(false);
         private static MicroCoinClient MicroCoinClient { get; set; }
-        public NodeServerList NodeServers { get; set; } = new NodeServerList();
-        public CheckPoint CheckPoint { get; set; } = new CheckPoint();
+        public NodeServerList NodeServers { get; set; } = new NodeServerList();        
         public BlockChain BlockChain { get; set; } = BlockChain.Instance;
         public static Node Instance
         {
@@ -54,49 +54,35 @@ namespace MicroCoin
                 HelloResponse response = await MicroCoinClient.SendHelloAsync();
                 uint start = (response.Block.BlockNumber / 100) * 100;
                 int bl = BlockChain.Instance.BlockHeight();
-		        while(bl < response.Block.BlockNumber) {
-            	    var blocks = await MicroCoinClient.RequestBlocksAsync((uint)bl, 1000); //response.TransactionBlock.BlockNumber);
-		            log.Info($"BlockChain downloading {bl} => {bl+999}");
-		            log.Info(blocks.Blocks.First().BlockNumber.ToString()+" "+blocks.Blocks.Last().BlockNumber.ToString());
-		            log.Info(blocks.Blocks.Count.ToString());
-            	    BlockChain.Instance.AppendAll(blocks.Blocks);
-		            bl+=1000;
+                while (bl < response.Block.BlockNumber)
+                {
+                    var blocks = await MicroCoinClient.RequestBlocksAsync((uint)bl, 1000); //response.TransactionBlock.BlockNumber);
+                    log.Info($"BlockChain downloading {bl} => {bl + 999}");
+                    log.Info(blocks.Blocks.First().BlockNumber.ToString() + " " + blocks.Blocks.Last().BlockNumber.ToString());
+                    log.Info(blocks.Blocks.Count.ToString());
+                    BlockChain.Instance.AppendAll(blocks.Blocks);
+                    bl += 1000;
                     using (FileStream fs = File.Open(BlockChain.Instance.BlockChainFileName, FileMode.OpenOrCreate, FileAccess.ReadWrite))
                     {
                         BlockChain.Instance.SaveToStorage(fs);
                     }
                 }
 		        log.Info("BlockChain OK");
-                if (File.Exists(CheckPoint.CheckPointFileName))
+                if (File.Exists(CheckPoints.checkPointFileName))
                 {
-                    Instance.CheckPoint.LoadFromFile(CheckPoint.CheckPointFileName);
-                    log.Info($"{Instance.CheckPoint.Header.EndBlock} {start} {response.Block.BlockNumber}");
+                    CheckPoints.Init();
                 }
                 else
                 {
-                    await MicroCoinClient.DownloadCheckPointAsync(response.Block.BlockNumber);
-		    log.Info("CheckPoints ok");
-                    FileStream file = File.Create(CheckPoint.CheckPointFileName);
-                    Instance.CheckPoint.SaveToStream(file);
-                    file.Dispose();
-                    Instance.CheckPoint.LoadFromFile(CheckPoint.CheckPointFileName);
-                }
-                if (Instance.CheckPoint.Header.EndBlock < start - 1)
-                {
-                    Instance.CheckPoint.Dispose();
-                    Instance.CheckPoint = new CheckPoint();
-                    await MicroCoinClient.DownloadCheckPointAsync(response.Block.BlockNumber);
-                    FileStream file = File.Create(CheckPoint.CheckPointFileName);
-                    Instance.CheckPoint.SaveToStream(file);
-                    file.Dispose();
-                    Instance.CheckPoint.LoadFromFile(CheckPoint.CheckPointFileName);
+                    var cpList = CheckPoint.BuildFromBlockChain(BlockChain.Instance);
+                    FileStream cpFile = File.Create(CheckPoints.checkPointFileName);
+                    FileStream indexFile = File.Create(CheckPoints.checkPointIndexName);
+                    CheckPoint.SaveList(cpList, cpFile, indexFile);
+                    Hash hash = CheckPoint.CheckPointHash(cpList);
+                    cpFile.Dispose();
+                    indexFile.Dispose();
                 }
                 GC.Collect();
-                foreach (Account a in Instance.CheckPoint.Accounts)
-                {
-                    if (a.Balance != 1000000 && a.Balance != 0)
-                        log.Info($"{a.AccountNumber} => {a.Balance}");
-                }
                 MicroCoinClient.HelloResponse += (o, e) =>
                 {
                     log.DebugFormat("Network CheckPointBlock height: {0}. My CheckPointBlock height: {1}", e.HelloResponse.Block.BlockNumber, BlockChain.Instance.BlockHeight());
@@ -185,8 +171,7 @@ namespace MicroCoin
             }
             listenerThread.Abort();
             MicroCoinClient.Dispose();
-            NodeServers.Dispose();            
-            CheckPoint.Dispose();
+            NodeServers.Dispose();
         }
     }
 }

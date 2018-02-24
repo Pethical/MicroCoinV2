@@ -29,8 +29,6 @@ namespace MicroCoin.Transactions
 
         public ECKeyPair NewAccountKey { get; set; }
 
-        public TransactionType TransactionType { get; set; }
-
         public ChangeKeyTransaction() { }
 
         public ChangeKeyTransaction(Stream s, TransactionType transactionType)

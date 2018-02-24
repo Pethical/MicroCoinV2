@@ -46,6 +46,7 @@ namespace MicroCoin.Util
             ByteString bs = new ByteString();
             ushort len = br.ReadUInt16();
             bs = br.ReadBytes(len);
+            if (bs.value == null) bs.value = new byte[0];
             return bs;
         }
 
@@ -61,8 +62,12 @@ namespace MicroCoin.Util
 
         internal void SaveToStream(BinaryWriter bw, bool writeLengths)
         {
-	    if(writeLengths) value.SaveToStream(bw);
-	    else bw.Write(value);
+            if (writeLengths) value.SaveToStream(bw);
+            else
+            {
+                if (value == null) return;
+                bw.Write(value);
+            }
 //            bw.Write(value);
         }
     }
@@ -147,8 +152,12 @@ namespace MicroCoin.Util
 
         internal void SaveToStream(BinaryWriter bw, bool writeLengths)
         {
-	    if(writeLengths) value.SaveToStream(bw);
-	    else bw.Write(value);
+            if (writeLengths) value.SaveToStream(bw);
+            else {
+                if (value == null) return;
+                bw.Write(value);
+                
+            }
         }
     }
 
