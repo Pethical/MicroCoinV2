@@ -133,8 +133,8 @@
     <Compile Include="Protocol\NewBlockRequest.cs" />
     <Compile Include="Protocol\BlockResponse.cs" />
     <Compile Include="Protocol\NewTransactionMessage.cs" />
-    <Compile Include="Protocol\SnapshopRequest.cs" />
-    <Compile Include="Protocol\SnapshotResponse.cs" />
+    <Compile Include="Protocol\CheckPointRequest.cs" />
+    <Compile Include="Protocol\CheckPointResponse.cs" />
     <Compile Include="Protocol\TransactionBlockResponse.cs" />
     <Compile Include="Util\ByteArrayExtensions.cs" />
     <Compile Include="Transactions\ChangeAccountInfoTransaction.cs" />
