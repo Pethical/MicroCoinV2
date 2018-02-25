@@ -28,7 +28,7 @@ namespace MicroCoin.Util
 
         public static implicit operator string(ByteString s)
         {
-            return Encoding.Default.GetString(s.value);
+            return Encoding.UTF8.GetString(s.value);
         }
 
         public static implicit operator byte[](ByteString s)

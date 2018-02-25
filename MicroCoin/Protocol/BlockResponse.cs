@@ -33,6 +33,7 @@ namespace MicroCoin.Protocol
         }
         public BlockResponse() : base()
         {
+            Operation = Net.NetOperationType.Blocks;
             RequestType = Net.RequestType.Response;
         }
 
@@ -45,7 +46,7 @@ namespace MicroCoin.Protocol
                 bw.Write((uint)Blocks.Count);
                 foreach (var b in Blocks)
                 {
-                    b.SaveToStream(s);
+                    b.SaveToStream(ms);
                 }
                 ms.Position = 0;
                 DataLength = (int)ms.Length;

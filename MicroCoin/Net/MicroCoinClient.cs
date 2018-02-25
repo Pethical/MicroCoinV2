@@ -323,11 +323,11 @@ namespace MicroCoin.Net
                             ns.Flush();
                         }
                         WaitForData(10000);
-			log.Info("Data received");
+			            log.Info("Data received");
                         using (var responseStream = new MemoryStream())
                         {
                             var rp = await ReadResponse(responseStream);
-			    log.Info("All Data received");
+			                log.Info("All Data received");
                             responseStream.Position = 0;
                             CheckPointResponse response = new CheckPointResponse(responseStream);
                             response = null;
@@ -498,6 +498,7 @@ namespace MicroCoin.Net
 
         public void Handle(TcpClient client)
         {
+            log.Info($"Connected client {client.Client.RemoteEndPoint}");
             TcpClient = client;
             Connected = true;
             Start();
@@ -613,7 +614,7 @@ namespace MicroCoin.Net
                                 {
                                     blockResponse.SaveToStream(memoryStream);
                                     memoryStream.Position = 0;
-                                    ms.CopyTo(ns);
+                                    memoryStream.CopyTo(ns);
                                 }
                                 break;
                             case NetOperationType.Transactions:

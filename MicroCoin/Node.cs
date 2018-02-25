@@ -43,24 +43,27 @@ namespace MicroCoin
         {
             
         }
-        public static async Task<Node> StartNode()
-        {           
+        public static async Task<Node> StartNode(int port=4004)
+        {
+
             MicroCoinClient = new MicroCoinClient();
             //MicroCoinClient.Connect("micro-225.microbyte.cloud", 4004);
             try
             {
-                MicroCoinClient.Connect("127.0.0.1", 4004);
+                MicroCoinClient.Connect("127.0.0.1", port);
                 MicroCoinClient.ServerPort = (ushort)((IPEndPoint)MicroCoinClient.TcpClient.Client.LocalEndPoint).Port;
+                CheckPoints.Init();
                 HelloResponse response = await MicroCoinClient.SendHelloAsync();
+
                 uint start = (response.Block.BlockNumber / 100) * 100;
                 int bl = BlockChain.Instance.BlockHeight();
-                while (bl < response.Block.BlockNumber)
+                while (bl <= response.Block.BlockNumber)
                 {
                     var blocks = await MicroCoinClient.RequestBlocksAsync((uint)bl, 1000); //response.TransactionBlock.BlockNumber);
                     log.Info($"BlockChain downloading {bl} => {bl + 999}");
                     log.Info(blocks.Blocks.First().BlockNumber.ToString() + " " + blocks.Blocks.Last().BlockNumber.ToString());
                     log.Info(blocks.Blocks.Count.ToString());
-                    BlockChain.Instance.AppendAll(blocks.Blocks);
+                    BlockChain.Instance.AppendAll(blocks.Blocks, true);
                     bl += 1000;
                     using (FileStream fs = File.Open(BlockChain.Instance.BlockChainFileName, FileMode.OpenOrCreate, FileAccess.ReadWrite))
                     {
@@ -68,11 +71,7 @@ namespace MicroCoin
                     }
                 }
 		        log.Info("BlockChain OK");
-                if (File.Exists(CheckPoints.checkPointFileName))
-                {
-                    CheckPoints.Init();
-                }
-                else
+                if (!File.Exists(CheckPoints.checkPointFileName))
                 {
                     var cpList = CheckPoint.BuildFromBlockChain(BlockChain.Instance);
                     FileStream cpFile = File.Create(CheckPoints.checkPointFileName);
@@ -81,6 +80,20 @@ namespace MicroCoin
                     Hash hash = CheckPoint.CheckPointHash(cpList);
                     cpFile.Dispose();
                     indexFile.Dispose();
+                }
+                if (File.Exists(CheckPoints.checkPointFileName))
+                {
+                    CheckPoints.Init();
+                    uint blocks = CheckPoints.GetLastBlock().BlockNumber;
+                    uint need = BlockChain.Instance.GetLastBlock().BlockNumber;
+                    for (uint i = blocks; i <= need; i++)
+                    {
+                        CheckPoints.AppendBlock(BlockChain.Instance.Get((int)i));
+                    }
+                }
+                else
+                {
+                    throw new FileNotFoundException("Checkpoint file not found", CheckPoints.checkPointFileName);
                 }
                 GC.Collect();
                 MicroCoinClient.HelloResponse += (o, e) =>
@@ -103,63 +116,71 @@ namespace MicroCoin
             {
 
             }
-//            Instance.Listen();
+            Instance.Listen();
             return Instance;
         }
-
         protected void Listen()
         {
             listenerThread = new Thread(() =>
             {
                 try
                 {
-                    TcpListener tcpListener = new TcpListener(IPAddress.Any, 4040); //
                     try
                     {
-                        // TcpListener tcpListener = new TcpListener((IPEndPoint)MicroCoinClient.TcpClient.Client.LocalEndPoint);
-                        MicroCoinClient.ServerPort = 4040;
-                        tcpListener.AllowNatTraversal(true);
-                        tcpListener.Start();
-                        ManualResetEvent connected = new ManualResetEvent(false);
-                        while (true)
+                        log.Warn("starting listener");
+                        TcpListener tcpListener = new TcpListener(IPAddress.Any, 4041); //
+                        log.Warn("started listener");
+                        try
                         {
-                            connected.Reset();
-                            var asyncResult = tcpListener.BeginAcceptTcpClient((state) =>
-                            {
-                                try
-                                {
-                                    var client = tcpListener.EndAcceptTcpClient(state);
-                                    MicroCoinClient mClient = new MicroCoinClient();
-                                    Clients.Add(mClient);
-                                    mClient.Handle(client);
-                                }
-                                catch (ObjectDisposedException)
-                                {
-                                    return;
-                                }
-                            }, null);
+                            // TcpListener tcpListener = new TcpListener((IPEndPoint)MicroCoinClient.TcpClient.Client.LocalEndPoint);
+                            MicroCoinClient.ServerPort = 4040;
+                            //tcpListener.AllowNatTraversal(true);
+                            tcpListener.Start();
+                            ManualResetEvent connected = new ManualResetEvent(false);
                             while (true)
                             {
-                                connected.WaitOne(1);
+                                connected.Reset();
+                                var asyncResult = tcpListener.BeginAcceptTcpClient((state) =>
+                                {
+                                    try
+                                    {
+                                        var client = tcpListener.EndAcceptTcpClient(state);
+                                        log.Warn($"New client {client.Client.RemoteEndPoint}");
+                                        MicroCoinClient mClient = new MicroCoinClient();
+                                        Clients.Add(mClient);
+                                        mClient.Handle(client);
+                                        connected.Set();
+                                    }
+                                    catch (ObjectDisposedException)
+                                    {
+                                        return;
+                                    }
+                                }, null);
+                                while (true)
+                                {
+                                    connected.WaitOne(1);
+                                }
                             }
                         }
+                        catch (ThreadAbortException ta)
+                        {
+                            tcpListener.Stop();
+                            return;
+                        }
                     }
-                    catch (ThreadAbortException ta)
+                    catch (Exception e)
                     {
-                        tcpListener.Stop();
-                        return;
+                        log.Error(e.Message, e);
                     }
                 }
-                catch
+                finally
                 {
-                    return;
+                    log.Warn("Listener exited");
                 }
-
             });
             listenerThread.Start();
         }
-
-        internal void Dispose()
+        public void Dispose()
         {
             foreach (var c in Clients)
             {
@@ -169,7 +190,7 @@ namespace MicroCoin
                     Clients.Remove(c);
                 }
             }
-            listenerThread.Abort();
+            if(listenerThread!=null) listenerThread.Abort();
             MicroCoinClient.Dispose();
             NodeServers.Dispose();
         }

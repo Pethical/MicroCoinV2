@@ -22,6 +22,7 @@ using System.Linq;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using MicroCoin.Transactions;
 
 namespace MicroCoin.Chain
 {
@@ -78,6 +79,22 @@ namespace MicroCoin.Chain
                 }                
             }
         }
+
+        public List<Transaction> GetAccountOperations(int accountNumber)
+        {
+            List<Transaction> result = new List<Transaction>();
+            for (uint i = GetLastBlock().BlockNumber; i > 0; i--)
+            {
+                Block b = Get((int)i);
+                if (b.Transactions != null)
+                {
+                    var l = b.Transactions.Where(p => p.SignerAccount == accountNumber || p.TargetAccount == accountNumber || (p is Transactions.TransferTransaction && ((Transactions.TransferTransaction)p).SellerAccount == accountNumber));
+                    result.AddRange(l);
+                }
+            }
+            return result;
+        }
+
         private static object flock = new object();
 
         public Block Get(int blockNumber)
@@ -217,6 +234,7 @@ namespace MicroCoin.Chain
                                 iw.Write((uint)(f.Position - pos));
                                 log.Info($"Added new block #{t.BlockNumber}");
                             }
+                            CheckPoints.AppendBlock(t);
                             return true;
                         }
                     }
@@ -229,10 +247,9 @@ namespace MicroCoin.Chain
                 {
                     fi.Dispose();
                 }
-            }
-            
+            }            
         }
-        public void AppendAll(List<Block> ts)
+        public void AppendAll(List<Block> ts, bool ignoreCheckPointing=false)
         {
             lock (flock)
             {
@@ -276,6 +293,7 @@ namespace MicroCoin.Chain
 			                count++;
                             iw.Write(count);
                             iw.Write(fi.Length);
+                            if(!ignoreCheckPointing) CheckPoints.AppendBlock(t);
                         }
                         log.Info($"Saved {ts.Count} blocks. From {ts.FirstOrDefault()?.BlockNumber} to {ts.LastOrDefault()?.BlockNumber}. New count: {count}");
                     }
@@ -327,10 +345,15 @@ namespace MicroCoin.Chain
             }
         }
 
-        internal List<Block> GetBlocks(uint startBlock, uint endBlock)
+        public List<Block> GetBlocks(uint startBlock, uint endBlock)
         {
+            log.Info($"GetBlocks {startBlock}=>{endBlock}");
+            if (endBlock >= GetLastBlock().BlockNumber)
+            {
+                endBlock = GetLastBlock().BlockNumber - 1;
+            }
             List<Block> list = new List<Block>();
-            for(uint i = startBlock; i != endBlock; i++)
+            for(uint i = startBlock; i < endBlock+1; i++)
             {
                 list.Add(Get((int)i));
             }

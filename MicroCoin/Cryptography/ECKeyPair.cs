@@ -40,8 +40,51 @@ namespace MicroCoin.Cryptography
     {
         public BigInteger PrivateKey { get; set; }
         public bool Compressed { get; set; }
-        public ECPoint PublicKey { get; set; }
+        private ECPoint publicKey;
+        public ECPoint PublicKey { get {
+                if (publicKey != null) return publicKey;
+                X9ECParameters curve;
+                if (CurveType == CurveType.Secp521R1)
+                {
+                    curve = Org.BouncyCastle.Asn1.Sec.SecNamedCurves.GetByName("secp521r1");
+                }
+                else if (CurveType == CurveType.Secp384R1)
+                {
+                    curve = Org.BouncyCastle.Asn1.Sec.SecNamedCurves.GetByName("secp384r1");
+                }
+                else if (CurveType == CurveType.Sect283K1)
+                {
+                    curve = Org.BouncyCastle.Asn1.Sec.SecNamedCurves.GetByName("sect283k1");
+                    F2mCurve c1 = (F2mCurve)curve.Curve;
+                    publicKey = new FpPoint(c1, new F2mFieldElement(c1.M, c1.K1, new BigInteger(+1, X)),
+                        new F2mFieldElement(c1.M, c1.K1, new BigInteger(+1, Y)));
+                    return publicKey;
+                }
+                else if (CurveType == CurveType.Secp256K1)
+                {
+                    curve = Org.BouncyCastle.Asn1.Sec.SecNamedCurves.GetByName("secp256k1");
+                }
+                else if (CurveType != 0)
+                {
+                    throw new Exception($"{CurveType} TYPE");
+                }
+                else
+                {
+                    curve = Org.BouncyCastle.Asn1.Sec.SecNamedCurves.GetByName("secp256k1");
+                }
+                FpCurve c = (FpCurve)curve.Curve;
+                publicKey = new FpPoint(c, new FpFieldElement(c.Q, new BigInteger(+1, X)),
+                    new FpFieldElement(c.Q, new BigInteger(+1, Y)));
+                return publicKey;
+            }
+            
+            set {
+                publicKey = value;
+            }
+        }
         public CurveType CurveType { get; set; }
+        public byte[] X { get; set; }
+        public byte[] Y { get; set; }        
 
         public static ECKeyPair CreateNew(bool compressed)
         {            
@@ -123,44 +166,9 @@ namespace MicroCoin.Cryptography
                 }
                 CurveType = (CurveType) br.ReadUInt16();
                 ushort xLen = br.ReadUInt16();
-                byte[] xKey = br.ReadBytes(xLen);
+                X = br.ReadBytes(xLen);
                 ushort yLen = br.ReadUInt16();
-                byte[] yKey = br.ReadBytes(yLen);
-                X9ECParameters curve;
-                if (CurveType == CurveType.Secp521R1)
-                {
-                    curve = Org.BouncyCastle.Asn1.Sec.SecNamedCurves.GetByName("secp521r1");
-                }
-                else if (CurveType == CurveType.Secp384R1)
-                {
-                    curve = Org.BouncyCastle.Asn1.Sec.SecNamedCurves.GetByName("secp384r1");
-
-                }
-                else if (CurveType == CurveType.Sect283K1)
-                {
-                    curve = Org.BouncyCastle.Asn1.Sec.SecNamedCurves.GetByName("sect283k1");
-                    F2mCurve c1 = (F2mCurve)curve.Curve;
-                    PublicKey = new FpPoint(c1, new F2mFieldElement(c1.M, c1.K1, new BigInteger(+1, xKey)),
-                        new F2mFieldElement(c1.M, c1.K1, new BigInteger(+1, yKey)));
-                     ushort xLen1 = (ushort)PublicKey.AffineXCoord.GetEncoded().Length;
-                     byte[] xk = PublicKey.AffineXCoord.GetEncoded();                    
-                    return;
-                }
-                else if (CurveType == CurveType.Secp256K1)
-                {
-                    curve = Org.BouncyCastle.Asn1.Sec.SecNamedCurves.GetByName("secp256k1");
-                }
-                else if (CurveType != 0)
-                {
-                    throw new Exception($"{CurveType} TYPE");
-                }
-                else
-                {
-                    curve = Org.BouncyCastle.Asn1.Sec.SecNamedCurves.GetByName("secp256k1");
-                }
-                FpCurve c = (FpCurve)curve.Curve;
-                PublicKey = new FpPoint(c, new FpFieldElement(c.Q, new BigInteger(+1, xKey)),
-                    new FpFieldElement(c.Q, new BigInteger(+1, yKey)));
+                Y = br.ReadBytes(yLen);
             }
         }
 

@@ -68,34 +68,25 @@ namespace MicroCoin
             consoleAppender.ActivateOptions();
 
             hierarchy.Root.AddAppender(consoleAppender);
+            hierarchy.Root.Level = Level.Info;
+            hierarchy.Configured = true;
             //MemoryAppender memory = new MemoryAppender();
             //memory.ActivateOptions();
             //hierarchy.Root.AddAppender(memory);
-            hierarchy.Root.Level = Level.Info;
-            hierarchy.Configured = true;
-
-            MicroCoinClient microCoinClient = new MicroCoinClient();
-            microCoinClient.HelloResponse += (o, e) =>
+            int port = 4004;
+            if (args.Length > 0)
             {
-                log.DebugFormat("Network CheckPointBlock height: {0}. My CheckPointBlock height: {1}", e.HelloResponse.Block.BlockNumber, BlockChain.Instance.BlockHeight());
-                microCoinClient.BlockResponse += (ob, eb) => {
-                    log.DebugFormat("Received {0} CheckPointBlock from blockchain. BlockChain size: {1}. CheckPointBlock height: {2}", eb.BlockResponse.Blocks.Count, BlockChain.Instance.Count, eb.BlockResponse.Blocks.Last().BlockNumber);
-                    BlockChain.Instance.AppendAll(eb.BlockResponse.Blocks);
-                    if (BlockChain.Instance.BlockHeight() < e.HelloResponse.Block.BlockNumber)
-                    {
-                        microCoinClient.RequestBlockChain((uint)(BlockChain.Instance.BlockHeight()+1), 100);
-                    }
-                    else
-                    {
-                    }
-                };
-                if (BlockChain.Instance.BlockHeight() < e.HelloResponse.Block.BlockNumber)
+                port = Convert.ToInt32(args[0]);
+            }
+            Node node = await Node.StartNode(port);
+            log.Info($"Last account: {CheckPoints.Accounts.Last().AccountNumber}");
+            for(int i=0;i<CheckPoints.Accounts.Count;i++)
+            {
+                if (CheckPoints.Accounts[i].AccountNumber != i)
                 {
-                    microCoinClient.RequestBlockChain((uint)(BlockChain.Instance.BlockHeight()), 100);
+                    log.Error("Hiba");
                 }
-            };
-
-            Node node = await Node.StartNode();
+            }
             string block;
             do
             {
@@ -126,7 +117,6 @@ namespace MicroCoin
                 }
             } while (block != "q");
             Node.Instance.Dispose();
-            microCoinClient.Dispose();
             Console.ReadLine();
             return 0;
         }

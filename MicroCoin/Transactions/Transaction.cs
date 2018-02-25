@@ -24,6 +24,7 @@ namespace MicroCoin.Transactions
 {
     public enum TransactionType : uint
     {
+        None = 0,
         Transaction = 1, ChangeKey, RecoverFounds, ListAccountForSale,
         DeListAccountForSale, BuyAccount, ChangeKeySigned, ChangeAccountInfo
     };

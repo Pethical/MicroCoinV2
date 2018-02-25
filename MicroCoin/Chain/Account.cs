@@ -11,7 +11,6 @@ namespace MicroCoin.Chain
     public class Account : IEquatable<Account>
     {
         private uint _updatedBlock;
-
         public uint AccountNumber { get; set; }
         public AccountInfo AccountInfo { get; set; }
         public ulong Balance { get; set; }
@@ -34,6 +33,7 @@ namespace MicroCoin.Chain
                 }
             }
         }
+        
         /// <summary>
         /// Only reference, don't save
         /// The block number of the account
