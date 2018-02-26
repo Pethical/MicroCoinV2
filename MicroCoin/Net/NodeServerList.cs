@@ -103,7 +103,13 @@ namespace MicroCoin.Net
         {
             using (BinaryWriter bw = new BinaryWriter(s, Encoding.ASCII, true))
             {
-                bw.Write((uint)0); // TODO: Save node servers
+                bw.Write((uint)Count);
+                foreach(var item in this)
+                {
+                    item.Value.IP.SaveToStream(bw);
+                    bw.Write(item.Value.Port);
+                    bw.Write(item.Value.LastConnection);
+                }
             }
         }
 

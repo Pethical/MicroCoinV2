@@ -68,7 +68,7 @@ namespace MicroCoin
             consoleAppender.ActivateOptions();
 
             hierarchy.Root.AddAppender(consoleAppender);
-            hierarchy.Root.Level = Level.Info;
+            hierarchy.Root.Level = Level.All;
             hierarchy.Configured = true;
             //MemoryAppender memory = new MemoryAppender();
             //memory.ActivateOptions();

@@ -147,19 +147,19 @@ namespace MicroCoin
                                         var client = tcpListener.EndAcceptTcpClient(state);
                                         log.Warn($"New client {client.Client.RemoteEndPoint}");
                                         MicroCoinClient mClient = new MicroCoinClient();
+                                        mClient.Disconnected += (o, e)=>{
+                                            Clients.Remove((MicroCoinClient)o);                                            
+                                        };
                                         Clients.Add(mClient);
                                         mClient.Handle(client);
-                                        connected.Set();
+                                        connected.Set();                                        
                                     }
                                     catch (ObjectDisposedException)
                                     {
                                         return;
                                     }
                                 }, null);
-                                while (true)
-                                {
-                                    connected.WaitOne(1);
-                                }
+                                while (!connected.WaitOne(1)) ;
                             }
                         }
                         catch (ThreadAbortException ta)
@@ -170,7 +170,8 @@ namespace MicroCoin
                     }
                     catch (Exception e)
                     {
-                        log.Error(e.Message, e);
+                        //log.Error(e.Message, e);
+                        return;
                     }
                 }
                 finally
