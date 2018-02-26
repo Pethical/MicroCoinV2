@@ -1,7 +1,8 @@
-﻿// This file is part of MicroCoin.
-// 
+﻿//-----------------------------------------------------------------------
+// This file is part of MicroCoin - The first hungarian cryptocurrency
 // Copyright (c) 2018 Peter Nemeth
-//
+// NodeServerList.cs - Copyright (c) 2018 Németh Péter
+//-----------------------------------------------------------------------
 // MicroCoin is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
@@ -11,9 +12,10 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the 
 // GNU General Public License for more details.
-//
+//-------------------------------------------------------------------------
 // You should have received a copy of the GNU General Public License
 // along with MicroCoin. If not, see <http://www.gnu.org/licenses/>.
+//-----------------------------------------------------------------------
 
 
 using log4net;
@@ -28,6 +30,8 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
+using MicroCoin.Transactions;
+using MicroCoin.Protocol;
 
 namespace MicroCoin.Net
 {
@@ -112,6 +116,7 @@ namespace MicroCoin.Net
                 }
             }
         }
+        private List<string> transmitted = new List<string>();
 
         public void TryAddNew(string key, NodeServer nodeServer)
         {
@@ -139,11 +144,35 @@ namespace MicroCoin.Net
                                 log.DebugFormat("Received {0} CheckPointBlock from blockchain. BlockChain size: {1}. CheckPointBlock height: {2}", eb.BlockResponse.Blocks.Count, BlockChain.Instance.Count, eb.BlockResponse.Blocks.Last().BlockNumber);
                                 BlockChain.Instance.AppendAll(eb.BlockResponse.Blocks);
                             };
+                            MicroCoinClient.NewTransaction += (o, e) =>
+                            {
+                                string hash = e.Transaction.GetHash();
+                                if (transmitted.Contains(hash))
+                                {
+                                    log.Info("Transaction already sent. Skipping.");
+                                    return;
+                                }
+                                var client = (MicroCoinClient)o;
+                                var ip = ((IPEndPoint)client.TcpClient.Client.RemoteEndPoint).Address.ToString();
+                                transmitted.Add(hash);
+                                using (MemoryStream ms = new MemoryStream())
+                                {
+                                    foreach (var c in this)
+                                    {
+                                        if (c.Value.IPAddress != ip)
+                                        {
+                                            ms.Position = 0;
+                                            c.Value.MicroCoinClient.SendRaw(ms);
+                                            log.Info($"Sent incoming transaction to {c.Value.IPAddress}");
+                                        }
+                                    }
+                                }
+                            };
                             MicroCoinClient.SendHello();
                         }
                         else
                         {
-                            log.Debug($"Dead {nodeServer}");
+                            log.Debug($"{nodeServer} dead");
                             BlackList.TryAdd(key, nodeServer);
                             TryRemove(key, out NodeServer outs);
                             var cnt = this.Count(p => p.Value.Connected);

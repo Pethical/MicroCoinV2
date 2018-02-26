@@ -1,7 +1,8 @@
-﻿// This file is part of MicroCoin.
-// 
+﻿//-----------------------------------------------------------------------
+// This file is part of MicroCoin - The first hungarian cryptocurrency
 // Copyright (c) 2018 Peter Nemeth
-//
+// NewTransactionMessage.cs - Copyright (c) 2018 Németh Péter
+//-----------------------------------------------------------------------
 // MicroCoin is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
@@ -11,34 +12,40 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the 
 // GNU General Public License for more details.
-//
+//-------------------------------------------------------------------------
 // You should have received a copy of the GNU General Public License
 // along with MicroCoin. If not, see <http://www.gnu.org/licenses/>.
+//-----------------------------------------------------------------------
 
 
 using MicroCoin.Chain;
 using MicroCoin.Transactions;
+using MicroCoin.Util;
+using System;
 using System.IO;
+using System.Text;
 
 namespace MicroCoin.Protocol
 {
     public class NewTransactionMessage : MessageHeader
     {
-
         public uint TransactionCount { get; set; }
-
-        public TransactionType[] TransactionTypes { get; set; }
-
-        private object[] transactions;
-
+        private TransactionType[] TransactionTypes { get; set; }
+        private Transaction[] transactions;
+        public DateTime Created { get; set; } = DateTime.Now;
         protected Stream stream;
+
+        public NewTransactionMessage(Transaction[] transactions)
+        {
+            this.transactions = transactions;
+        }
 
         public NewTransactionMessage(Stream stream, MessageHeader rp) : base(rp)
         {
             using(BinaryReader br = new BinaryReader(stream))
             {
                 TransactionCount = br.ReadUInt32();
-                transactions = new object[TransactionCount];
+                transactions = new Transaction[TransactionCount];
                 TransactionTypes = new TransactionType[TransactionCount];
                 for (int i = 0; i < TransactionCount; i++)
                 {
@@ -67,6 +74,65 @@ namespace MicroCoin.Protocol
                             return;
                     }
                 }
+            }
+        }
+
+        override public void SaveToStream(Stream s)
+        {
+            base.SaveToStream(s);
+            MemoryStream memoryStream = new MemoryStream();
+            try
+            {
+                using (BinaryWriter bw = new BinaryWriter(memoryStream))
+                {
+                    bw.Write((uint)transactions.Length);
+                    foreach (var t in transactions)
+                    {
+                        t.SaveToStream(memoryStream);
+                    }
+                    using (BinaryWriter bw2 = new BinaryWriter(s, Encoding.Default, true))
+                    {
+                        bw.Write((int)memoryStream.Length);
+                        memoryStream.Position = 0;
+                        memoryStream.CopyTo(s);
+                        s.Position = 0;
+                    }
+                }
+            }
+            finally
+            {
+                memoryStream.Dispose();
+                memoryStream = null;
+            }
+        }
+
+        public Hash GetHash()
+        {
+            MemoryStream ms = new MemoryStream();
+            try
+            {
+                using (BinaryWriter bw = new BinaryWriter(ms))
+                {
+                    foreach (var t in transactions)
+                    {
+                        bw.Write(t.Fee);
+                        t.Payload.SaveToStream(bw);
+                        bw.Write(t.SignerAccount);
+                        bw.Write(t.TargetAccount);
+                        t.Signature.SaveToStream(ms);
+                        t.AccountKey.SaveToStream(ms);
+                        bw.Write((uint)t.TransactionType);
+                        bw.Write(Created.Hour);
+                        bw.Write((int)(Created.Minute / 10));
+                    }
+                    System.Security.Cryptography.SHA256Managed sha = new System.Security.Cryptography.SHA256Managed();
+                    ms.Position = 0;
+                    return sha.ComputeHash(ms);
+                }
+            }
+            finally
+            {
+                ms.Dispose();
             }
         }
 

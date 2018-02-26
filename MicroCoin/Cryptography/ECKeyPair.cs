@@ -1,7 +1,8 @@
-﻿// This file is part of MicroCoin.
-// 
+﻿//-----------------------------------------------------------------------
+// This file is part of MicroCoin - The first hungarian cryptocurrency
 // Copyright (c) 2018 Peter Nemeth
-//
+// ECKeyPair.cs - Copyright (c) 2018 Németh Péter
+//-----------------------------------------------------------------------
 // MicroCoin is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
@@ -11,9 +12,10 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the 
 // GNU General Public License for more details.
-//
+//-------------------------------------------------------------------------
 // You should have received a copy of the GNU General Public License
 // along with MicroCoin. If not, see <http://www.gnu.org/licenses/>.
+//-----------------------------------------------------------------------
 
 
 using Org.BouncyCastle.Asn1.X9;
@@ -57,7 +59,7 @@ namespace MicroCoin.Cryptography
                     curve = Org.BouncyCastle.Asn1.Sec.SecNamedCurves.GetByName("sect283k1");
                     F2mCurve c1 = (F2mCurve)curve.Curve;
                     publicKey = new FpPoint(c1, new F2mFieldElement(c1.M, c1.K1, new BigInteger(+1, X)),
-                        new F2mFieldElement(c1.M, c1.K1, new BigInteger(+1, Y)));
+                        new F2mFieldElement(c1.M, c1.K1, new BigInteger(+1, Y)));                    
                     return publicKey;
                 }
                 else if (CurveType == CurveType.Secp256K1)

@@ -1,7 +1,8 @@
-﻿// This file is part of MicroCoin.
-// 
+﻿//-----------------------------------------------------------------------
+// This file is part of MicroCoin - The first hungarian cryptocurrency
 // Copyright (c) 2018 Peter Nemeth
-//
+// MicroCoinClient.cs - Copyright (c) 2018 Németh Péter
+//-----------------------------------------------------------------------
 // MicroCoin is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
@@ -11,9 +12,10 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the 
 // GNU General Public License for more details.
-//
+//-------------------------------------------------------------------------
 // You should have received a copy of the GNU General Public License
 // along with MicroCoin. If not, see <http://www.gnu.org/licenses/>.
+//-----------------------------------------------------------------------
 
 
 using MicroCoin.Chain;
@@ -71,16 +73,7 @@ namespace MicroCoin.Net
             BlockResponse = blockResponse;
         }
     }
-    /*public class TransactionBlockResponseEventArgs
-    {
-        public TransactionBlockResponse transactionBlockResponse { get; }
 
-        public TransactionBlockResponseEventArgs(TransactionBlockResponse transactionBlockResponse)
-        {
-            this.transactionBlockResponse = transactionBlockResponse;
-        }
-    }
-    */
     public class NewTransactionEventArgs
     {
         public NewTransactionMessage Transaction { get; }
@@ -237,6 +230,14 @@ namespace MicroCoin.Net
                 return rp;
             });
         }
+
+        public void SendRaw(Stream stream)
+        {
+            NetworkStream ns = TcpClient.GetStream();
+            stream.Position = 0;
+            stream.CopyTo(ns);
+        }
+
         public async Task<HelloResponse> SendHelloAsync()
         {
             HelloRequest request = new HelloRequest
@@ -301,7 +302,6 @@ namespace MicroCoin.Net
                 var ns = TcpClient.GetStream();
                 using (var ms = new MemoryStream())
                 {
-                    //log.Debug(transactionBlockResponse.List.First().BlockNumber);
                     for (uint i = 0; i <= blockResponse.Blocks.Last().BlockNumber / 10000; i++)
                     {
                         CheckPointRequest checkPointRequest = new CheckPointRequest();
