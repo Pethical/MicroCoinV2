@@ -30,6 +30,9 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using MicroCoin.Cryptography;
+using System.Collections.Generic;
+using System.Security.Cryptography;
 
 namespace MicroCoin
 {
@@ -37,7 +40,7 @@ namespace MicroCoin
     {
         private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
-        static async Task<int> Main(string[] args) 
+        static int Main(string[] args) 
         {
             Thread.CurrentThread.Name = "Main";
             Hierarchy hierarchy = (Hierarchy)LogManager.GetRepository();
@@ -80,7 +83,23 @@ namespace MicroCoin
             {
                 port = Convert.ToInt32(args[0]);
             }
-            Node node = await Node.StartNode(port);
+            var key = ECKeyPair.CreateNew(false);
+            var x = key.PublicKey.AffineXCoord.GetEncoded();
+            var y = key.PublicKey.AffineYCoord.GetEncoded();
+            byte[] magic = { 0x31, 0x53, 0x43, 0x45 };
+            List<byte> l = new List<byte>();
+            l.AddRange(magic);
+            l.Add(0x20);
+            l.Add(0);l.Add(0);l.Add(0);
+            l.AddRange(x);
+            l.AddRange(y);
+            Hash h = l.ToArray();
+
+            /*CngKey cKey = CngKey.Import(h, CngKeyBlobFormat.EccPublicBlob);
+            //Console.WriteLine(cKey.KeyName);
+            Console.WriteLine(h);
+            Console.ReadLine();*/
+            Node node = Node.StartNode(port).Result;
             log.Info($"Last account: {CheckPoints.Accounts.Last().AccountNumber}");
             for(int i=0;i<CheckPoints.Accounts.Count;i++)
             {

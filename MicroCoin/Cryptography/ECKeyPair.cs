@@ -43,6 +43,13 @@ namespace MicroCoin.Cryptography
         public BigInteger PrivateKey { get; set; }
         public bool Compressed { get; set; }
         private ECPoint publicKey;
+
+	public ECPublicKeyParameters PublicKeyParameters{
+	    get {
+		    return (ECPublicKeyParameters)PublicKeyFactory.CreateKey(PublicKey.GetEncoded());
+	    }
+	}
+
         public ECPoint PublicKey { get {
                 if (publicKey != null) return publicKey;
                 X9ECParameters curve;
@@ -89,7 +96,7 @@ namespace MicroCoin.Cryptography
         public byte[] Y { get; set; }        
 
         public static ECKeyPair CreateNew(bool compressed)
-        {            
+        {
             SecureRandom secureRandom = new SecureRandom();
             X9ECParameters curve = Org.BouncyCastle.Asn1.Sec.SecNamedCurves.GetByName("secp256k1");
             ECDomainParameters domain = new ECDomainParameters(curve.Curve, curve.G, curve.N, curve.H);

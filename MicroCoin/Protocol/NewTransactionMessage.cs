@@ -116,7 +116,9 @@ namespace MicroCoin.Protocol
                     foreach (var t in transactions)
                     {
                         bw.Write(t.Fee);
-                        t.Payload.SaveToStream(bw);
+			if(t.Payload!=null) {
+                    	    t.Payload.SaveToStream(bw);
+			}
                         bw.Write(t.SignerAccount);
                         bw.Write(t.TargetAccount);
                         t.Signature.SaveToStream(ms);

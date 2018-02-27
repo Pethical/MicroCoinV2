@@ -162,7 +162,11 @@ namespace MicroCoin.Net
                                         if (c.Value.IPAddress != ip)
                                         {
                                             ms.Position = 0;
-                                            c.Value.MicroCoinClient.SendRaw(ms);
+					    try{
+                                        	c.Value.MicroCoinClient.SendRaw(ms);
+					    } catch {
+
+					    }
                                             log.Info($"Sent incoming transaction to {c.Value.IPAddress}");
                                         }
                                     }
