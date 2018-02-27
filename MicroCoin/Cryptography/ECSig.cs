@@ -35,6 +35,16 @@ namespace MicroCoin.Cryptography
         public byte[] r { get; set; }
         public byte[] s { get; set; }
 
+        public byte[] Signature
+        {
+            get
+            {
+                var ret = r.ToList();
+                ret.AddRange(s);
+                return ret.ToArray();
+            }
+        }
+
         public ECSig() { }
         public ECSig(Stream stream) {
             using (BinaryReader br = new BinaryReader(stream, Encoding.ASCII, true))
@@ -47,40 +57,6 @@ namespace MicroCoin.Cryptography
                 br.Read(s, 0, len);
             }
         }
-
-        public byte[] SignData(byte[] msg, ECPrivateKeyParameters privKey)
-        {
-            try
-            {                                
-                ISigner signer = SignerUtilities.GetSigner("SHA-256withECDSA");
-                signer.Init(true, privKey);
-                signer.BlockUpdate(msg, 0, msg.Length);
-                byte[] sigBytes = signer.GenerateSignature();
-                return sigBytes;
-            }
-            catch (Exception e)
-            {                
-                return null;
-            }
-        }
-
-        public bool VerifySignature(ECPublicKeyParameters pubKey, byte[] msg)
-        {
-            try
-            {
-                List<byte> rs = r.ToList();
-                rs.AddRange(s);
-                byte[] sigBytes = rs.ToArray();
-                ISigner signer = SignerUtilities.GetSigner("SHA-256withECDSA");
-                signer.Init(false, pubKey);
-                signer.BlockUpdate(msg, 0, msg.Length);
-                return signer.VerifySignature(sigBytes);
-            }
-            catch (Exception e)
-            {
-                return false;
-            }
-        }        
 
         public void SaveToStream(Stream stream)
         {

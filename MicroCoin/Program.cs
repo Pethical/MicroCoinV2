@@ -83,22 +83,85 @@ namespace MicroCoin
             {
                 port = Convert.ToInt32(args[0]);
             }
+            /*
             var key = ECKeyPair.CreateNew(false);
             var x = key.PublicKey.AffineXCoord.GetEncoded();
             var y = key.PublicKey.AffineYCoord.GetEncoded();
+            CngKeyCreationParameters creationParameters = new CngKeyCreationParameters();
+            creationParameters.ExportPolicy = CngExportPolicies.AllowPlaintextExport;            
+            var objCngKey = CngKey.Create(CngAlgorithm.ECDsaP256);
+            Hash ha = objCngKey.Export(CngKeyBlobFormat.EccPublicBlob);
+            ECDsaCng cDsaCng = new ECDsaCng(objCngKey);
+            Console.WriteLine(ha);
+            Console.ReadLine();
             byte[] magic = { 0x31, 0x53, 0x43, 0x45 };
             List<byte> l = new List<byte>();
-            l.AddRange(magic);
+            l.AddRange(magic.Reverse());
             l.Add(0x20);
-            l.Add(0);l.Add(0);l.Add(0);
-            l.AddRange(x);
-            l.AddRange(y);
-            Hash h = l.ToArray();
-
-            /*CngKey cKey = CngKey.Import(h, CngKeyBlobFormat.EccPublicBlob);
-            //Console.WriteLine(cKey.KeyName);
+            l.Add(0);
+            l.Add(0);
+            l.Add(0);
+            l.AddRange(key.PublicKey.GetEncoded(false).Skip(1).ToArray());            
+            Hash h = l.ToArray();            
+            Console.WriteLine(h);
+            Console.ReadLine();
+            byte[] b = ha;
+            byte[] xa = b.Skip(8).Take(32).ToArray();
+            byte[] ya = b.Skip(40).Take(32).ToArray();
+            ECKeyPair cKeyPair = new ECKeyPair();
+            cKeyPair.CurveType = CurveType.Secp256K1;            
+            cKeyPair.X = xa;
+            cKeyPair.Y = ya;
+            Hash enc = cKeyPair.PublicKey.GetEncoded(false);
+            Console.WriteLine(enc);
+            l.Clear();
+            l.AddRange(magic.Reverse());
+            l.Add(0x20);
+            l.Add(0);
+            l.Add(0);
+            l.Add(0);
+            l.AddRange(cKeyPair.PublicKey.GetEncoded(false).Skip(1));
+            Hash bc = "a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd5b8dec5235a0fa8722476c7709c02559e3aa73aa03918ba2d492eea75abea235";
+            //CngKey cKey = CngKey.Import(bc, CngKeyBlobFormat.EccPublicBlob);
+            ECParameters parameters = new ECParameters();            
+            ECCurve curve = ECCurve.CreateFromFriendlyName("secp256k1");
+            parameters.Curve = curve;
+            parameters.Q.X = x;
+            parameters.Q.Y = y;
+            byte[] D = key.PrivateKey.ToByteArray();
+            if (D[0] == 0)
+            {
+                D = D.Skip(1).ToArray();
+            }
+            parameters.D = D;
+            var eC = ECDsa.Create(parameters);
+            ByteString sd = "hello";
+            Hash sign = eC.SignData(sd, HashAlgorithmName.SHA256);
+            bool valid = eC.VerifyData(sd, sign, HashAlgorithmName.SHA256);
+            // Console.WriteLine(cKey.KeyName);
             Console.WriteLine(h);
             Console.ReadLine();*/
+            ECKeyPair pair = ECKeyPair.CreateNew(false);
+            ECParameters parameters = new ECParameters();
+            ECCurve curve = ECCurve.CreateFromFriendlyName("secp256k1");
+            parameters.Curve = curve;
+            parameters.Q.X = pair.X;
+            parameters.Q.Y = pair.Y;
+            byte[] D = pair.PrivateKey.ToByteArray();
+            if (D[0] == 0)
+            {
+                D = D.Skip(1).ToArray();
+            }
+            parameters.D = D;
+            var eC = ECDsa.Create(parameters);
+            ByteString sd = "hello";
+            Hash sign = eC.SignData(sd, HashAlgorithmName.SHA256);
+            bool valid = eC.VerifyData(sd, sign, HashAlgorithmName.SHA256);
+            ECSig sig = new ECSig();
+            byte[] signature = sign;
+            sig.r = signature.Take(32).ToArray();
+            sig.s = signature.Skip(32).Take(32).ToArray();
+            pair.ValidateSignature(sd, sig);
             Node node = Node.StartNode(port).Result;
             log.Info($"Last account: {CheckPoints.Accounts.Last().AccountNumber}");
             for(int i=0;i<CheckPoints.Accounts.Count;i++)

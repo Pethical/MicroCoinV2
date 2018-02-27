@@ -155,6 +155,13 @@ namespace MicroCoin.Net
                                 var client = (MicroCoinClient)o;
                                 var ip = ((IPEndPoint)client.TcpClient.Client.RemoteEndPoint).Address.ToString();
                                 transmitted.Add(hash);
+                                if (e.Transaction.Transactions[0] is TransferTransaction)
+                                {
+                                    TransferTransaction t = (TransferTransaction)e.Transaction.Transactions[0];
+                                    CheckPoints.Accounts[(int)t.SignerAccount].AccountInfo.AccountKey.ValidateSignature(
+                                    t.GetHash(),
+                                    t.Signature);
+                                }
                                 using (MemoryStream ms = new MemoryStream())
                                 {
                                     foreach (var c in this)
@@ -162,11 +169,14 @@ namespace MicroCoin.Net
                                         if (c.Value.IPAddress != ip)
                                         {
                                             ms.Position = 0;
-					    try{
-                                        	c.Value.MicroCoinClient.SendRaw(ms);
-					    } catch {
+                                            try
+                                            {
+                                                c.Value.MicroCoinClient.SendRaw(ms);
+                                            }
+                                            catch
+                                            {
 
-					    }
+                                            }
                                             log.Info($"Sent incoming transaction to {c.Value.IPAddress}");
                                         }
                                     }

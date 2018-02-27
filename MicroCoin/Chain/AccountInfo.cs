@@ -119,7 +119,7 @@ namespace MicroCoin.Chain
             if (!other.AccountKey.Equals(AccountKey)) return false;
             if (other.NewPublicKey == null)
             {
-                if (NewPublicKey != null && (NewPublicKey.PrivateKey!=null|| NewPublicKey.PublicKey!=null))
+                if (NewPublicKey != null && (NewPublicKey.PrivateKey!=null|| NewPublicKey.X!=null))
                     return false;
             }
             else

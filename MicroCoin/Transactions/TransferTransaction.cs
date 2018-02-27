@@ -21,6 +21,7 @@
 using MicroCoin.Cryptography;
 using MicroCoin.Util;
 using System.IO;
+using System.Linq;
 using System.Text;
 
 namespace MicroCoin.Transactions
@@ -40,6 +41,47 @@ namespace MicroCoin.Transactions
         public TransferTransaction(Stream stream)
         {
             LoadFromStream(stream);
+        }
+
+        public byte[] GetHash()
+        {
+            using(MemoryStream ms = new MemoryStream())
+            {
+                using(BinaryWriter bw = new BinaryWriter(ms))
+                {
+                    bw.Write(SignerAccount);
+                    bw.Write(NumberOfOperations);
+                    bw.Write(TargetAccount);
+                    bw.Write(Amount);
+                    bw.Write(Fee);
+                    if (Payload != null && Payload.Length > 0) bw.Write((byte[])Payload);
+                    if (AccountKey != null && AccountKey.X != null && AccountKey.Y != null
+                        && AccountKey.X.Length>0 && AccountKey.Y.Length > 0)
+                    {
+                        bw.Write((ushort)AccountKey.CurveType);
+                        bw.Write(AccountKey.X);
+                        bw.Write(AccountKey.Y);
+                    }
+                    else
+                    {
+                        bw.Write((ushort)0);
+                    }
+                    ms.Position = 0;
+                    return ms.ToArray();
+                    /*
+                    using(MemoryStream ms2 = new MemoryStream())
+                    {
+                        using (BinaryWriter bw2 = new BinaryWriter(ms2))
+                        {
+                            bw2.Write((ushort)ms.Length);
+                            ms.CopyTo(ms2);
+                            ms2.Position = 0;
+                            return ms2.ToArray();
+                        }
+                    }*/
+
+                }
+            }
         }
 
         public override void SaveToStream(Stream s)
