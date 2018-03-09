@@ -74,7 +74,6 @@ namespace MicroCoin
                 MicroCoinClient.ServerPort = (ushort)((IPEndPoint)MicroCoinClient.TcpClient.Client.LocalEndPoint).Port;
                 CheckPoints.Init();
                 HelloResponse response = await MicroCoinClient.SendHelloAsync();
-
                 uint start = (response.Block.BlockNumber / 100) * 100;
                 int bl = BlockChain.Instance.BlockHeight();
                 while (bl <= response.Block.BlockNumber)
@@ -136,8 +135,6 @@ namespace MicroCoin
                     LastConnection = DateTime.Now,
                     Port=4004                    
                 });
-                //MicroCoinClient.Start();
-                //MicroCoinClient.SendHello();
             }
             catch(Exception e)
             {
@@ -160,9 +157,7 @@ namespace MicroCoin
                         log.Warn("started listener");
                         try
                         {
-                            // TcpListener tcpListener = new TcpListener((IPEndPoint)MicroCoinClient.TcpClient.Client.LocalEndPoint);
                             MicroCoinClient.ServerPort = 4040;
-                            //tcpListener.AllowNatTraversal(true);
                             tcpListener.Start();
                             ManualResetEvent connected = new ManualResetEvent(false);
                             while (true)
@@ -198,7 +193,6 @@ namespace MicroCoin
                     }
                     catch (Exception e)
                     {
-                        //log.Error(e.Message, e);
                         return;
                     }
                 }

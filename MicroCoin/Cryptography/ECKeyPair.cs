@@ -81,7 +81,7 @@ namespace MicroCoin.Cryptography
             parameters.Q.Y = Y;
             parameters.Curve = curve;
             parameters.Validate();
-            ECDsa ecdsa = ECDsa.Create(parameters);
+            ECDsa ecdsa = ECDsa.Create(parameters);            
             bool ok = ecdsa.VerifyHash(data, signature.Signature);
             return ok;
         }

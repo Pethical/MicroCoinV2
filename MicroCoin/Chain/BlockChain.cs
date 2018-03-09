@@ -156,7 +156,7 @@ namespace MicroCoin.Chain
                         fi.Position = fi.Length - 16;
                         uint blockNumber = ir.ReadUInt32();
                         long position = ir.ReadInt64();
-			            log.Debug($"Last block {blockNumber} {position}");
+			            //log.Debug($"Last block {blockNumber} {position}");
                         FileStream f = File.Open(BlockChainFileName, FileMode.OpenOrCreate, FileAccess.ReadWrite);
                         try
                         {
