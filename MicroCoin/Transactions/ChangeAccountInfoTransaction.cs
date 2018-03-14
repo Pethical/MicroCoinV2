@@ -71,7 +71,7 @@ namespace MicroCoin.Transactions
                 TargetAccount = br.ReadUInt32();
                 NumberOfOperations = br.ReadUInt32();
                 Fee = br.ReadUInt64();
-                ReadPayLoad(br);
+                Payload = ByteString.ReadFromStream(br);
                 AccountKey = new ECKeyPair();
                 AccountKey.LoadFromStream(stream, false);
                 ChangeType = br.ReadByte();

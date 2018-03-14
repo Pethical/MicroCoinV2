@@ -42,6 +42,7 @@ namespace MicroCoin
 
         static int Main(string[] args) 
         {
+            return 0;
             Thread.CurrentThread.Name = "Main";
             Hierarchy hierarchy = (Hierarchy)LogManager.GetRepository();
             PatternLayout patternLayout = new PatternLayout();
@@ -155,14 +156,14 @@ namespace MicroCoin
             parameters.D = D;
             var eC = ECDsa.Create(parameters);
             ByteString sd = "hello";
-            Hash sign = eC.SignData(sd, HashAlgorithmName.SHA256);
-            bool valid = eC.VerifyData(sd, sign, HashAlgorithmName.SHA256);
+            Hash sign = eC.SignHash(sd);            
+            
             ECSig sig = new ECSig();
             byte[] signature = sign;
             sig.r = signature.Take(32).ToArray();
             sig.s = signature.Skip(32).Take(32).ToArray();
             pair.ValidateSignature(sd, sig);
-            Node node = Node.StartNode(port).Result;
+            Node node = Node.StartNode(port).Result;            
             log.Info($"Last account: {CheckPoints.Accounts.Last().AccountNumber}");
             for(int i=0;i<CheckPoints.Accounts.Count;i++)
             {

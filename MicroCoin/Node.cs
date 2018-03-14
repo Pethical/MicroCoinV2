@@ -37,6 +37,7 @@ using System.Net.Sockets;
 using System.Net;
 using System.Threading;
 using MicroCoin.Util;
+using MicroCoin.Transactions;
 
 namespace MicroCoin
 {
@@ -45,6 +46,7 @@ namespace MicroCoin
         private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
         private static Node s_instance;
         public ECKeyPair AccountKey { get; } = ECKeyPair.CreateNew(false);
+        public static IList<ECKeyPair> Keys { get; set; }
         private static MicroCoinClient MicroCoinClient { get; set; }
         public NodeServerList NodeServers { get; set; } = new NodeServerList();        
         public BlockChain BlockChain { get; set; } = BlockChain.Instance;
@@ -63,14 +65,15 @@ namespace MicroCoin
         {
             
         }
-        public static async Task<Node> StartNode(int port=4004)
+        public static async Task<Node> StartNode(int port=4004, IList<ECKeyPair> keys = null)
         {
-
+            Keys = keys;
             MicroCoinClient = new MicroCoinClient();
             //MicroCoinClient.Connect("micro-225.microbyte.cloud", 4004);
             try
             {
                 MicroCoinClient.Connect("127.0.0.1", port);
+                //MicroCoinClient.Connect("micro-225.microbyte.cloud", 4004);
                 MicroCoinClient.ServerPort = (ushort)((IPEndPoint)MicroCoinClient.TcpClient.Client.LocalEndPoint).Port;
                 CheckPoints.Init();
                 HelloResponse response = await MicroCoinClient.SendHelloAsync();
@@ -217,5 +220,28 @@ namespace MicroCoin
             MicroCoinClient.Dispose();
             NodeServers.Dispose();
         }
+
+        public bool SendCoin(Account sender, Account target, decimal amount, decimal fee, ECKeyPair key, string payload)
+        {            
+            TransferTransaction transaction = new TransferTransaction();
+            transaction.Amount = (ulong)(amount * 10000M);
+            transaction.Fee = (ulong)(fee * 10000M); ;
+            transaction.Payload = payload;
+            transaction.SignerAccount = sender.AccountNumber;
+            transaction.TargetAccount = target.AccountNumber;
+            transaction.TransactionStyle = TransferTransaction.TransferType.Transaction;
+            transaction.TransactionType = TransactionType.Transaction;
+            transaction.AccountKey = key;
+            CheckPoints.Account(transaction.SignerAccount).NumberOfOperations++;
+            transaction.NumberOfOperations = CheckPoints.Account(transaction.SignerAccount).NumberOfOperations;
+            transaction.Signature = transaction.GetSignature();
+            //bool ok = transaction.AccountKey.ValidateSignature(transaction.GetHash(), transaction.Signature);
+            sender.Balance -= (transaction.Amount + transaction.Fee);
+            target.Balance += transaction.Amount;
+            sender.Saved = false;
+            NodeServers.SendTransaction(transaction);
+            return true;
+        }
+
     }
 }

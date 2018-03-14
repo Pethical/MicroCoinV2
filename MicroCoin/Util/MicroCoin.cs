@@ -33,11 +33,6 @@ namespace MicroCoin.Util
             this.value = value;
         }
 
-        public static implicit operator ulong(MCC m)
-        {
-            return (ulong) (m.value * 10000M);
-        }
-
         public static implicit operator decimal(MCC m)
         {
             return m.value;
@@ -75,8 +70,14 @@ namespace MicroCoin.Util
 
         public override string ToString()
         {
-            return value.ToString();
+            return value.ToString("G");
         }
+
+        public string ToString(string format)
+        {
+            return value.ToString(format);
+        }
+
 
         public override int GetHashCode()
         {

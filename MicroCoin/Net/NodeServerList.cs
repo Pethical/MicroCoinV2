@@ -118,87 +118,102 @@ namespace MicroCoin.Net
         }
         private List<string> transmitted = new List<string>();
 
+        public void SendTransaction(Transaction transaction)
+        {
+            NewTransactionMessage message = new NewTransactionMessage();
+            message.Operation = NetOperationType.AddOperations;
+            message.RequestType = RequestType.AutoSend;
+            message.TransactionCount = 1;
+            message.RequestId = (uint)(new Random().Next(1000000));
+            message.Transactions = new Transaction[] { transaction };
+            Stream s = new MemoryStream();
+            message.SaveToStream(s);
+            foreach(var item in this)
+            {
+                item.Value.MicroCoinClient.SendRaw(s);
+            }
+        }
+
         public void TryAddNew(string key, NodeServer nodeServer)
         {
-            //lock (addLock)
-            {
                 if (BlackList.ContainsKey(key)) return;
                 if (ContainsKey(key)) return;
-                if (TryAdd(key, nodeServer))
+            if (TryAdd(key, nodeServer))
+            {
+                log.Debug($"{this.Count} nodes registered");
+                new Thread(() =>
                 {
-                    log.Debug($"{this.Count} nodes registered");
-                    new Thread(() =>
+                    var MicroCoinClient = nodeServer.Connect();
+                    if (MicroCoinClient != null && nodeServer.Connected)
                     {
-                        var MicroCoinClient = nodeServer.Connect();
-                        if (MicroCoinClient != null && nodeServer.Connected)
+                        MicroCoinClient.HelloResponse += (o, e) =>
                         {
-                            MicroCoinClient.HelloResponse += (o, e) =>
+                            log.DebugFormat("Network CheckPointBlock height: {0}. My CheckPointBlock height: {1}", e.HelloResponse.Block.BlockNumber, BlockChain.Instance.BlockHeight());
+                            if (BlockChain.Instance.BlockHeight() < e.HelloResponse.Block.BlockNumber)
                             {
-                                log.DebugFormat("Network CheckPointBlock height: {0}. My CheckPointBlock height: {1}", e.HelloResponse.Block.BlockNumber, BlockChain.Instance.BlockHeight());
-                                if (BlockChain.Instance.BlockHeight() < e.HelloResponse.Block.BlockNumber)
-                                {
-                                    MicroCoinClient.RequestBlockChain((uint)(BlockChain.Instance.BlockHeight()), 100);
-                                }
-                            };
-                            MicroCoinClient.BlockResponse += (ob, eb) => {
-                                log.DebugFormat("Received {0} CheckPointBlock from blockchain. BlockChain size: {1}. CheckPointBlock height: {2}", eb.BlockResponse.Blocks.Count, BlockChain.Instance.Count, eb.BlockResponse.Blocks.Last().BlockNumber);
-                                BlockChain.Instance.AppendAll(eb.BlockResponse.Blocks);
-                            };
-                            MicroCoinClient.NewTransaction += (o, e) =>
+                                MicroCoinClient.RequestBlockChain((uint)(BlockChain.Instance.BlockHeight()), 100);
+                            }
+                        };
+                        MicroCoinClient.BlockResponse += (ob, eb) =>
+                        {
+                            log.DebugFormat("Received {0} CheckPointBlock from blockchain. BlockChain size: {1}. CheckPointBlock height: {2}", eb.BlockResponse.Blocks.Count, BlockChain.Instance.Count, eb.BlockResponse.Blocks.Last().BlockNumber);
+                            BlockChain.Instance.AppendAll(eb.BlockResponse.Blocks);
+                        };
+                        MicroCoinClient.NewTransaction += (o, e) =>
+                        {
+                            string hash = e.Transaction.GetHash();
+                            if (transmitted.Contains(hash))
                             {
-                                string hash = e.Transaction.GetHash();
-                                if (transmitted.Contains(hash))
+                                log.Info("Transaction already sent. Skipping.");
+                                return;
+                            }
+                            var client = (MicroCoinClient)o;
+                            var ip = ((IPEndPoint)client.TcpClient.Client.RemoteEndPoint).Address.ToString();
+                            transmitted.Add(hash);
+                            if (e.Transaction.Transactions[0] is TransferTransaction)
+                            {
+                                TransferTransaction t = (TransferTransaction)e.Transaction.Transactions[0];
+                                if (!CheckPoints.Accounts[t.SignerAccount].AccountInfo.AccountKey.ValidateSignature(t.GetHash(), t.Signature))
                                 {
-                                    log.Info("Transaction already sent. Skipping.");
                                     return;
                                 }
-                                var client = (MicroCoinClient)o;
-                                var ip = ((IPEndPoint)client.TcpClient.Client.RemoteEndPoint).Address.ToString();
-                                transmitted.Add(hash);
-                                if (e.Transaction.Transactions[0] is TransferTransaction)
+                            }
+                            using (MemoryStream ms = new MemoryStream())
+                            {
+                                foreach (var c in this)
                                 {
-                                    TransferTransaction t = (TransferTransaction)e.Transaction.Transactions[0];
-                                    CheckPoints.Accounts[(int)t.SignerAccount].AccountInfo.AccountKey.ValidateSignature(
-                                    t.GetHash(),
-                                    t.Signature);
-                                }
-                                using (MemoryStream ms = new MemoryStream())
-                                {
-                                    foreach (var c in this)
+                                    if (c.Value.IPAddress != ip)
                                     {
-                                        if (c.Value.IPAddress != ip)
+                                        ms.Position = 0;
+                                        try
                                         {
-                                            ms.Position = 0;
-                                            try
-                                            {
-                                                c.Value.MicroCoinClient.SendRaw(ms);
-                                            }
-                                            catch
-                                            {
-
-                                            }
-                                            log.Info($"Sent incoming transaction to {c.Value.IPAddress}");
+                                            c.Value.MicroCoinClient.SendRaw(ms);
                                         }
+                                        catch
+                                        {
+
+                                        }
+                                        log.Info($"Sent incoming transaction to {c.Value.IPAddress}");
                                     }
                                 }
-                            };
-                            MicroCoinClient.SendHello();
-                        }
-                        else
-                        {
-                            log.Debug($"{nodeServer} dead");
-                            BlackList.TryAdd(key, nodeServer);
-                            TryRemove(key, out NodeServer outs);
-                            var cnt = this.Count(p => p.Value.Connected);
-                            log.Debug($"{this.Count} nodes registered. {cnt} connected. {BlackList.Count} dead");
-                        }
-
-                    })
-                    {
-                        Name = nodeServer.ToString()
+                            }
+                        };
+                        MicroCoinClient.SendHello();
                     }
-                    .Start();
+                    else
+                    {
+                        log.Debug($"{nodeServer} dead");
+                        BlackList.TryAdd(key, nodeServer);
+                        TryRemove(key, out NodeServer outs);
+                        var cnt = this.Count(p => p.Value.Connected);
+                        log.Debug($"{this.Count} nodes registered. {cnt} connected. {BlackList.Count} dead");
+                    }
+
+                })
+                {
+                    Name = nodeServer.ToString()
                 }
+                .Start();
             }
         }
 

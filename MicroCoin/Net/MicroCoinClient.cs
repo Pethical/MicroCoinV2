@@ -233,9 +233,11 @@ namespace MicroCoin.Net
 
         public void SendRaw(Stream stream)
         {
+            if (!TcpClient.Connected) return;
             NetworkStream ns = TcpClient.GetStream();
             stream.Position = 0;
             stream.CopyTo(ns);
+            ns.Flush();
         }
 
         public async Task<HelloResponse> SendHelloAsync()

@@ -37,7 +37,7 @@ namespace MicroCoin.Transactions
 
         public ulong AccountPrice { get; set; }
 
-        public uint AccountToPay { get; set; }
+        public AccountNumber AccountToPay { get; set; }
 
         public ECKeyPair NewPublicKey { get; set; }
 
@@ -84,14 +84,14 @@ namespace MicroCoin.Transactions
                 {
                     AccountPrice = br.ReadUInt64();
                     AccountToPay = br.ReadUInt32();
-                    AccountKey = new ECKeyPair();
+                    AccountKey = new ECKeyPair();                    
                     AccountKey.LoadFromStream(s, false);
                     NewPublicKey = new ECKeyPair();
                     NewPublicKey.LoadFromStream(s);
                     LockedUntilBlock = br.ReadUInt32();
                 }
                 Fee = br.ReadUInt64();
-                ReadPayLoad(br);
+                Payload = ByteString.ReadFromStream(br);
                 Signature = new ECSig(s);
             }
         }

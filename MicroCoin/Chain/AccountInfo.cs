@@ -19,6 +19,7 @@
 
 
 using MicroCoin.Cryptography;
+using MicroCoin.Util;
 using System;
 using System.IO;
 
@@ -31,7 +32,7 @@ namespace MicroCoin.Chain
         public ECKeyPair AccountKey { get; set; }
         public uint LockedUntilBlock { get; set; }
         public ulong Price { get; set; }
-        public uint AccountToPayPrice { get; set; }
+        public AccountNumber AccountToPayPrice { get; set; }
         public ECKeyPair NewPublicKey { get; set; }
 
         public AccountInfo()

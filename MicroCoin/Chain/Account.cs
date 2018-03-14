@@ -30,10 +30,18 @@ namespace MicroCoin.Chain
 {
     public class Account : IEquatable<Account>
     {
+        public bool Saved { get; set; } = true;
         private uint _updatedBlock;
-        public uint AccountNumber { get; set; }
+        public AccountNumber AccountNumber { get; set; }
         public AccountInfo AccountInfo { get; set; }
         public ulong Balance { get; set; }
+        public decimal VisibleBalance
+        {
+            get
+            {
+                return Balance / 10000M;
+            }
+        }
         public uint UpdatedByBlock { get; set; }
         public uint NumberOfOperations { get; set; }
         public ByteString Name { get; set; }

@@ -1,4 +1,24 @@
-﻿using MicroCoin.Util;
+﻿//-----------------------------------------------------------------------
+// This file is part of MicroCoin - The first hungarian cryptocurrency
+// Copyright (c) 2018 Peter Nemeth
+// ECKeyPair.cs - Copyright (c) 2018 Németh Péter
+//-----------------------------------------------------------------------
+// MicroCoin is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// MicroCoin is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the 
+// GNU General Public License for more details.
+//-------------------------------------------------------------------------
+// You should have received a copy of the GNU General Public License
+// along with MicroCoin. If not, see <http://www.gnu.org/licenses/>.
+//-----------------------------------------------------------------------
+
+
+using MicroCoin.Util;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -12,8 +32,8 @@ namespace MicroCoin.Cryptography
 {
     public class ECKeyPair : IEquatable<ECKeyPair>
     {
-        public byte[] X { get; set; }
-        public byte[] Y { get; set; }
+        public Hash X { get; set; }
+        public Hash Y { get; set; }
         public ECPoint PublicKey
         {
             get
@@ -24,8 +44,19 @@ namespace MicroCoin.Cryptography
                     Y = Y
                 };
             }
+            set
+            {
+                X = value.X;
+                Y = value.Y;
+            }
         }
-        public CurveType CurveType { get; set; }
+
+        public string ToEncodedString()
+        {
+            return "";
+        }
+
+        public CurveType CurveType { get; set; } = CurveType.Empty;
         public byte[] D { get; set; }
         public BigInteger PrivateKey
         {
@@ -33,13 +64,27 @@ namespace MicroCoin.Cryptography
             {
                 return new BigInteger(D);
             }
+            set
+            {
+                D = value.ToByteArray();
+            }
         }
+
+        public ByteString Name { get; set; }
 
         public void SaveToStream(Stream s, bool writeLength = true)
         {
             using (BinaryWriter bw = new BinaryWriter(s, Encoding.ASCII, true))
             {
-                int len = X.Length + Y.Length + 6;
+                int len = 0;
+                if (X == null || Y == null)
+                {
+                    len = 0;
+                }
+                else
+                {
+                    len = X.Length + Y.Length + 6;
+                }
                 if (writeLength) bw.Write((ushort)len);
                 bw.Write((ushort)CurveType);
                 if (CurveType == CurveType.Empty)
@@ -99,7 +144,7 @@ namespace MicroCoin.Cryptography
             return pair;
         }
 
-        public void LoadFromStream(Stream stream, bool doubleLen = true)
+        public void LoadFromStream(Stream stream, bool doubleLen = true, bool readPrivateKey = false)
         {
             using (BinaryReader br = new BinaryReader(stream, Encoding.ASCII, true))
             {
@@ -113,6 +158,10 @@ namespace MicroCoin.Cryptography
                 X = br.ReadBytes(xLen);
                 ushort yLen = br.ReadUInt16();
                 Y = br.ReadBytes(yLen);
+                if (readPrivateKey)
+                {
+                    D = Hash.ReadFromStream(br);
+                }
             }
         }
 
@@ -121,6 +170,39 @@ namespace MicroCoin.Cryptography
             if (!X.SequenceEqual(other.X)) return false;
             if (!Y.SequenceEqual(other.Y)) return false;
             return true;
+        }
+
+        public void DecriptKey(ByteString password)
+        {
+            byte[] b = new byte[32];
+            var salt = D.Skip(8).Take(8).ToArray();
+            SHA256Managed managed = new SHA256Managed();
+            managed.Initialize();
+            var offset = managed.TransformBlock(password, 0, password.Length, b, 0);
+            managed.TransformFinalBlock(salt, 0, salt.Length);
+            var digest = managed.Hash;
+            managed.Dispose();
+            managed = new SHA256Managed();
+            managed.Initialize();
+            managed.TransformBlock(digest, 0, digest.Length, b, 0);
+            managed.TransformBlock(password, 0, password.Length, b, 0);
+            salt = D.Skip(8).Take(8).ToArray();
+            managed.TransformFinalBlock(salt, 0, salt.Length);
+            var iv = managed.Hash;
+            managed.Dispose();           
+            RijndaelManaged aesEncryption = new RijndaelManaged();            
+            aesEncryption.KeySize = 256;
+            aesEncryption.BlockSize = 128;
+            aesEncryption.Mode = CipherMode.CBC;
+            aesEncryption.Padding = PaddingMode.PKCS7;
+            byte[] encryptedBytes = D.Skip(16).ToArray();//Crazy Salt...
+            aesEncryption.IV = iv.Take(16).ToArray();
+            aesEncryption.Key = digest;
+            ICryptoTransform decrypto = aesEncryption.CreateDecryptor();            
+            Hash hash = decrypto.TransformFinalBlock(encryptedBytes, 0, encryptedBytes.Length);
+            ByteString bs = hash;
+            Hash h2 = bs.ToString(); // dirty hack
+            D = h2;
         }
     }
 }

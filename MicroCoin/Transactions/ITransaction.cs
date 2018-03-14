@@ -1,7 +1,7 @@
 ﻿//-----------------------------------------------------------------------
 // This file is part of MicroCoin - The first hungarian cryptocurrency
 // Copyright (c) 2018 Peter Nemeth
-// Transaction.cs - Copyright (c) 2018 Németh Péter
+// ITransaction.cs - Copyright (c) 2018 Németh Péter
 //-----------------------------------------------------------------------
 // MicroCoin is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -18,44 +18,23 @@
 //-----------------------------------------------------------------------
 
 
+using System.IO;
 using MicroCoin.Cryptography;
 using MicroCoin.Util;
-using System.IO;
 
 namespace MicroCoin.Transactions
 {
-    public enum TransactionType : uint
+    public interface ITransaction
     {
-        None = 0,
-        Transaction = 1, ChangeKey, RecoverFounds, ListAccountForSale,
-        DeListAccountForSale, BuyAccount, ChangeKeySigned, ChangeAccountInfo
-    };
-
-    public abstract class Transaction : ITransaction
-    {
-        public AccountNumber SignerAccount { get; set; }
-
-        public uint NumberOfOperations { get; set; }
-
-        public AccountNumber TargetAccount { get; set; }
-
-        public ByteString Payload { get; set; }
-
-        public ECSig Signature { get; set; }
-
-        public ECKeyPair AccountKey { get; set; }
-
-        public ulong Fee { get; set; }
-
-        public virtual byte[] GetHash()
-        {
-            return new byte[0];
-        }
-
-        public abstract void SaveToStream(Stream s);
-
-        public abstract void LoadFromStream(Stream s);
-
-	    public TransactionType TransactionType{ get; set; }
+        ulong Fee { get; set; }
+        ECSig Signature { get; set; }
+        AccountNumber SignerAccount { get; set; }
+        AccountNumber TargetAccount { get; set; }
+        ECKeyPair AccountKey { get; set; }
+        TransactionType TransactionType { get; set; }
+        ByteString Payload { get; set; }
+        byte[] GetHash();
+        void LoadFromStream(Stream s);
+        void SaveToStream(Stream s);
     }
 }

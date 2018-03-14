@@ -27,11 +27,14 @@ using System.Linq;
 using System.IO;
 using System.Text;
 using System.Collections.Generic;
+using MicroCoin.Util;
 
 namespace MicroCoin.Cryptography
 {
     public class ECSig
     {
+        private Hash sign;
+
         public byte[] r { get; set; }
         public byte[] s { get; set; }
 
@@ -44,7 +47,7 @@ namespace MicroCoin.Cryptography
                 return ret.ToArray();
             }
         }
-
+        
         public ECSig() { }
         public ECSig(Stream stream) {
             using (BinaryReader br = new BinaryReader(stream, Encoding.ASCII, true))
@@ -56,6 +59,14 @@ namespace MicroCoin.Cryptography
                 s = new byte[len];
                 br.Read(s, 0, len);
             }
+        }
+
+        public ECSig(Hash sign)
+        {
+            this.sign = sign;
+            byte[] data = sign;
+            r = data.Take(32).ToArray();
+            s = data.Skip(32).Take(32).ToArray();
         }
 
         public void SaveToStream(Stream stream)

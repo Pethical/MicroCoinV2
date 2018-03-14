@@ -1,7 +1,7 @@
 ﻿//-----------------------------------------------------------------------
 // This file is part of MicroCoin - The first hungarian cryptocurrency
 // Copyright (c) 2018 Peter Nemeth
-// ECKeyPair.cs - Copyright (c) 2018 Németh Péter
+// KeyPair.cs - Copyright (c) 2018 Németh Péter
 //-----------------------------------------------------------------------
 // MicroCoin is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -18,6 +18,7 @@
 //-----------------------------------------------------------------------
 
 
+using MicroCoin.Util;
 using Org.BouncyCastle.Asn1.X9;
 using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Crypto.Generators;
@@ -95,8 +96,8 @@ namespace MicroCoin.Cryptography
             }
         }
         public CurveType CurveType { get; set; }
-        public byte[] X { get; set; }
-        public byte[] Y { get; set; }        
+        public Hash X { get; set; }
+        public Hash Y { get; set; }        
 
         public static ECKeyPair CreateNew(bool compressed)
         {

@@ -22,6 +22,7 @@ using MicroCoin.Cryptography;
 using MicroCoin.Util;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace MicroCoin.Transactions
@@ -30,20 +31,39 @@ namespace MicroCoin.Transactions
     {
         public enum TransferType : byte { Transaction, TransactionAndBuyAccount, BuyAccount };
         public ulong Amount { get; set; }
-
         public ulong AccountPrice { get; set; }
-
-        public uint SellerAccount { get; set; }
-
+        public AccountNumber SellerAccount { get; set; }
         public ECKeyPair NewAccountKey { get; set; }
         public TransferType TransactionStyle { get; set; }
-
         public TransferTransaction(Stream stream)
         {
             LoadFromStream(stream);
         }
+        public TransferTransaction()
+        {
 
-        public byte[] GetHash()
+        }
+
+        public ECSig GetSignature()
+        {
+            ECParameters parameters = new ECParameters();
+            ECCurve curve = ECCurve.CreateFromFriendlyName("secp256k1");
+            parameters.Curve = curve;
+            parameters.Q.X = AccountKey.PublicKey.X;
+            parameters.Q.Y = AccountKey.PublicKey.Y;
+            byte[] D = AccountKey.D;
+            if (D[0] == 0)
+            {
+                D = D.Skip(1).ToArray();
+            }
+            parameters.D = D;
+            var eC = ECDsa.Create(parameters);
+            Hash sign = eC.SignHash(GetHash());            
+            ECSig ecs = new ECSig(sign);
+            return ecs;
+        }
+
+        override public byte[] GetHash()
         {
             using(MemoryStream ms = new MemoryStream())
             {
@@ -59,8 +79,8 @@ namespace MicroCoin.Transactions
                         && AccountKey.X.Length>0 && AccountKey.Y.Length > 0)
                     {
                         bw.Write((ushort)AccountKey.CurveType);
-                        bw.Write(AccountKey.X);
-                        bw.Write(AccountKey.Y);
+                        bw.Write((byte[])AccountKey.X);
+                        bw.Write((byte[])AccountKey.Y);
                     }
                     else
                     {
@@ -88,9 +108,9 @@ namespace MicroCoin.Transactions
         {
             using (BinaryWriter bw = new BinaryWriter(s, Encoding.ASCII, true))
             {
-                bw.Write(SignerAccount);
+                bw.Write((uint)SignerAccount);
                 bw.Write(NumberOfOperations);
-                bw.Write(TargetAccount);
+                bw.Write((uint)TargetAccount);
                 bw.Write(Amount);
                 bw.Write(Fee);
                 Payload.SaveToStream(bw);
@@ -99,7 +119,7 @@ namespace MicroCoin.Transactions
                 {
                     bw.Write((byte)TransactionStyle);
                     bw.Write(AccountPrice);
-                    bw.Write(SellerAccount);
+                    bw.Write((uint)SellerAccount);
                     NewAccountKey.SaveToStream(s, false);
                 }
                 Signature.SaveToStream(s);
@@ -119,7 +139,7 @@ namespace MicroCoin.Transactions
                 }
                 Amount = br.ReadUInt64();
                 Fee = br.ReadUInt64();
-                ReadPayLoad(br);
+                Payload = ByteString.ReadFromStream(br);
                 AccountKey = new ECKeyPair();
                 AccountKey.LoadFromStream(stream, false);
                 byte b = br.ReadByte();

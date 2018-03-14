@@ -29,15 +29,18 @@ namespace MicroCoin.Protocol
 {
     public class NewTransactionMessage : MessageHeader
     {
+        
         public uint TransactionCount { get; set; }
         private TransactionType[] TransactionTypes { get; set; }
-        public Transaction[] Transactions { get; set; }
+        public ITransaction[] Transactions { get; set; }
         public DateTime Created { get; set; } = DateTime.Now;
-        protected Stream stream;
 
         public NewTransactionMessage(Transaction[] transactions)
         {
-            this.Transactions = transactions;
+            Transactions = transactions;
+        }
+        public NewTransactionMessage() : base()
+        {
         }
 
         public NewTransactionMessage(Stream stream, MessageHeader rp) : base(rp)
@@ -49,9 +52,7 @@ namespace MicroCoin.Protocol
                 TransactionTypes = new TransactionType[TransactionCount];
                 for (int i = 0; i < TransactionCount; i++)
                 {
-
                     TransactionTypes[i] = (TransactionType)br.ReadByte();
-
                     switch (TransactionTypes[i])
                     {
                         case TransactionType.Transaction:
@@ -87,15 +88,16 @@ namespace MicroCoin.Protocol
             {
                 using (BinaryWriter bw = new BinaryWriter(memoryStream))
                 {
-                    bw.Write((uint)Transactions.Length);
+                    bw.Write((uint)Transactions.Length);                    
                     foreach (var t in Transactions)
                     {
+                        bw.Write((byte)t.TransactionType);
                         t.SaveToStream(memoryStream);
                     }
                     using (BinaryWriter bw2 = new BinaryWriter(s, Encoding.Default, true))
                     {
-                        bw.Write((int)memoryStream.Length);
-                        memoryStream.Position = 0;
+                        memoryStream.Position = 0;                                                
+                        bw2.Write((int)memoryStream.Length);
                         memoryStream.CopyTo(s);
                         s.Position = 0;
                     }

@@ -179,6 +179,11 @@ namespace MicroCoin.Util
                 
             }
         }
+
+        internal bool SequenceEqual(Hash x)
+        {
+            return value.SequenceEqual(x.value);
+        }
     }
 
 
