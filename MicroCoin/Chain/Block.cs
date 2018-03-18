@@ -18,9 +18,12 @@
 //-----------------------------------------------------------------------
 
 
+using MicroCoin.Cryptography;
 using MicroCoin.Transactions;
+using MicroCoin.Util;
 using System.Collections.Generic;
 using System.IO;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace MicroCoin.Chain
@@ -47,8 +50,57 @@ namespace MicroCoin.Chain
         {
             if (Reward < 0) return false;
             if (Fee < 0) return false;
-            return true;
+            return ProofOfWork.Length == 0 || ProofOfWorkIsValid();
         }
+
+        public bool ProofOfWorkIsValid()
+        {
+            var header = GetBlockHeaderForHash();
+            Hash headerHash = header.GetBlockHeaderHash((uint)Nonce, Timestamp);
+            using (SHA256Managed sha = new SHA256Managed())
+            {
+                Hash hash = Utils.DoubleSha256(headerHash);
+                return hash.SequenceEqual(ProofOfWork);
+            }
+        }
+
+        public BlockHeaderForHash GetBlockHeaderForHash()
+        {
+            BlockHeaderForHash header = new BlockHeaderForHash
+            {
+                Part1 = GetPart1(),
+                MinerPayload = Payload,
+                Part3 = GetPart3()
+            };
+            return header;
+        }
+
+        public Hash GetPart1()
+        {            
+            using (BinaryWriter bw = new BinaryWriter(new MemoryStream()))
+            {
+                bw.Write(BlockNumber);
+                AccountKey.SaveToStream(bw.BaseStream, false);
+                bw.Write(Reward);
+                bw.Write(ProtocolVersion);
+                bw.Write(AvailableProtocol);
+                //uint newTarget = BlockChain.TargetToCompact(BlockChain.Instance.GetNewTarget());
+                bw.Write(CompactTarget);
+                return (bw.BaseStream as MemoryStream)?.ToArray();
+            }
+        }
+
+        public Hash GetPart3()
+        {
+            using (BinaryWriter bw = new BinaryWriter(new MemoryStream()))
+            {
+                CheckPointHash.SaveToStream(bw, false);
+                TransactionHash.SaveToStream(bw, false);
+                bw.Write((uint)Fee);
+                return (bw.BaseStream as MemoryStream)?.ToArray();
+            }
+        }
+
 
         internal Block(Stream s) : base(s)
         {            

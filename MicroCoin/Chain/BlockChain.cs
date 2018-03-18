@@ -22,8 +22,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Numerics;
 using System.Text;
 using MicroCoin.Transactions;
+using MicroCoin.Util;
 
 namespace MicroCoin.Chain
 {
@@ -36,6 +38,110 @@ namespace MicroCoin.Chain
         protected BlockChain()
         {
         }
+
+        public static uint TargetToCompact(BigInteger targetPow)
+        {
+                        
+            BigInteger bn = targetPow;
+            BigInteger bn2 = BigInteger.Parse("0800000000000000000000000000000000000000000000000000000000000000", System.Globalization.NumberStyles.HexNumber);
+            uint nbits = 4;
+            while ((bn < bn2) && (nbits < 231))
+            {
+                bn2 >>= 1;
+                nbits++;
+            }
+
+            uint i = 0x19000000 >> 24;
+            if (nbits < i)
+            {
+                return 0x19000000;
+            }
+            int s = ((256 - 25) - (int)nbits);
+            bn = bn >> s;
+            return (nbits << 24) + ((uint)bn & 0x00FFFFFF) ^ 0x00FFFFFF;
+        }
+        public static uint TargetToCompact(Hash targetPow)
+        {
+
+            BigInteger bn = new BigInteger( targetPow.Reverse() );
+            BigInteger bn2 = BigInteger.Parse("0800000000000000000000000000000000000000000000000000000000000000", System.Globalization.NumberStyles.HexNumber);
+            uint nbits = 4;
+            while ((bn < bn2) && (nbits < 231))
+            {
+                bn2 >>= 1;
+                nbits++;
+            }
+
+            uint i = 0x19000000 >> 24;
+            if (nbits < i)
+            {
+                return 0x19000000;
+            }
+            int s = ((256 - 25) - (int)nbits);
+            bn = bn >> s;
+            return (nbits << 24) + ((uint)bn & 0x00FFFFFF) ^ 0x00FFFFFF;
+        }
+
+        public Hash GetNewTarget()
+        {
+            var lastBlock = Get(BlockHeight());
+            var lastCheckPointBlock = Get(BlockHeight() - 10);
+            var s = String.Format("{0:X}", lastBlock.CompactTarget);
+            Hash actualTarget = TargetFromCompact(lastBlock.CompactTarget);
+            DateTime ts1 = lastBlock.Timestamp;
+            DateTime ts2 = lastCheckPointBlock.Timestamp;
+            var tsReal = ts1.Subtract(ts2).TotalSeconds;            
+            long tsTeorical = 10*300;
+            //long tsReal = vreal;
+            long factor1000 = ((long)(((tsTeorical - tsReal) * 1000) / tsTeorical) * -1);
+            long factor1000Min = -500 / (100 / 2);
+            long factor1000Max = 1000 / (100 / 2);
+            if (factor1000 < factor1000Min) factor1000 = factor1000Min;
+            else if (factor1000 > factor1000Max) factor1000 = factor1000Max;
+            else if (factor1000 == 0) return actualTarget;
+            byte[] aT = (byte[]) actualTarget;
+            var bnact = new BigInteger(aT.Reverse().ToArray());
+            var bnaux = new BigInteger(aT.Reverse().ToArray()); 
+            var abc = new BigInteger(0xABCDEF);
+            Hash h = abc.ToByteArray();
+            bnact *=  factor1000;
+            bnact /= 1000;
+            bnact += bnaux;
+            Hash h1 = bnact.ToByteArray().ToArray();
+            Hash h2 = bnact.ToByteArray().Reverse().ToArray();
+            var nt = TargetToCompact(bnact);
+            var newTarget = nt;
+            var sa = String.Format("{0:X}", newTarget);
+            Hash Pow = TargetFromCompact(newTarget);
+            return Pow;
+        }
+
+        public static Hash TargetFromCompact(uint encoded)
+        {
+            uint nbits = encoded >> 24;
+            uint i = 0x19000000 >> 24;
+            if (nbits < i)
+            {
+                nbits = i;
+            }
+            else if (nbits > 231)
+            {
+                nbits = 231;
+            }
+            uint offset = encoded << 8 >> 8;
+            offset = ((offset ^ 0x00FFFFFF) | (0x01000000));
+            BigInteger bn = new BigInteger(offset);
+            uint shift = (256 - nbits - 25);
+            bn = bn << (int)shift;
+            byte[] r = new byte[32];
+            byte[] ba = bn.ToByteArray().Reverse().ToArray();
+            for (var index = 0; index < ba.Length; index++)
+            {
+                r[32 + index - ba.Length] = ba[index];
+            }
+            return r;
+        }
+
 
         internal static BlockChain Instance => _sInstance ?? (_sInstance = new BlockChain());
 

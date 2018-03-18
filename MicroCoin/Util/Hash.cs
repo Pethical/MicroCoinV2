@@ -44,6 +44,10 @@ namespace MicroCoin.Util
                              .ToArray();
         }
 
+        public Hash Reverse()
+        {
+            return _value.Reverse().ToArray();
+        }
 
         public static implicit operator Hash(string s)
         {

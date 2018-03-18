@@ -83,6 +83,9 @@ namespace Wallet.Views
                     accountBindingSource.DataSource = myAccounts;
                     accountCount.Text = myAccounts.Count().ToString("N0") + " db";
                     currentBalance.Text = myAccounts.Sum(p => p.VisibleBalance).ToString("N") + " MCC";
+                    var b = Node.Instance.BlockChain.GetNewTarget();
+                    var lastBlock = Node.Instance.BlockChain.Get(2048);
+                    lastBlock.GetBlockHeaderForHash();
                     /*var timer = new Timer
                     {
                         Interval = 5000

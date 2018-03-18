@@ -70,6 +70,7 @@
   <ItemGroup>
     <Compile Include="Chain\Account.cs" />
     <Compile Include="Chain\AccountInfo.cs" />
+    <Compile Include="Chain\BlockHeaderForHash.cs" />
     <Compile Include="Chain\CheckPointBlock.cs" />
     <Compile Include="Chain\BlockChain.cs" />
     <Compile Include="Chain\CheckPoint.cs" />

@@ -50,6 +50,15 @@ namespace MicroCoin.Cryptography
             }
         }
 
+        public static Hash DoubleSha256(Hash data)
+        {
+            using (SHA256Managed sha = new SHA256Managed())
+            {
+                Hash h = sha.ComputeHash(data);
+                return sha.ComputeHash(h);
+            }
+        }
+
         public static Hash EncryptString(ByteString data, ECKeyPair keyPair)
         {
             using (var ecDiffieHellman = ECDiffieHellman.Create(keyPair))

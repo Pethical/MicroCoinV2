@@ -18,10 +18,13 @@
 //-----------------------------------------------------------------------
 
 
+using System.CodeDom;
+using System.Diagnostics;
 using MicroCoin.Cryptography;
 using MicroCoin.Util;
 using System.IO;
 using System.Text;
+using log4net.Util;
 
 namespace MicroCoin.Chain
 {
@@ -40,7 +43,7 @@ namespace MicroCoin.Chain
         public ECKeyPair AccountKey { get; set; } = new ECKeyPair();
         public MCC Reward { get; set; }
         public MCC Fee { get; set; }
-        public Timestamp Timestamp { get; set; }
+        public Timestamp Timestamp { get; set; }        
         public uint CompactTarget { get; set; }
         public int Nonce { get; set; }
         public ByteString Payload { get; set; }
