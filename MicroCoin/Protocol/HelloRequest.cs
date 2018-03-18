@@ -30,7 +30,6 @@ namespace MicroCoin.Protocol
 {
     public class HelloRequest : Request
     {
-
         public ushort ServerPort { get; set; }
 
         public ECKeyPair AccountKey { get; set; }
@@ -45,14 +44,14 @@ namespace MicroCoin.Protocol
 
         public Int64 WorkSum { get; set; }
 
-        public HelloRequest() : base() { }
+        public HelloRequest() { }
 
         public HelloRequest(Stream stream, MessageHeader rp) : base(rp)
         {
             LoadFromStream(stream);
         }
 
-        public override void SaveToStream(Stream s)
+        internal override void SaveToStream(Stream s)
         {
             base.SaveToStream(s);
             using (MemoryStream ms = new MemoryStream())
@@ -79,7 +78,7 @@ namespace MicroCoin.Protocol
            }
         }
 
-        public void LoadFromStream(Stream stream)
+        internal void LoadFromStream(Stream stream)
         {
             using (BinaryReader br = new BinaryReader(stream, Encoding.ASCII, true))
             {

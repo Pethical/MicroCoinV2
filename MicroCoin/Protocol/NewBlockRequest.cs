@@ -19,10 +19,7 @@
 
 
 using MicroCoin.Chain;
-using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Text;
 
 namespace MicroCoin.Protocol
 {
@@ -31,11 +28,11 @@ namespace MicroCoin.Protocol
 
         public Block Block { get; set; }
 
-        public NewBlockRequest(Stream stream) : base(stream)
+        internal NewBlockRequest(Stream stream) : base(stream)
         {
         }
 
-        public NewBlockRequest(Stream stream, MessageHeader rp) :base(rp)
+        internal NewBlockRequest(Stream stream, MessageHeader rp) :base(rp)
         {
             Block = new Block(stream);
         }

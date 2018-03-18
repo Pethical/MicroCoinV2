@@ -25,40 +25,46 @@ namespace MicroCoin.Util
     public struct AccountNumber : IEquatable<object>, IEquatable<uint>, IEquatable<string>
     {
 
-        private uint value;
+        private readonly uint _value;
 
         public AccountNumber(string value) {
-            if (value.Contains("-"))
+            try
             {
-                this.value = Convert.ToUInt32(value.Split('-')[0]);
-            }
-            else
+                if (value.Contains("-"))
+                {
+                    _value = Convert.ToUInt32(value.Split('-')[0]);
+                }
+                else
+                {
+                    _value = Convert.ToUInt32(value);
+                }
+            }catch(Exception)
             {
-                this.value = Convert.ToUInt32(value);
+                throw new InvalidCastException();
             }
         }
 
         public AccountNumber(uint value) {
-            this.value = value;
+            _value = value;
         }
 
         public override int GetHashCode()
         {
-            return value.GetHashCode();
+            return _value.GetHashCode();
         }
         public bool Equals(uint obj)
         {
-            return value.Equals(obj);
+            return _value.Equals(obj);
         }
 
         public static bool operator ==(AccountNumber an, AccountNumber an2)
         {
-            return an.value == an2.value;
+            return an._value == an2._value;
         }
 
         public static bool operator !=(AccountNumber an, AccountNumber an2)
         {
-            return an.value != an2.value;
+            return an._value != an2._value;
         }
 
         public static bool operator ==(AccountNumber an, string an2)
@@ -74,20 +80,20 @@ namespace MicroCoin.Util
 
         public override bool Equals(object obj)
         {
-            return value.Equals(obj);
+            return _value.Equals(obj);
 
         }
 
-        override public string ToString()
+        public override string ToString()
         {
-            var checksum = ((value * 101) % 89) + 10;
-            return value.ToString() + '-' + checksum;
+            var checksum = ((_value * 101) % 89) + 10;
+            return _value.ToString() + '-' + checksum;
         }
 
         public bool Equals(string other)
         {
             AccountNumber an = new AccountNumber(other);
-            return an.value == value;
+            return an._value == _value;
         }
 
         public static implicit operator AccountNumber(string s)
@@ -102,11 +108,11 @@ namespace MicroCoin.Util
 
         public static implicit operator UInt32(AccountNumber number)
         {
-            return number.value;
+            return number._value;
         }
         public static implicit operator Int32(AccountNumber number)
         {
-            return (int) number.value;
+            return (int) number._value;
         }
 
     }

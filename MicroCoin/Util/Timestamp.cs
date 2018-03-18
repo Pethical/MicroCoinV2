@@ -25,10 +25,10 @@ namespace MicroCoin.Util
 
     public struct Timestamp
     {
-        private uint UnixTimestamp;
+        private readonly uint _unixTimestamp;
         public Timestamp(uint unixTimestamp)
         {
-            UnixTimestamp = unixTimestamp;
+            _unixTimestamp = unixTimestamp;
         }
         public static implicit operator Timestamp(DateTime dt)
         {
@@ -37,8 +37,8 @@ namespace MicroCoin.Util
 
         public static implicit operator DateTime(Timestamp t)
         {
-            DateTime dtDateTime = new DateTime(1970, 1, 1, 0, 0, 0, 0, System.DateTimeKind.Utc);            
-            dtDateTime = dtDateTime.AddSeconds(t.UnixTimestamp).ToLocalTime();
+            DateTime dtDateTime = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);            
+            dtDateTime = dtDateTime.AddSeconds(t._unixTimestamp).ToLocalTime();
             return dtDateTime;
         }
 
@@ -49,7 +49,7 @@ namespace MicroCoin.Util
 
         public static implicit operator UInt32(Timestamp t)
         {
-            return t.UnixTimestamp;
+            return t._unixTimestamp;
         }
 
         public override string ToString()

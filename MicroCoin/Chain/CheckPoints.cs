@@ -25,40 +25,40 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace MicroCoin.Chain
 {
     public class CheckPoints
     {
-        private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
-
-        public const string checkPointIndexName = "checkpoints.idx";
-        public const string checkPointFileName = "checkpoints.mcc";
-
-        private static List<uint> offsets = new List<uint>();
-        public static ulong WorkSum { get; set; } = 0;
-        public static List<Account> Accounts { get; set; } = new List<Account>();
-        public static List<CheckPointBlock> Current { get; set; } = new List<CheckPointBlock>();
-        public static void Init()
+        private static readonly ILog Log =
+            LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        public const string CheckPointIndexName = "checkpoints.idx";
+        public const string CheckPointFileName = "checkpoints.mcc";
+        private static List<uint> _offsets = new List<uint>();
+        internal static ulong WorkSum { get; set; }
+        internal static List<Account> Accounts { get; set; } = new List<Account>();
+        internal static List<CheckPointBlock> Current { get; set; } = new List<CheckPointBlock>();
+        internal static void Init()
         {
             WorkSum = 0;
             Current = new List<CheckPointBlock>();
-            if (!File.Exists((checkPointFileName))) return;
+            if (!File.Exists((CheckPointFileName))) return;
             try
             {
-                FileStream fs = File.Open(checkPointIndexName, FileMode.Open);
-                offsets = new List<uint>((int)(fs.Length / 4));
-                Accounts = new List<Chain.Account>();                
+                FileStream fs = File.Open(CheckPointIndexName, FileMode.Open);
+                _offsets = new List<uint>((int) (fs.Length / 4));
+                Accounts = new List<Account>();
                 using (BinaryReader br = new BinaryReader(fs))
-                {                    
+                {
                     while (fs.Position < fs.Length)
                     {
-                        offsets.Add(br.ReadUInt32());                 
+                        _offsets.Add(br.ReadUInt32());
                     }
                 }
-                using (FileStream cf = File.OpenRead(checkPointFileName))
+
+                using (FileStream cf = File.OpenRead(CheckPointFileName))
                 {
                     while (cf.Position < cf.Length)
                     {
@@ -69,48 +69,49 @@ namespace MicroCoin.Chain
                     }
                 }
             }
-            catch { }
-            log.Info($"Accounts: {Accounts.Last().AccountNumber}");
-        }
-
-        public static void Put(CheckPointBlock cb)
-        {
-            using (FileStream fs = File.OpenWrite(checkPointFileName))
+            catch
             {
-                uint position = 0;
-                if (offsets.Count <= cb.BlockNumber)
+            }
+
+            Log.Info($"Accounts: {Accounts.Last().AccountNumber}");
+        }
+        internal static void Put(CheckPointBlock cb)
+        {
+            using (FileStream fs = File.OpenWrite(CheckPointFileName))
+            {
+                uint position;
+                if (_offsets.Count <= cb.BlockNumber)
                 {
-                    position = (uint)fs.Length;
-                    offsets.Add(position);
+                    position = (uint) fs.Length;
+                    _offsets.Add(position);
                 }
                 else
                 {
-                    position = offsets[(int)cb.BlockNumber];
+                    position = _offsets[(int) cb.BlockNumber];
                 }
+
                 fs.Position = position;
                 cb.SaveToStream(fs);
             }
         }
-
-        public static CheckPointBlock Get(uint i)
+        internal static CheckPointBlock Get(uint i)
         {
-            return Current[(int)i];
+            return Current[(int) i];
         }
-
-        public static Account Account(int i)
+        internal static Account Account(int i)
         {
             return Accounts[i];
         }
-
-        public static void SaveList(List<CheckPointBlock> list, Stream stream, Stream indexStream)
+        internal static void SaveList(List<CheckPointBlock> list, Stream stream, Stream indexStream)
         {
             List<uint> offsets = new List<uint>();
             foreach (var item in list)
             {
                 long pos = stream.Position;
-                offsets.Add((uint)pos);
+                offsets.Add((uint) pos);
                 item.SaveToStream(stream);
             }
+
             using (BinaryWriter bw = new BinaryWriter(indexStream, Encoding.Default, true))
             {
                 foreach (uint u in offsets)
@@ -119,20 +120,20 @@ namespace MicroCoin.Chain
                 }
             }
         }
-
-        public static List<CheckPointBlock> ReadAll()
+        internal static List<CheckPointBlock> ReadAll()
         {
-            List<CheckPointBlock> list = new List<CheckPointBlock>(offsets.Count);
-            using (FileStream fs = File.OpenRead(checkPointFileName))
+            List<CheckPointBlock> list = new List<CheckPointBlock>(_offsets.Count);
+            using (FileStream fs = File.OpenRead(CheckPointFileName))
             {
                 while (fs.Position < fs.Length)
                 {
                     list.Add(new CheckPointBlock(fs));
                 }
             }
+
             return list;
         }
-        public static Hash CheckPointHash(List<CheckPointBlock> checkpoint)
+        internal static Hash CheckPointHash(List<CheckPointBlock> checkpoint)
         {
             using (MemoryStream ms = new MemoryStream())
             {
@@ -140,13 +141,12 @@ namespace MicroCoin.Chain
                 {
                     ms.Write(block.BlockHash, 0, block.BlockHash.Length);
                 }
-                System.Security.Cryptography.SHA256Managed sha = new System.Security.Cryptography.SHA256Managed();
+                var sha = new SHA256Managed();
                 ms.Position = 0;
                 return sha.ComputeHash(ms);
             }
         }
-
-        public static List<CheckPointBlock> BuildFromBlockChain(BlockChain blockChain)
+        internal static List<CheckPointBlock> BuildFromBlockChain(BlockChain blockChain)
         {
             List<CheckPointBlock> checkPoint = new List<CheckPointBlock>(blockChain.BlockHeight() + 1);
             uint accNumber = 0;
@@ -155,76 +155,89 @@ namespace MicroCoin.Chain
             {
                 if (block % 1000 == 0)
                 {
-                    log.Info($"Building checkpont: {block} block");
+                    Log.Info($"Building checkpont: {block} block");
                 }
-                Block b = blockChain.Get(block);
-                CheckPointBlock checkPointBlock = new CheckPointBlock();
-                checkPointBlock.AccountKey = b.AccountKey;
+
+                Block currentBlock = blockChain.Get(block);
+                CheckPointBlock checkPointBlock = new CheckPointBlock {AccountKey = currentBlock.AccountKey};
                 for (int i = 0; i < 5; i++)
                 {
                     checkPointBlock.Accounts.Add(new Account
                     {
                         AccountNumber = accNumber,
-                        Balance = (i == 0 ? 1000000ul + b.Fee : 0ul),
-                        BlockNumber = b.BlockNumber,
-                        UpdatedBlock = b.BlockNumber,
+                        Balance = (i == 0 ? 1000000ul + (ulong) currentBlock.Fee : 0ul),
+                        BlockNumber = currentBlock.BlockNumber,
+                        UpdatedBlock = currentBlock.BlockNumber,
                         NumberOfOperations = 0,
                         AccountType = 0,
                         Name = "",
-                        UpdatedByBlock = b.BlockNumber,
+                        UpdatedByBlock = currentBlock.BlockNumber,
                         AccountInfo = new AccountInfo
                         {
-                            AccountKey = b.AccountKey,
-                            State = AccountInfo.AccountState.Normal,
+                            AccountKey = currentBlock.AccountKey,
+                            State = AccountInfo.AccountState.Normal
                         }
                     });
                     accNumber++;
                 }
-                accWork += b.CompactTarget;
+
+                accWork += currentBlock.CompactTarget;
                 checkPointBlock.AccumulatedWork = accWork;
-                checkPointBlock.AvailableProtocol = b.AvailableProtocol;
-                checkPointBlock.BlockNumber = b.BlockNumber;
-                checkPointBlock.BlockSignature = 2;//b.BlockSignature;
-                checkPointBlock.CheckPointHash = b.CheckPointHash;
-                checkPointBlock.CompactTarget = b.CompactTarget;
-                checkPointBlock.Fee = b.Fee;
-                checkPointBlock.Nonce = b.Nonce;
-                checkPointBlock.Payload = b.Payload == null ? new ByteString(new byte[0]) : b.Payload;
-                checkPointBlock.ProofOfWork = b.ProofOfWork;
-                checkPointBlock.ProtocolVersion = b.ProtocolVersion;
-                checkPointBlock.Reward = b.Reward;
-                checkPointBlock.Timestamp = b.Timestamp;
-                checkPointBlock.TransactionHash = b.TransactionHash;
-                WorkSum += b.CompactTarget;
-                foreach (var t in b.Transactions)
+                checkPointBlock.AvailableProtocol = currentBlock.AvailableProtocol;
+                checkPointBlock.BlockNumber = currentBlock.BlockNumber;
+                checkPointBlock.BlockSignature = 2; //b.BlockSignature;
+                checkPointBlock.CheckPointHash = currentBlock.CheckPointHash;
+                checkPointBlock.CompactTarget = currentBlock.CompactTarget;
+                checkPointBlock.Fee = currentBlock.Fee;
+                checkPointBlock.Nonce = currentBlock.Nonce;
+                checkPointBlock.Payload = currentBlock.Payload;
+                checkPointBlock.ProofOfWork = currentBlock.ProofOfWork;
+                checkPointBlock.ProtocolVersion = currentBlock.ProtocolVersion;
+                checkPointBlock.Reward = currentBlock.Reward;
+                checkPointBlock.Timestamp = currentBlock.Timestamp;
+                checkPointBlock.TransactionHash = currentBlock.TransactionHash;
+                WorkSum += currentBlock.CompactTarget;
+                foreach (var t in currentBlock.Transactions)
                 {
-                    CheckPointBlock signer, target;
                     Account account;
-                    signer = checkPoint.FirstOrDefault(p => p.Accounts.Count(a => a.AccountNumber == t.SignerAccount) > 0);
-                    target = checkPoint.FirstOrDefault(p => p.Accounts.Count(a => a.AccountNumber == t.TargetAccount) > 0);
+                    var signer = checkPoint.FirstOrDefault(p =>
+                        p.Accounts.Count(a => a.AccountNumber == t.SignerAccount) > 0);
+                    var target = checkPoint.FirstOrDefault(p =>
+                        p.Accounts.Count(a => a.AccountNumber == t.TargetAccount) > 0);
                     if (t.Fee != 0) signer.Accounts.First(p => p.AccountNumber == t.SignerAccount).NumberOfOperations++;
                     switch (t.TransactionType)
                     {
                         case TransactionType.Transaction:
-                            TransferTransaction transfer = (TransferTransaction)t;
+                            TransferTransaction transfer = (TransferTransaction) t;
                             if (signer != null && target != null)
                             {
-                                if (t.Fee == 0) signer.Accounts.First(p => p.AccountNumber == t.SignerAccount).NumberOfOperations++;
-                                signer.Accounts.First(p => p.AccountNumber == t.SignerAccount).Balance -= (transfer.Fee + transfer.Amount);
-                                target.Accounts.First(p => p.AccountNumber == t.TargetAccount).Balance += transfer.Amount;
-                                signer.Accounts.First(p => p.AccountNumber == t.SignerAccount).UpdatedBlock = b.BlockNumber;
-                                target.Accounts.First(p => p.AccountNumber == t.TargetAccount).UpdatedBlock = b.BlockNumber;
+                                if (t.Fee == 0)
+                                    signer.Accounts.First(p => p.AccountNumber == t.SignerAccount).NumberOfOperations++;
+                                signer.Accounts.First(p => p.AccountNumber == t.SignerAccount).Balance -=
+                                    (transfer.Fee + transfer.Amount);
+                                target.Accounts.First(p => p.AccountNumber == t.TargetAccount).Balance +=
+                                    transfer.Amount;
+                                signer.Accounts.First(p => p.AccountNumber == t.SignerAccount).UpdatedBlock =
+                                    currentBlock.BlockNumber;
+                                target.Accounts.First(p => p.AccountNumber == t.TargetAccount).UpdatedBlock =
+                                    currentBlock.BlockNumber;
                             }
+
                             break;
                         case TransactionType.BuyAccount:
-                            TransferTransaction transferTransaction = (TransferTransaction)t; // TODO: be kell fejezni
-                            if (t.Fee == 0) signer.Accounts.First(p => p.AccountNumber == t.SignerAccount).NumberOfOperations++;
-                            signer.Accounts.First(p => p.AccountNumber == t.SignerAccount).Balance -= (transferTransaction.Fee + transferTransaction.Amount);
-                            CheckPointBlock seller = checkPoint.FirstOrDefault(p => p.Accounts.Count(a => a.AccountNumber == transferTransaction.SellerAccount) > 0);
-                            seller.Accounts.First(p => p.AccountNumber == transferTransaction.SellerAccount).Balance += transferTransaction.Amount;
-                            signer.Accounts.First(p => p.AccountNumber == t.SignerAccount).UpdatedBlock = b.BlockNumber;
-                            target.Accounts.First(p => p.AccountNumber == t.TargetAccount).UpdatedBlock = b.BlockNumber;
-                            seller.Accounts.First(p => p.AccountNumber == transferTransaction.SellerAccount).UpdatedBlock = b.BlockNumber;
+                            TransferTransaction transferTransaction = (TransferTransaction) t; // TODO: be kell fejezni
+                            if (t.Fee == 0)
+                                signer.Accounts.First(p => p.AccountNumber == t.SignerAccount).NumberOfOperations++;
+                            signer.Accounts.First(p => p.AccountNumber == t.SignerAccount).Balance -=
+                                (transferTransaction.Fee + transferTransaction.Amount);
+                            CheckPointBlock seller = checkPoint.FirstOrDefault(p =>
+                                p.Accounts.Count(a => a.AccountNumber == transferTransaction.SellerAccount) > 0);
+                            seller.Accounts.First(p => p.AccountNumber == transferTransaction.SellerAccount).Balance +=
+                                transferTransaction.Amount;
+                            signer.Accounts.First(p => p.AccountNumber == t.SignerAccount).UpdatedBlock = currentBlock.BlockNumber;
+                            target.Accounts.First(p => p.AccountNumber == t.TargetAccount).UpdatedBlock = currentBlock.BlockNumber;
+                            seller.Accounts.First(p => p.AccountNumber == transferTransaction.SellerAccount)
+                                .UpdatedBlock = currentBlock.BlockNumber;
                             account = target.Accounts.First(p => p.AccountNumber == t.TargetAccount);
                             account.AccountInfo.AccountKey = transferTransaction.NewAccountKey;
                             account.AccountInfo.Price = 0;
@@ -235,103 +248,111 @@ namespace MicroCoin.Chain
                             break;
                         case TransactionType.DeListAccountForSale:
                         case TransactionType.ListAccountForSale:
-                            ListAccountTransaction listAccountTransaction = (ListAccountTransaction)t;
+                            ListAccountTransaction listAccountTransaction = (ListAccountTransaction) t;
                             account = target.Accounts.First(p => p.AccountNumber == t.TargetAccount);
-                            signer.Accounts.First(p => p.AccountNumber == t.SignerAccount).Balance -= listAccountTransaction.Fee;
-                            signer.Accounts.First(p => p.AccountNumber == t.SignerAccount).UpdatedBlock = b.BlockNumber;
-                            target.Accounts.First(p => p.AccountNumber == t.TargetAccount).UpdatedBlock = b.BlockNumber;
-                            if (t.Fee == 0) signer.Accounts.First(p => p.AccountNumber == t.SignerAccount).NumberOfOperations++;
-                            if (signer != null && target != null)
+                            signer.Accounts.First(p => p.AccountNumber == t.SignerAccount).Balance -=
+                                listAccountTransaction.Fee;
+                            signer.Accounts.First(p => p.AccountNumber == t.SignerAccount).UpdatedBlock = currentBlock.BlockNumber;
+                            target.Accounts.First(p => p.AccountNumber == t.TargetAccount).UpdatedBlock = currentBlock.BlockNumber;
+                            if (t.Fee == 0)
+                                signer.Accounts.First(p => p.AccountNumber == t.SignerAccount).NumberOfOperations++;
+                            if (listAccountTransaction.TransactionType == TransactionType.ListAccountForSale)
                             {
-                                if (listAccountTransaction.TransactionType == ListAccountTransaction.AccountTransactionType.ListAccount)
-                                {
-                                    account.AccountInfo.Price = listAccountTransaction.AccountPrice;
-                                    account.AccountInfo.LockedUntilBlock = listAccountTransaction.LockedUntilBlock;
-                                    account.AccountInfo.State = AccountInfo.AccountState.Sale;
-                                    account.AccountInfo.Price = listAccountTransaction.AccountPrice;
-                                    account.AccountInfo.NewPublicKey = listAccountTransaction.NewPublicKey;
-                                    account.AccountInfo.AccountToPayPrice = listAccountTransaction.AccountToPay;
-                                }
-                                else
-                                {
-                                    account.AccountInfo.State = AccountInfo.AccountState.Normal;
-                                    account.AccountInfo.Price = 0;
-                                    account.AccountInfo.NewPublicKey = null;
-                                    account.AccountInfo.LockedUntilBlock = 0;
-                                    account.AccountInfo.AccountToPayPrice = 0;
-                                }
+                                account.AccountInfo.Price = listAccountTransaction.AccountPrice;
+                                account.AccountInfo.LockedUntilBlock = listAccountTransaction.LockedUntilBlock;
+                                account.AccountInfo.State = AccountInfo.AccountState.Sale;
+                                account.AccountInfo.Price = listAccountTransaction.AccountPrice;
+                                account.AccountInfo.NewPublicKey = listAccountTransaction.NewPublicKey;
+                                account.AccountInfo.AccountToPayPrice = listAccountTransaction.AccountToPay;
                             }
+                            else
+                            {
+                                account.AccountInfo.State = AccountInfo.AccountState.Normal;
+                                account.AccountInfo.Price = 0;
+                                account.AccountInfo.NewPublicKey = null;
+                                account.AccountInfo.LockedUntilBlock = 0;
+                                account.AccountInfo.AccountToPayPrice = 0;
+                            }
+
                             break;
                         case TransactionType.ChangeAccountInfo:
-                            ChangeAccountInfoTransaction changeAccountInfoTransaction = (ChangeAccountInfoTransaction)t;
+                            ChangeAccountInfoTransaction changeAccountInfoTransaction =
+                                (ChangeAccountInfoTransaction) t;
                             account = target.Accounts.First(p => p.AccountNumber == t.TargetAccount);
                             if ((changeAccountInfoTransaction.ChangeType & 1) == 1)
                             {
                                 account.AccountInfo.AccountKey = changeAccountInfoTransaction.NewAccountKey;
                             }
+
                             if ((changeAccountInfoTransaction.ChangeType & 4) == 4)
                             {
                                 account.AccountType = changeAccountInfoTransaction.NewType;
                             }
+
                             if ((changeAccountInfoTransaction.ChangeType & 2) == 2)
                             {
                                 account.Name = changeAccountInfoTransaction.NewName;
                             }
-                            signer.Accounts.First(p => p.AccountNumber == t.SignerAccount).Balance -= changeAccountInfoTransaction.Fee;
-                            signer.Accounts.First(p => p.AccountNumber == t.SignerAccount).UpdatedBlock = b.BlockNumber;
-                            account.UpdatedBlock = b.BlockNumber;
-                            if (t.Fee == 0) signer.Accounts.First(p => p.AccountNumber == t.SignerAccount).NumberOfOperations++;
+
+                            signer.Accounts.First(p => p.AccountNumber == t.SignerAccount).Balance -=
+                                changeAccountInfoTransaction.Fee;
+                            signer.Accounts.First(p => p.AccountNumber == t.SignerAccount).UpdatedBlock = currentBlock.BlockNumber;
+                            account.UpdatedBlock = currentBlock.BlockNumber;
+                            if (t.Fee == 0)
+                                signer.Accounts.First(p => p.AccountNumber == t.SignerAccount).NumberOfOperations++;
                             break;
                         case TransactionType.ChangeKey:
                         case TransactionType.ChangeKeySigned:
-                            ChangeKeyTransaction changeKeyTransaction = (ChangeKeyTransaction)t;
-                            signer.Accounts.First(p => p.AccountNumber == t.SignerAccount).Balance -= changeKeyTransaction.Fee;
+                            ChangeKeyTransaction changeKeyTransaction = (ChangeKeyTransaction) t;
+                            signer.Accounts.First(p => p.AccountNumber == t.SignerAccount).Balance -=
+                                changeKeyTransaction.Fee;
                             account = target.Accounts.First(p => p.AccountNumber == t.TargetAccount);
                             account.AccountInfo.AccountKey = changeKeyTransaction.NewAccountKey;
-                            account.UpdatedBlock = b.BlockNumber;
-                            signer.Accounts.First(p => p.AccountNumber == t.SignerAccount).UpdatedBlock = b.BlockNumber;
-                            if (t.Fee == 0) signer.Accounts.First(p => p.AccountNumber == t.SignerAccount).NumberOfOperations++;
+                            account.UpdatedBlock = currentBlock.BlockNumber;
+                            signer.Accounts.First(p => p.AccountNumber == t.SignerAccount).UpdatedBlock = currentBlock.BlockNumber;
+                            if (t.Fee == 0)
+                                signer.Accounts.First(p => p.AccountNumber == t.SignerAccount).NumberOfOperations++;
                             break;
                     }
                 }
+
                 checkPoint.Add(checkPointBlock);
             }
+
             foreach (var p in checkPoint) p.BlockHash = p.CalculateBlockHash();
             return checkPoint;
         }
-
-        public static CheckPointBlock GetLastBlock()
+        internal static CheckPointBlock GetLastBlock()
         {
             return Current.Count > 0 ? Current.Last() : null;
         }
-
         protected static void SaveNext()
         {
             var offsets2 = new List<uint>();
             uint chunk = (Current.Last().BlockNumber / 100) % 10;
-            log.Info($"Saving next checkpont => {chunk}");
-            using (FileStream fs = File.Create(checkPointFileName + $".{chunk}"))
+            Log.Info($"Saving next checkpont => {chunk}");
+            using (FileStream fs = File.Create(CheckPointFileName + $".{chunk}"))
             {
                 foreach (var block in Current)
-                {                                     
-                    offsets2.Add((uint)fs.Position);
+                {
+                    offsets2.Add((uint) fs.Position);
                     block.SaveToStream(fs);
                 }
-                
             }
-            using (FileStream fs = File.Create(checkPointIndexName + $".{chunk}"))
+
+            using (FileStream fs = File.Create(CheckPointIndexName + $".{chunk}"))
             {
-                using(BinaryWriter bw = new BinaryWriter(fs))
+                using (BinaryWriter bw = new BinaryWriter(fs))
                 {
                     foreach (var o in offsets2) bw.Write(o);
                 }
             }
-            File.Copy(checkPointIndexName + $".{chunk}", checkPointIndexName, true);
-            File.Copy(checkPointFileName + $".{chunk}", checkPointFileName, true);            
-            log.Info("Saved next checkpont");
-        }
 
-        public static void AppendBlock(Block b)
+            File.Copy(CheckPointIndexName + $".{chunk}", CheckPointIndexName, true);
+            File.Copy(CheckPointFileName + $".{chunk}", CheckPointFileName, true);
+            Log.Info("Saved next checkpont");
+        }
+        internal static void AppendBlock(Block b)
         {
             int lastBlock = -1;
             if (GetLastBlock() != null)
@@ -339,20 +360,21 @@ namespace MicroCoin.Chain
                 if (b.BlockNumber <= GetLastBlock().BlockNumber) return;
                 lastBlock = (int) GetLastBlock().BlockNumber;
             }
-            CheckPointBlock checkPointBlock = new CheckPointBlock();
-            checkPointBlock.AccountKey = b.AccountKey;
-            uint accNumber = (uint) (lastBlock+1) * 5;
+
+            CheckPointBlock checkPointBlock = new CheckPointBlock {AccountKey = b.AccountKey};
+            uint accNumber = (uint) (lastBlock + 1) * 5;
             if (accNumber == 0)
             {
-                log.Info("NULL");
+                Log.Info("NULL");
             }
+
             ulong accWork = WorkSum;
             for (int i = 0; i < 5; i++)
             {
                 checkPointBlock.Accounts.Add(new Account
                 {
                     AccountNumber = accNumber,
-                    Balance = (i == 0 ? 1000000ul + b.Fee : 0ul),
+                    Balance = (i == 0 ? 1000000ul + (ulong) b.Fee : 0ul),
                     BlockNumber = b.BlockNumber,
                     UpdatedBlock = b.BlockNumber,
                     NumberOfOperations = 0,
@@ -362,11 +384,12 @@ namespace MicroCoin.Chain
                     AccountInfo = new AccountInfo
                     {
                         AccountKey = b.AccountKey,
-                        State = AccountInfo.AccountState.Normal,
+                        State = AccountInfo.AccountState.Normal
                     }
                 });
                 accNumber++;
             }
+
             accWork += b.CompactTarget;
             WorkSum += b.CompactTarget;
             checkPointBlock.AccumulatedWork = accWork;
@@ -377,7 +400,7 @@ namespace MicroCoin.Chain
             checkPointBlock.CompactTarget = b.CompactTarget;
             checkPointBlock.Fee = b.Fee;
             checkPointBlock.Nonce = b.Nonce;
-            checkPointBlock.Payload = b.Payload == null ? new ByteString(new byte[0]) : b.Payload;
+            checkPointBlock.Payload = b.Payload;
             checkPointBlock.ProofOfWork = b.ProofOfWork;
             checkPointBlock.ProtocolVersion = b.ProtocolVersion;
             checkPointBlock.Reward = b.Reward;
@@ -385,16 +408,15 @@ namespace MicroCoin.Chain
             checkPointBlock.TransactionHash = b.TransactionHash;
             foreach (var t in b.Transactions)
             {
-                CheckPointBlock signerBlock, targetBlock, sellerBlock;
-                Account signerAccount = Accounts[(int)t.SignerAccount];
-                Account targetAccount  = Accounts[(int)t.TargetAccount];
-                signerBlock = Get(signerAccount.BlockNumber);
-                targetBlock = Get(targetAccount.BlockNumber);
+                Account signerAccount = Accounts[t.SignerAccount];
+                Account targetAccount = Accounts[t.TargetAccount];
+                var signerBlock = Get(signerAccount.BlockNumber);
+                var targetBlock = Get(targetAccount.BlockNumber);
                 if (t.Fee != 0) signerAccount.NumberOfOperations++;
                 switch (t.TransactionType)
                 {
                     case TransactionType.Transaction:
-                        TransferTransaction transfer = (TransferTransaction)t;
+                        TransferTransaction transfer = (TransferTransaction) t;
                         if (signerBlock != null && targetBlock != null)
                         {
                             if (t.Fee == 0) signerAccount.NumberOfOperations++;
@@ -402,15 +424,19 @@ namespace MicroCoin.Chain
                             signerAccount.UpdatedBlock = b.BlockNumber;
                             targetAccount.Balance += transfer.Amount;
                             targetAccount.UpdatedBlock = b.BlockNumber;
+                            targetAccount.Saved = true;
+                            signerAccount.Saved = true;
                         }
+
                         break;
                     case TransactionType.BuyAccount:
-                        TransferTransaction transferTransaction = (TransferTransaction)t; // TODO: be kell fejezni
-                        if (t.Fee == 0) signerBlock.Accounts.First(p => p.AccountNumber == t.SignerAccount).NumberOfOperations++;
-                        signerBlock.Accounts.First(p => p.AccountNumber == t.SignerAccount).Balance -= (transferTransaction.Fee + transferTransaction.Amount);
-
-                        Account sellerAccount = Accounts[(int)transferTransaction.SellerAccount];
-                        sellerBlock = Get(sellerAccount.BlockNumber);
+                        TransferTransaction transferTransaction = (TransferTransaction) t; // TODO: be kell fejezni
+                        if (t.Fee == 0)
+                            signerBlock.Accounts.First(p => p.AccountNumber == t.SignerAccount).NumberOfOperations++;
+                        signerBlock.Accounts.First(p => p.AccountNumber == t.SignerAccount).Balance -=
+                            (transferTransaction.Fee + transferTransaction.Amount);
+                        Account sellerAccount = Accounts[transferTransaction.SellerAccount];
+                        Get(sellerAccount.BlockNumber);
                         sellerAccount.Balance += transferTransaction.Amount;
                         signerAccount.UpdatedBlock = b.BlockNumber;
                         targetAccount.UpdatedBlock = b.BlockNumber;
@@ -421,17 +447,19 @@ namespace MicroCoin.Chain
                         targetAccount.AccountInfo.State = AccountInfo.AccountState.Normal;
                         targetAccount.AccountInfo.AccountToPayPrice = 0;
                         targetAccount.AccountInfo.NewPublicKey = null;
+                        targetAccount.Saved = true;
+                        signerAccount.Saved = true;
                         break;
                     case TransactionType.DeListAccountForSale:
                     case TransactionType.ListAccountForSale:
-                        ListAccountTransaction listAccountTransaction = (ListAccountTransaction)t;                        
+                        ListAccountTransaction listAccountTransaction = (ListAccountTransaction) t;
                         signerAccount.Balance -= listAccountTransaction.Fee;
                         signerAccount.UpdatedBlock = b.BlockNumber;
                         targetAccount.UpdatedBlock = b.BlockNumber;
                         if (t.Fee == 0) signerAccount.NumberOfOperations++;
                         if (signerBlock != null && targetBlock != null)
                         {
-                            if (listAccountTransaction.TransactionType == ListAccountTransaction.AccountTransactionType.ListAccount)
+                            if (listAccountTransaction.TransactionType == TransactionType.ListAccountForSale)
                             {
                                 targetAccount.AccountInfo.Price = listAccountTransaction.AccountPrice;
                                 targetAccount.AccountInfo.LockedUntilBlock = listAccountTransaction.LockedUntilBlock;
@@ -449,47 +477,69 @@ namespace MicroCoin.Chain
                                 targetAccount.AccountInfo.AccountToPayPrice = 0;
                             }
                         }
+
+                        targetAccount.Saved = true;
+                        signerAccount.Saved = true;
                         break;
                     case TransactionType.ChangeAccountInfo:
-                        ChangeAccountInfoTransaction changeAccountInfoTransaction = (ChangeAccountInfoTransaction)t;
+                        ChangeAccountInfoTransaction changeAccountInfoTransaction = (ChangeAccountInfoTransaction) t;
                         if ((changeAccountInfoTransaction.ChangeType & 1) == 1)
                         {
                             targetAccount.AccountInfo.AccountKey = changeAccountInfoTransaction.NewAccountKey;
                         }
+
                         if ((changeAccountInfoTransaction.ChangeType & 4) == 4)
                         {
                             targetAccount.AccountType = changeAccountInfoTransaction.NewType;
                         }
+
                         if ((changeAccountInfoTransaction.ChangeType & 2) == 2)
                         {
                             targetAccount.Name = changeAccountInfoTransaction.NewName;
                         }
+
                         signerAccount.Balance -= changeAccountInfoTransaction.Fee;
                         signerAccount.UpdatedBlock = b.BlockNumber;
                         targetAccount.UpdatedBlock = b.BlockNumber;
                         if (t.Fee == 0) signerAccount.NumberOfOperations++;
+                        targetAccount.Saved = true;
+                        signerAccount.Saved = true;
                         break;
                     case TransactionType.ChangeKey:
                     case TransactionType.ChangeKeySigned:
-                        ChangeKeyTransaction changeKeyTransaction = (ChangeKeyTransaction)t;
+                        ChangeKeyTransaction changeKeyTransaction = (ChangeKeyTransaction) t;
                         signerAccount.Balance -= changeKeyTransaction.Fee;
                         signerAccount.UpdatedBlock = b.BlockNumber;
                         targetAccount.AccountInfo.AccountKey = changeKeyTransaction.NewAccountKey;
                         targetAccount.UpdatedBlock = b.BlockNumber;
                         if (t.Fee == 0) signerAccount.NumberOfOperations++;
+                        targetAccount.Saved = true;
+                        signerAccount.Saved = true;
                         break;
                 }
             }
+
             Current.Add(checkPointBlock);
             Accounts.AddRange(checkPointBlock.Accounts);
-            if (checkPointBlock.BlockNumber == 99)
-            {
-                log.Info("9999");
-            }
             if ((checkPointBlock.BlockNumber + 1) % 100 == 0)
             {
                 SaveNext();
             }
+        }
+    }
+
+    public static class AccountNumberExtensions
+    {
+        public static bool IsValid(this AccountNumber number)
+        {
+            if (CheckPoints.Accounts.Count(p => p.AccountNumber == number) != 1) return false;
+            return true;
+        }
+
+        public static Account Account(this AccountNumber an)
+        {
+            if(!an.IsValid()) throw new InvalidCastException();
+            return CheckPoints.Accounts[an];
         }
     }
 }

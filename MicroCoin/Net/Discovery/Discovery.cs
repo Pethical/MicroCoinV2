@@ -31,7 +31,7 @@ namespace MicroCoin.Net.Discovery
     {
         private readonly UdpClient udp;
         
-        private string[] fixSeedIPs = { "185.33.146.44" };
+        private readonly string[] _fixSeedIPs = { "185.33.146.44" };
         public List<IPEndPoint> endPoints { get; set; } = new List<IPEndPoint>();
         private readonly object lockObject = new object();
         public Discovery()
@@ -68,23 +68,22 @@ namespace MicroCoin.Net.Discovery
         {          
             IPEndPoint ip = new IPEndPoint(IPAddress.Any, 15000);
             byte[] bytes = udp.EndReceive(ar, ref ip);
-            DiscoveryMessage Message = new DiscoveryMessage(bytes);
-            DiscoveryMessage Response = new DiscoveryMessage();
-            string message = Message.ToString();
-            if (Message.Command==DiscoveryCommand.HelloRequest)
+            DiscoveryMessage message = new DiscoveryMessage(bytes);
+            DiscoveryMessage response = new DiscoveryMessage();
+            if (message.Command==DiscoveryCommand.HelloRequest)
             {
                 // byte[] send = Encoding.ASCII.GetBytes("server");
-                Response.Command = DiscoveryCommand.NodeListRequest;
-                Response.Payload = null;
-                udp.Send(Response.ToByteArray(), Response.Length, ip);
+                response.Command = DiscoveryCommand.NodeListRequest;
+                response.Payload = null;
+                udp.Send(response.ToByteArray(), response.Length, ip);
             }
-            if (Message.Command == DiscoveryCommand.HelloResponse)
+            if (message.Command == DiscoveryCommand.HelloResponse)
             {
-                Response.Command = DiscoveryCommand.NodeListRequest;
-                Response.Payload = null;
-                udp.Send(Response.ToByteArray(), Response.Length, ip);
+                response.Command = DiscoveryCommand.NodeListRequest;
+                response.Payload = null;
+                udp.Send(response.ToByteArray(), response.Length, ip);
             }
-            if (Message.Command == DiscoveryCommand.NodeListRequest)
+            if (message.Command == DiscoveryCommand.NodeListRequest)
             {
                 using (MemoryStream m = new MemoryStream())
                 {
@@ -97,17 +96,17 @@ namespace MicroCoin.Net.Discovery
                         sw.Write(';');
                     }
                     sw.Flush();
-                    Response.Command = DiscoveryCommand.NodeListResponse;
-                    Response.Payload = m.ToArray();
-                    udp.Send(Response.ToByteArray(), Response.Length, ip);
+                    response.Command = DiscoveryCommand.NodeListResponse;
+                    response.Payload = m.ToArray();
+                    udp.Send(response.ToByteArray(), response.Length, ip);
                     sw.Dispose();
                 }
             }
-            else if (Message.Command == DiscoveryCommand.NodeListResponse)
+            else if (message.Command == DiscoveryCommand.NodeListResponse)
             {
                 lock (lockObject)
                 {
-                    string[] ips = Message.ToString().Split(';');
+                    string[] ips = message.ToString().Split(';');
                     foreach (string p in ips)
                     {
                         if (p == "") continue;
@@ -119,9 +118,7 @@ namespace MicroCoin.Net.Discovery
                     }
                 }
             }
-            else
-            {                
-            }
+
             lock (lockObject)
             {
                 if (endPoints.Count(p => p.Address.ToString() == ip.Address.ToString() && p.Port == ip.Port) == 0)
@@ -137,19 +134,18 @@ namespace MicroCoin.Net.Discovery
         {
             lock (lockObject)
             {
-                IPEndPoint ip;
-                DiscoveryMessage Response = new DiscoveryMessage {Command = DiscoveryCommand.HelloRequest};
-                foreach (var seed in fixSeedIPs)
+                DiscoveryMessage response = new DiscoveryMessage {Command = DiscoveryCommand.HelloRequest};
+                foreach (var seed in _fixSeedIPs)
                 {
 
-                    ip = new IPEndPoint(IPAddress.Parse(seed), 15000);
-                    Response.Command = DiscoveryCommand.HelloRequest;                                        
-                    udp.Send(Response.ToByteArray(), Response.Length, ip);
+                    var ip = new IPEndPoint(IPAddress.Parse(seed), 15000);
+                    response.Command = DiscoveryCommand.HelloRequest;                                        
+                    udp.Send(response.ToByteArray(), response.Length, ip);
                 }
                 foreach (var point in endPoints.ToArray())
                 {
-                    Response.Command = DiscoveryCommand.HelloRequest;
-                    udp.Send(Response.ToByteArray(), Response.Length, point);
+                    response.Command = DiscoveryCommand.HelloRequest;
+                    udp.Send(response.ToByteArray(), response.Length, point);
                 }
                 endPoints.Clear();
             }

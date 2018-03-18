@@ -17,143 +17,217 @@
 // along with MicroCoin. If not, see <http://www.gnu.org/licenses/>.
 //-----------------------------------------------------------------------
 
-
 using MicroCoin.Util;
 using System;
-using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Numerics;
 using System.Security.Cryptography;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace MicroCoin.Cryptography
 {
+
+    public enum CurveType : ushort
+    {
+        Empty = 0,
+        Secp256K1 = 714,
+        Secp384R1 = 715,
+        Secp521R1 = 716,
+        Sect283K1 = 729
+    }
+
     public class ECKeyPair : IEquatable<ECKeyPair>
     {
+        private ECParameters? _eCParameters;
         public Hash X { get; set; }
         public Hash Y { get; set; }
+
         public ECPoint PublicKey
         {
-            get
+            get => new ECPoint
             {
-                return new ECPoint
-                {
-                    X = X,
-                    Y = Y
-                };
-            }
+                X = X,
+                Y = Y
+            };
             set
             {
                 X = value.X;
                 Y = value.Y;
             }
         }
-
-        public string ToEncodedString()
-        {
-            return "";
-        }
-
-        public CurveType CurveType { get; set; } = CurveType.Empty;
-        public byte[] D { get; set; }
-        public BigInteger PrivateKey
+        public ECParameters ECParameters
         {
             get
             {
-                return new BigInteger(D);
+                if (_eCParameters != null) return _eCParameters.Value;
+                ECCurve curve = ECCurve.CreateFromFriendlyName(CurveType.ToString().ToLower());
+                ECParameters parameters = new ECParameters
+                {
+                    Q =
+                    {
+                        X = X,
+                        Y = Y
+                    }
+                };
+                if (D != null)
+                {
+                    parameters.D = D;
+                }
+
+                parameters.Curve = curve;
+                parameters.Validate();
+                _eCParameters = parameters;
+                return _eCParameters.Value;
             }
-            set
-            {
-                D = value.ToByteArray();
-            }
+        }
+        public CurveType CurveType { get; set; } = CurveType.Empty;
+        public byte[] D { get; set; }
+
+        public BigInteger PrivateKey
+        {
+            get => new BigInteger(D);
+            set => D = value.ToByteArray();
         }
 
         public ByteString Name { get; set; }
 
-        public void SaveToStream(Stream s, bool writeLength = true)
+        public static implicit operator ECParameters(ECKeyPair keyPair)
+        {
+            return keyPair.ECParameters;
+        }
+
+        public string ToEncodedString()
+        {
+            ByteString result = CurveType + ":" + X + ":" + Y;
+            using (SHA256Managed managed = new SHA256Managed())
+            {
+                Hash hash = managed.ComputeHash(result);
+                using (MemoryStream ms = new MemoryStream())
+                {
+                    using (DeflateStream deflateStream = new DeflateStream(ms, CompressionLevel.Optimal, true))
+                    {
+                        ByteString bs = result + ":" + hash;
+                        deflateStream.Write(bs, 0, bs.Length);
+                    }
+
+                    Hash h = ms.ToArray();
+                    return h;
+                }
+            }
+        }
+
+        public static ECKeyPair FromEncodedString(Hash encodedString)
+        {
+            using (MemoryStream ms = new MemoryStream(encodedString, false))
+            {
+                using (DeflateStream deflateStream = new DeflateStream(ms, CompressionMode.Decompress, true))
+                {
+                    using (MemoryStream ms2 = new MemoryStream())
+                    {
+                        deflateStream.CopyTo(ms2);
+                        ByteString hash = ms2.ToArray();
+                        string encoded = hash;
+                        var parts = encoded.Split(':');
+                        ByteString check = parts[0] + ":" + parts[1] + ":" + parts[2];
+                        using (SHA256Managed managed = new SHA256Managed())
+                        {
+                            Hash checkSum = managed.ComputeHash(check);
+                            if (checkSum != parts[3])
+                            {
+                                throw new InvalidDataException("Invalid checksum");
+                            }
+                        }
+
+                        ECKeyPair result = new ECKeyPair
+                        {
+                            CurveType = (CurveType) Enum.Parse(typeof(CurveType), parts[0]),
+                            X = parts[1],
+                            Y = parts[2]
+                        };
+                        return result;
+                    }
+                }
+            }
+        }
+
+        public void SaveToStream(Stream s, bool writeLength = true, bool writePrivateKey = false,
+            bool writeName = false)
         {
             using (BinaryWriter bw = new BinaryWriter(s, Encoding.ASCII, true))
             {
-                int len = 0;
-                if (X == null || Y == null)
-                {
-                    len = 0;
-                }
-                else
-                {
-                    len = X.Length + Y.Length + 6;
-                }
-                if (writeLength) bw.Write((ushort)len);
-                bw.Write((ushort)CurveType);
+                var len = X.Length + Y.Length + 6;
+
+                if (writeName) Name.SaveToStream(bw);
+                if (writeLength) bw.Write((ushort) len);
+                bw.Write((ushort) CurveType);
                 if (CurveType == CurveType.Empty)
                 {
-                    bw.Write((ushort)0);
-                    bw.Write((ushort)0);
+                    bw.Write((ushort) 0);
+                    bw.Write((ushort) 0);
                     return;
                 }
-                ushort xLen = (ushort)X.Length;
-                byte[] x = X;                
+
+                ushort xLen = (ushort) X.Length;
+                byte[] x = X;
                 if (x[0] == 0) xLen--;
-                bw.Write((ushort)xLen);
+                bw.Write(xLen);
                 bw.Write(x, x[0] == 0 ? 1 : 0, x.Length - (x[0] == 0 ? 1 : 0));
                 ushort yLen;
                 if (CurveType == CurveType.Sect283K1)
                 {
                     byte[] b = Y;
-                    yLen = (ushort)Y.Length;
+                    yLen = (ushort) Y.Length;
                     if (b[0] == 0) yLen--;
-                    bw.Write((ushort)yLen);
+                    bw.Write(yLen);
                     bw.Write(b, b[0] == 0 ? 1 : 0, b.Length - (b[0] == 0 ? 1 : 0));
                 }
                 else
                 {
                     byte[] b = Y;
-                    yLen = (ushort)Y.Length;
+                    yLen = (ushort) Y.Length;
                     if (b[0] == 0) yLen--;
-                    bw.Write((ushort)yLen);
+                    bw.Write(yLen);
                     bw.Write(b, b[0] == 0 ? 1 : 0, b.Length - (b[0] == 0 ? 1 : 0));
+                }
+
+                if (writePrivateKey)
+                {
+                    D.SaveToStream(bw);
                 }
             }
         }
 
-        public bool ValidateSignature(byte[] data, ECSig signature)
-        {
-            ECCurve curve = ECCurve.CreateFromFriendlyName("secp256k1");
-            ECParameters parameters = new ECParameters();
-            parameters.Q.X = X;
-            parameters.Q.Y = Y;
-            parameters.Curve = curve;
-            parameters.Validate();
-            ECDsa ecdsa = ECDsa.Create(parameters);            
-            bool ok = ecdsa.VerifyHash(data, signature.Signature);
-            return ok;
-        }
-
-        internal static ECKeyPair CreateNew(bool v)
+        public static ECKeyPair CreateNew(bool v, string name = "")
         {
             ECCurve curve = ECCurve.CreateFromFriendlyName("secp256k1");
             var ecdsa = ECDsa.Create(curve);
             ECParameters parameters = ecdsa.ExportParameters(true);
-            ECKeyPair pair = new ECKeyPair();
-            pair.CurveType = CurveType.Secp256K1;
-            pair.X = parameters.Q.X;
-            pair.Y = parameters.Q.Y;
-            pair.D = parameters.D;
+            ECKeyPair pair = new ECKeyPair
+            {
+                CurveType = CurveType.Secp256K1,
+                X = parameters.Q.X,
+                Y = parameters.Q.Y,
+                D = parameters.D,
+                Name = name
+            };
             return pair;
         }
 
-        public void LoadFromStream(Stream stream, bool doubleLen = true, bool readPrivateKey = false)
+        public void LoadFromStream(Stream stream, bool doubleLen = true, bool readPrivateKey = false,
+            bool readName = false)
         {
             using (BinaryReader br = new BinaryReader(stream, Encoding.ASCII, true))
             {
+                if (readName) Name = ByteString.ReadFromStream(br);
                 if (doubleLen)
                 {
                     ushort len = br.ReadUInt16();
                     if (len == 0) return;
                 }
-                CurveType = (CurveType)br.ReadUInt16();
+
+                CurveType = (CurveType) br.ReadUInt16();
                 ushort xLen = br.ReadUInt16();
                 X = br.ReadBytes(xLen);
                 ushort yLen = br.ReadUInt16();
@@ -167,6 +241,7 @@ namespace MicroCoin.Cryptography
 
         public bool Equals(ECKeyPair other)
         {
+            if (other == null) return false;
             if (!X.SequenceEqual(other.X)) return false;
             if (!Y.SequenceEqual(other.Y)) return false;
             return true;
@@ -178,7 +253,7 @@ namespace MicroCoin.Cryptography
             var salt = D.Skip(8).Take(8).ToArray();
             SHA256Managed managed = new SHA256Managed();
             managed.Initialize();
-            var offset = managed.TransformBlock(password, 0, password.Length, b, 0);
+            managed.TransformBlock(password, 0, password.Length, b, 0);
             managed.TransformFinalBlock(salt, 0, salt.Length);
             var digest = managed.Hash;
             managed.Dispose();
@@ -189,20 +264,28 @@ namespace MicroCoin.Cryptography
             salt = D.Skip(8).Take(8).ToArray();
             managed.TransformFinalBlock(salt, 0, salt.Length);
             var iv = managed.Hash;
-            managed.Dispose();           
-            RijndaelManaged aesEncryption = new RijndaelManaged();            
-            aesEncryption.KeySize = 256;
-            aesEncryption.BlockSize = 128;
-            aesEncryption.Mode = CipherMode.CBC;
-            aesEncryption.Padding = PaddingMode.PKCS7;
-            byte[] encryptedBytes = D.Skip(16).ToArray();//Crazy Salt...
+            managed.Dispose();
+            RijndaelManaged aesEncryption = new RijndaelManaged
+            {
+                KeySize = 256,
+                BlockSize = 128,
+                Mode = CipherMode.CBC,
+                Padding = PaddingMode.PKCS7
+            };
+            byte[] encryptedBytes = D.Skip(16).ToArray(); //Crazy Salt...
             aesEncryption.IV = iv.Take(16).ToArray();
             aesEncryption.Key = digest;
-            ICryptoTransform decrypto = aesEncryption.CreateDecryptor();            
+            ICryptoTransform decrypto = aesEncryption.CreateDecryptor();
             Hash hash = decrypto.TransformFinalBlock(encryptedBytes, 0, encryptedBytes.Length);
             ByteString bs = hash;
             Hash h2 = bs.ToString(); // dirty hack
             D = h2;
+            aesEncryption.Dispose();
+        }
+
+        public override string ToString()
+        {
+            return $"{Name} - {CurveType}";
         }
     }
 }

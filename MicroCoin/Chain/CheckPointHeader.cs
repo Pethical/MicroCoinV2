@@ -34,18 +34,14 @@ namespace MicroCoin.Chain
         public uint EndBlock { get; set; }
         public Hash Hash { get; set; }
         public long HeaderEnd { get; set; }
-        public string MagicString
-        {
-            get => Encoding.ASCII.GetString(Magic);
+        public string MagicString => Encoding.ASCII.GetString(Magic);
 
-        }
-
-        public uint[] offsets { get; set; }
+        public uint[] Offsets { get; set; }
 
         public uint BlockOffset(uint blockNumber)
         {
-            if (blockNumber > offsets.Length) return uint.MaxValue;
-            return offsets[blockNumber];// + (int)HeaderEnd;
+            if (blockNumber > Offsets.Length) return uint.MaxValue;
+            return Offsets[blockNumber];// + (int)HeaderEnd;
         }
         public CheckPointHeader() { }
         public CheckPointHeader(Stream s)
@@ -61,18 +57,16 @@ namespace MicroCoin.Chain
             bw.Write(BlockCount);
             bw.Write(StartBlock);
             bw.Write(EndBlock);
-            if (offsets != null)
+            if (Offsets == null) return;
+            foreach (var b in Offsets)
             {
-                foreach (var b in offsets)
+                if (b > 27)
                 {
-                    if (b > 27)
-                    {
-                        bw.Write((uint)(b-27));
-                    }
-                    else
-                    {
-                        bw.Write((uint)(b));
-                    }
+                    bw.Write(b-27);
+                }
+                else
+                {
+                    bw.Write(b);
                 }
             }
         }
@@ -102,10 +96,10 @@ namespace MicroCoin.Chain
                 EndBlock = br.ReadUInt32();
                 long pos = s.Position;
                 HeaderEnd = pos;
-                offsets = new uint[(EndBlock-StartBlock+2)];
-                for (int i = 0; i < offsets.Length; i++)
+                Offsets = new uint[(EndBlock-StartBlock+2)];
+                for (int i = 0; i < Offsets.Length; i++)
                 {
-                    offsets[i] = (uint)(br.ReadUInt32() + pos);
+                    Offsets[i] = (uint)(br.ReadUInt32() + pos);
                 }
                 long pos1 = s.Position;
                 s.Position = s.Length - 32;

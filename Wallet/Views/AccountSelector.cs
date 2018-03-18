@@ -1,7 +1,7 @@
 ﻿//-----------------------------------------------------------------------
 // This file is part of MicroCoin - The first hungarian cryptocurrency
 // Copyright (c) 2018 Peter Nemeth
-// BlockEntry.cs - Copyright (c) 2018 Németh Péter
+// AccountSelector.cs - Copyright (c) 2018 Németh Péter
 //-----------------------------------------------------------------------
 // MicroCoin is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -18,13 +18,44 @@
 //-----------------------------------------------------------------------
 
 
-namespace MicroCoin.Protocol
+using System;
+using System.Collections.Generic;
+using System.Windows.Forms;
+using DevExpress.XtraEditors;
+using MicroCoin;
+using MicroCoin.Chain;
+
+namespace Wallet.Views
 {
-    public class BlockEntry
+    public partial class AccountSelector : XtraForm
     {
+        public Account SelectedAccount => (Account)accountBindingSource.Current;
 
-        public uint BlockSignature { get; set; }
+        public AccountSelector() : this(Node.Instance.Accounts)
+        {
 
-        public uint Number { get; set; }
+        }
+
+        public AccountSelector(IList<Account> accounts)
+        {
+            InitializeComponent();
+            accountBindingSource.DataSource = accounts;
+        }
+
+        private void AccountSelector_Load(object sender, EventArgs e)
+        {
+
+        }
+
+        private void simpleButton2_Click(object sender, EventArgs e)
+        {
+            DialogResult = DialogResult.Cancel;
+            Close();
+        }
+
+        private void simpleButton1_Click(object sender, EventArgs e)
+        {
+            DialogResult = DialogResult.OK;
+        }
     }
 }

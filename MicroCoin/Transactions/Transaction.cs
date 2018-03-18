@@ -21,6 +21,8 @@
 using MicroCoin.Cryptography;
 using MicroCoin.Util;
 using System.IO;
+using MicroCoin.Chain;
+using System.Linq;
 
 namespace MicroCoin.Transactions
 {
@@ -29,33 +31,54 @@ namespace MicroCoin.Transactions
         None = 0,
         Transaction = 1, ChangeKey, RecoverFounds, ListAccountForSale,
         DeListAccountForSale, BuyAccount, ChangeKeySigned, ChangeAccountInfo
-    };
+    }
 
     public abstract class Transaction : ITransaction
     {
+        private ByteString _payload;
+
         public AccountNumber SignerAccount { get; set; }
-
         public uint NumberOfOperations { get; set; }
-
         public AccountNumber TargetAccount { get; set; }
-
-        public ByteString Payload { get; set; }
-
-        public ECSig Signature { get; set; }
-
-        public ECKeyPair AccountKey { get; set; }
-
-        public ulong Fee { get; set; }
-
-        public virtual byte[] GetHash()
+        public ByteString Payload
         {
-            return new byte[0];
+            get
+            {
+                if (_payload.IsReadable) return _payload;
+                ByteString bs = (string) (new Hash(_payload));
+                return bs;
+            }
+            set => _payload = value;
+        }
+        public ECSignature Signature { get; set; }
+        public ECKeyPair AccountKey { get; set; }
+        public MCC Fee { get; set; }
+        public MCC Amount { get; set; }
+        public abstract byte[] GetHash();
+        public abstract void SaveToStream(Stream s);
+        public abstract void LoadFromStream(Stream s);
+        public TransactionType TransactionType { get; set; }
+        public ECSignature GetSignature()
+        {
+            return Utils.GenerateSignature(GetHash(), AccountKey);
+        }
+        public bool SignatureValid()
+        {
+            if (AccountKey == null || AccountKey.CurveType==CurveType.Empty)
+                AccountKey = CheckPoints.Accounts[SignerAccount].AccountInfo.AccountKey;
+            return Utils.ValidateSignature(GetHash(), Signature, AccountKey);
         }
 
-        public abstract void SaveToStream(Stream s);
+        public virtual bool IsValid()
+        {
+            if (SignerAccount < 0) return false;
+            if (CheckPoints.Accounts.Count(p => p.AccountNumber == SignerAccount) == 0) return false;
+            if (CheckPoints.Accounts.Count(p => p.AccountNumber == TargetAccount) == 0) return false;
+            if (Amount < 0) return false;
+            if (Fee < 0) return false;
+            if (NumberOfOperations != SignerAccount.Account().NumberOfOperations) return false;
+            return true;
+        }
 
-        public abstract void LoadFromStream(Stream s);
-
-	    public TransactionType TransactionType{ get; set; }
     }
 }

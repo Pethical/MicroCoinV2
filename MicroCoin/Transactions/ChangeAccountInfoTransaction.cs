@@ -28,17 +28,19 @@ namespace MicroCoin.Transactions
     public sealed class ChangeAccountInfoTransaction : Transaction
     {
 
-        public enum AccountInfoChangeType : byte { PublicKey = 1, AccountName = 2, AccountType = 3 };
+        public enum AccountInfoChangeType : byte { PublicKey = 1, AccountName = 2, AccountType = 3 }
 
         public byte ChangeType { get; set; }
 
-        public ECKeyPair NewAccountKey { get; set; }
+        public ECKeyPair NewAccountKey { get; set; } = new ECKeyPair();
 
-        public byte[] NewName { get; set; }
+        public ByteString NewName { get; set; }
 
         public ushort NewType { get; set; }
 
-        public ChangeAccountInfoTransaction() { }
+        public ChangeAccountInfoTransaction() {
+            TransactionType = TransactionType.ChangeAccountInfo;
+        }
 
         public ChangeAccountInfoTransaction(Stream stream)
         {
@@ -76,12 +78,37 @@ namespace MicroCoin.Transactions
                 AccountKey.LoadFromStream(stream, false);
                 ChangeType = br.ReadByte();
                 NewAccountKey = new ECKeyPair();
-                NewAccountKey.LoadFromStream(stream, false);
-                ushort len = br.ReadUInt16();
-                NewName = br.ReadBytes(len);
+                NewAccountKey.LoadFromStream(stream, false);                
+                NewName = ByteString.ReadFromStream(br);
                 NewType = br.ReadUInt16();
-                Signature = new ECSig(stream);
+                Signature = new ECSignature(stream);
             }
+        }
+
+        public override byte[] GetHash()
+        {
+            using (MemoryStream ms = new MemoryStream())
+            {
+                using(BinaryWriter bw = new BinaryWriter(ms))
+                {
+                    bw.Write(SignerAccount);
+                    bw.Write(TargetAccount);
+                    bw.Write(NumberOfOperations);
+                    bw.Write(Fee);
+                    Payload.SaveToStream(bw);
+                    AccountKey.SaveToStream(ms, false);
+                    bw.Write(ChangeType);
+                    NewAccountKey.SaveToStream(ms, false);
+                    NewName.SaveToStream(bw);
+                    bw.Write(NewType);
+                    return ms.ToArray();
+                }
+            }
+        }
+
+        public override bool IsValid()
+        {
+            return base.IsValid();
         }
     }
 }

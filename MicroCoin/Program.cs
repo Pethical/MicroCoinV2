@@ -18,31 +18,15 @@
 //-----------------------------------------------------------------------
 
 
-using log4net;
-using log4net.Appender;
-using log4net.Core;
-using log4net.Layout;
-using log4net.Repository.Hierarchy;
-using MicroCoin.Chain;
-using MicroCoin.Net;
-using MicroCoin.Util;
-using System;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using MicroCoin.Cryptography;
-using System.Collections.Generic;
-using System.Security.Cryptography;
 
 namespace MicroCoin
 {
     class Program
     {
-        private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
-
         static int Main(string[] args) 
         {
             return 0;
+            /*             
             Thread.CurrentThread.Name = "Main";
             Hierarchy hierarchy = (Hierarchy)LogManager.GetRepository();
             PatternLayout patternLayout = new PatternLayout();
@@ -84,7 +68,6 @@ namespace MicroCoin
             {
                 port = Convert.ToInt32(args[0]);
             }
-            /*
             var key = ECKeyPair.CreateNew(false);
             var x = key.PublicKey.AffineXCoord.GetEncoded();
             var y = key.PublicKey.AffineYCoord.GetEncoded();
@@ -141,7 +124,7 @@ namespace MicroCoin
             bool valid = eC.VerifyData(sd, sign, HashAlgorithmName.SHA256);
             // Console.WriteLine(cKey.KeyName);
             Console.WriteLine(h);
-            Console.ReadLine();*/
+            Console.ReadLine();
             ECKeyPair pair = ECKeyPair.CreateNew(false);
             ECParameters parameters = new ECParameters();
             ECCurve curve = ECCurve.CreateFromFriendlyName("secp256k1");
@@ -158,7 +141,7 @@ namespace MicroCoin
             ByteString sd = "hello";
             Hash sign = eC.SignHash(sd);            
             
-            ECSig sig = new ECSig();
+            ECSignature sig = new ECSignature();
             byte[] signature = sign;
             sig.r = signature.Take(32).ToArray();
             sig.s = signature.Skip(32).Take(32).ToArray();
@@ -204,6 +187,7 @@ namespace MicroCoin
             Node.Instance.Dispose();
             Console.ReadLine();
             return 0;
+            */
         }
         
     }

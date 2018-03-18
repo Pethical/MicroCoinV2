@@ -42,7 +42,7 @@ namespace MicroCoin.Protocol
 
         public NodeServerList NodeServers { get; set; }
 
-        public string Version { get; set; }
+        public ByteString Version { get; set; }
 
         public ulong WorkSum { get; set; }
 
@@ -56,15 +56,13 @@ namespace MicroCoin.Protocol
                 Timestamp = br.ReadUInt32();
                 Block = new Block(stream);
                 NodeServers = NodeServerList.LoadFromStream(stream);
-                ushort vlen = br.ReadUInt16();
-                byte[] vb = br.ReadBytes(vlen);
-                Version = Encoding.ASCII.GetString(vb);
+                Version = ByteString.ReadFromStream(br);
                 WorkSum = br.ReadUInt64();
             }
 
         }
 
-        public override void SaveToStream(Stream s)
+        internal override void SaveToStream(Stream s)
         {
             base.SaveToStream(s);
             using (MemoryStream ms = new MemoryStream())
@@ -76,9 +74,7 @@ namespace MicroCoin.Protocol
                     bw.Write(Timestamp);
                     Block.SaveToStream(ms);
                     NodeServers.SaveToStream(ms);
-                    byte[] vb = Encoding.ASCII.GetBytes(Version);
-                    bw.Write((ushort)vb.Length);
-                    bw.Write(vb);
+                    Version.SaveToStream(bw);                                        
                     bw.Write(WorkSum);
                 }
                 DataLength = (int)ms.Length;
@@ -91,9 +87,8 @@ namespace MicroCoin.Protocol
             }
         }
 
-        public HelloResponse(HelloRequest request) : base()
+        public HelloResponse(HelloRequest request)
         {
-            RequestId = request.RequestId;
             Version version = Assembly.GetEntryAssembly().GetName().Version;
             Version = version.ToString();
             NodeServers = Node.Instance.NodeServers;

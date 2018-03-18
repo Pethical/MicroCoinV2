@@ -21,17 +21,15 @@
 using MicroCoin.Cryptography;
 using MicroCoin.Util;
 using System.IO;
-using System.Linq;
-using System.Security.Cryptography;
 using System.Text;
+using MicroCoin.Chain;
 
 namespace MicroCoin.Transactions
 {
     public sealed class TransferTransaction : Transaction
     {
-        public enum TransferType : byte { Transaction, TransactionAndBuyAccount, BuyAccount };
-        public ulong Amount { get; set; }
-        public ulong AccountPrice { get; set; }
+        public enum TransferType : byte { Transaction, TransactionAndBuyAccount, BuyAccount }
+        public MCC AccountPrice { get; set; }
         public AccountNumber SellerAccount { get; set; }
         public ECKeyPair NewAccountKey { get; set; }
         public TransferType TransactionStyle { get; set; }
@@ -43,67 +41,40 @@ namespace MicroCoin.Transactions
         {
 
         }
-
-        public ECSig GetSignature()
+        public override byte[] GetHash()
         {
-            ECParameters parameters = new ECParameters();
-            ECCurve curve = ECCurve.CreateFromFriendlyName("secp256k1");
-            parameters.Curve = curve;
-            parameters.Q.X = AccountKey.PublicKey.X;
-            parameters.Q.Y = AccountKey.PublicKey.Y;
-            byte[] D = AccountKey.D;
-            if (D[0] == 0)
+            MemoryStream ms = new MemoryStream();
+            try
             {
-                D = D.Skip(1).ToArray();
-            }
-            parameters.D = D;
-            var eC = ECDsa.Create(parameters);
-            Hash sign = eC.SignHash(GetHash());            
-            ECSig ecs = new ECSig(sign);
-            return ecs;
-        }
-
-        override public byte[] GetHash()
-        {
-            using(MemoryStream ms = new MemoryStream())
-            {
-                using(BinaryWriter bw = new BinaryWriter(ms))
+                using (BinaryWriter bw = new BinaryWriter(ms))
                 {
                     bw.Write(SignerAccount);
                     bw.Write(NumberOfOperations);
                     bw.Write(TargetAccount);
                     bw.Write(Amount);
                     bw.Write(Fee);
-                    if (Payload != null && Payload.Length > 0) bw.Write((byte[])Payload);
-                    if (AccountKey != null && AccountKey.X != null && AccountKey.Y != null
-                        && AccountKey.X.Length>0 && AccountKey.Y.Length > 0)
+                    if (Payload.Length > 0) bw.Write((byte[]) Payload);
+                    if (AccountKey?.X != null && AccountKey.X.Length > 0 && AccountKey.Y.Length > 0)
                     {
-                        bw.Write((ushort)AccountKey.CurveType);
-                        bw.Write((byte[])AccountKey.X);
-                        bw.Write((byte[])AccountKey.Y);
+                        bw.Write((ushort) AccountKey.CurveType);
+                        bw.Write((byte[]) AccountKey.X);
+                        bw.Write((byte[]) AccountKey.Y);
                     }
                     else
                     {
-                        bw.Write((ushort)0);
+                        bw.Write((ushort) 0);
                     }
                     ms.Position = 0;
-                    return ms.ToArray();
-                    /*
-                    using(MemoryStream ms2 = new MemoryStream())
-                    {
-                        using (BinaryWriter bw2 = new BinaryWriter(ms2))
-                        {
-                            bw2.Write((ushort)ms.Length);
-                            ms.CopyTo(ms2);
-                            ms2.Position = 0;
-                            return ms2.ToArray();
-                        }
-                    }*/
-
+                    byte[] b = ms.ToArray();
+                    ms = null;
+                    return b;
                 }
             }
+            finally
+            {
+                ms?.Dispose();
+            }        
         }
-
         public override void SaveToStream(Stream s)
         {
             using (BinaryWriter bw = new BinaryWriter(s, Encoding.ASCII, true))
@@ -125,7 +96,6 @@ namespace MicroCoin.Transactions
                 Signature.SaveToStream(s);
             }
         }
-
         public override void LoadFromStream(Stream stream)
         {
             using (BinaryReader br = new BinaryReader(stream, Encoding.ASCII, true))
@@ -133,10 +103,6 @@ namespace MicroCoin.Transactions
                 SignerAccount = br.ReadUInt32();
                 NumberOfOperations = br.ReadUInt32();
                 TargetAccount = br.ReadUInt32();
-                if (TargetAccount == 530)
-                {
-                    TargetAccount.ToString();
-                }
                 Amount = br.ReadUInt64();
                 Fee = br.ReadUInt64();
                 Payload = ByteString.ReadFromStream(br);
@@ -152,9 +118,17 @@ namespace MicroCoin.Transactions
                     NewAccountKey = new ECKeyPair();
                     NewAccountKey.LoadFromStream(stream, false);
                 }
-                Signature = new ECSig(stream);
+                Signature = new ECSignature(stream);
             }
 
+        }
+        public override bool IsValid()
+        {
+            if (!base.IsValid()) return false;
+            if (TransactionStyle != TransferType.BuyAccount) return true;
+            if (AccountPrice < 0) return false;
+            if (!SellerAccount.IsValid()) return false;
+            return true;
         }
     }
 }

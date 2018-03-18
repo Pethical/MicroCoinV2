@@ -18,7 +18,6 @@
 //-----------------------------------------------------------------------
 
 
-using System;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -28,18 +27,14 @@ namespace MicroCoin.Util
     public struct ByteString
     {
 
-        private byte[] value;
+        private byte[] _value;
 
         public ByteString(byte[] b)
         {
-            value = b;
+            _value = b;
         }
 
-        public int Length { get
-            {
-                return value.Length;
-            }
-        }
+        public int Length => _value.Length;
 
         public static implicit operator ByteString(string s)
         {
@@ -48,12 +43,12 @@ namespace MicroCoin.Util
 
         public static implicit operator string(ByteString s)
         {
-            return Encoding.UTF8.GetString(s.value);
+            return s._value == null ? null : Encoding.UTF8.GetString(s._value);
         }
 
         public static implicit operator byte[](ByteString s)
         {
-            return s.value;
+            return s._value;
         }
 
         public static implicit operator ByteString(byte[] s)
@@ -61,128 +56,35 @@ namespace MicroCoin.Util
             return new ByteString(s);
         }
 
+        public bool IsReadable => _value.Count(p => char.IsControl((char)p)) == 0;
+
         public static ByteString ReadFromStream(BinaryReader br)
         {
-            ByteString bs = new ByteString();
             ushort len = br.ReadUInt16();
-            bs = br.ReadBytes(len);
-            if (bs.value == null) bs.value = new byte[0];
+            ByteString bs = br.ReadBytes(len);
+            if (bs._value == null) bs._value = new byte[0];
             return bs;
         }
 
         public void SaveToStream(BinaryWriter bw)
         {
-            value.SaveToStream(bw);
+            _value.SaveToStream(bw);
         }
 
-        override public string ToString()
+        public override string ToString()
         {
             return this;
         }
 
         internal void SaveToStream(BinaryWriter bw, bool writeLengths)
         {
-            if (writeLengths) value.SaveToStream(bw);
+            if (writeLengths) _value.SaveToStream(bw);
             else
             {
-                if (value == null) return;
-                bw.Write(value);
+                if (_value == null) return;
+                bw.Write(_value);
             }
 //            bw.Write(value);
-        }
-    }
-
-
-
-    public struct Hash
-    {
-
-        private byte[] value;
-
-        public Hash(byte[] b)
-        {
-            value = b;
-        }
-
-        public int Length
-        {
-            get
-            {
-                return value.Length;
-            }        
-        }
-
-        private static byte[] StringToByteArray(string hex)
-        {
-            return Enumerable.Range(0, hex.Length)
-                             .Where(x => x % 2 == 0)
-                             .Select(x => Convert.ToByte(hex.Substring(x, 2), 16))
-                             .ToArray();
-        }
-
-
-        public static implicit operator Hash(string s)
-        {
-            return new Hash(StringToByteArray(s));
-        }
-
-        public static implicit operator string(Hash s)
-        {
-            return BitConverter.ToString(s).Replace("-", "");
-        }
-
-        public static implicit operator ByteString(Hash s)
-        {
-            return new ByteString(s);
-        }
-
-
-        public static implicit operator byte[] (Hash s)
-        {
-            return s.value;
-        }
-
-        public static implicit operator Hash(byte[] s)
-        {
-            return new Hash(s);
-        }
-
-        public static implicit operator Hash(ByteString s)
-        {
-            return new Hash(s);
-        }
-
-        public static Hash ReadFromStream(BinaryReader br)
-        {
-            Hash bs = new Hash();
-            ushort len = br.ReadUInt16();
-            bs = br.ReadBytes(len);
-            return bs;
-        }
-
-        public void SaveToStream(BinaryWriter bw)
-        {
-            value.SaveToStream(bw);
-        }
-
-        override public string ToString()
-        {
-            return this;
-        }
-
-        internal void SaveToStream(BinaryWriter bw, bool writeLengths)
-        {
-            if (writeLengths) value.SaveToStream(bw);
-            else {
-                if (value == null) return;
-                bw.Write(value);
-                
-            }
-        }
-
-        internal bool SequenceEqual(Hash x)
-        {
-            return value.SequenceEqual(x.value);
         }
     }
 

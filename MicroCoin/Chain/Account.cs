@@ -18,13 +18,12 @@
 //-----------------------------------------------------------------------
 
 
+using MicroCoin.Transactions;
 using MicroCoin.Util;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace MicroCoin.Chain
 {
@@ -34,31 +33,34 @@ namespace MicroCoin.Chain
         private uint _updatedBlock;
         public AccountNumber AccountNumber { get; set; }
         public AccountInfo AccountInfo { get; set; }
-        public ulong Balance { get; set; }
-        public decimal VisibleBalance
-        {
-            get
-            {
-                return Balance / 10000M;
-            }
-        }
+        public MCC Balance { get; set; }
+        public decimal VisibleBalance => Balance;
         public uint UpdatedByBlock { get; set; }
         public uint NumberOfOperations { get; set; }
         public ByteString Name { get; set; }
+        public string NameAsString { get => Name;
+            set => Name = value;
+        }
         public ushort AccountType { get; set; }
         public uint UpdatedBlock
         {
             get => _updatedBlock;
             set
             {
-                if (_updatedBlock != value)
-                {
-                    if (_updatedBlock != BlockNumber)
-                    {                        
-                        UpdatedByBlock = _updatedBlock;
-                    }
-                    _updatedBlock = value;
+                if (_updatedBlock == value) return;
+                if (_updatedBlock != BlockNumber)
+                {                        
+                    UpdatedByBlock = _updatedBlock;
                 }
+                _updatedBlock = value;
+            }
+        }
+        
+        public Lazy<List<Transaction>> Transactions
+        {
+            get
+            {
+                return new Lazy<List<Transaction>>(()=>BlockChain.Instance.GetAccountOperations(AccountNumber),true);
             }
         }
         
@@ -78,7 +80,7 @@ namespace MicroCoin.Chain
             LoadFromStream(s);
         }
 
-        public void SaveToStream(BinaryWriter bw, bool writeLengths = true)
+        internal void SaveToStream(BinaryWriter bw, bool writeLengths = true)
         {
             bw.Write(AccountNumber);
             AccountInfo.SaveToStream(bw, writeLengths);
@@ -90,9 +92,9 @@ namespace MicroCoin.Chain
             if (writeLengths) bw.Write(UpdatedByBlock);
         }
 
-        public void LoadFromStream(Stream s)
+        internal void LoadFromStream(Stream s)
         {
-            using (BinaryReader br = new BinaryReader(s, Encoding.Default, true))
+            using (var br = new BinaryReader(s, Encoding.Default, true))
             {
                 AccountNumber = br.ReadUInt32();
                 AccountInfo = AccountInfo.CreateFromStream(br);
@@ -107,6 +109,7 @@ namespace MicroCoin.Chain
 
         public bool Equals(Account other)
         {
+            if (other == null) return false;
             if (other.AccountNumber != AccountNumber) return false;
             if (other.AccountType != AccountType) return false;
             if (other.Balance != Balance) return false;

@@ -24,7 +24,7 @@ using System.Text;
 
 namespace MicroCoin.Net.Discovery
 {
-    public enum DiscoveryCommand { HelloRequest, HelloResponse, NodeListResponse, NodeListRequest };
+    public enum DiscoveryCommand { HelloRequest, HelloResponse, NodeListResponse, NodeListRequest }
     public class DiscoveryMessage
     {
         public DiscoveryCommand Command { get; set; }
@@ -66,12 +66,12 @@ namespace MicroCoin.Net.Discovery
             }
         }
         public override string ToString() => Payload==null?"":Encoding.ASCII.GetString(Payload);
-        public static DiscoveryMessage FromString(DiscoveryCommand Command, string message)
+        public static DiscoveryMessage FromString(DiscoveryCommand command, string message)
         {
             return new DiscoveryMessage
             {
                 Payload = Encoding.UTF8.GetBytes(message),
-                Command = Command
+                Command = command
             };
         }
     }

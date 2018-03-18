@@ -35,7 +35,6 @@ namespace MicroCoin.Protocol
         {
             RequestType = RequestType.Request;
             Operation = NetOperationType.Blocks;
-            RequestId = 2;
         }
 
         public BlockRequest(MemoryStream ms, MessageHeader rp) : base(rp)
@@ -46,7 +45,8 @@ namespace MicroCoin.Protocol
             }
         }
 
-        public override void SaveToStream(Stream s)
+
+        internal override void SaveToStream(Stream s)
         {
             base.SaveToStream(s);
             using(BinaryWriter bw = new BinaryWriter(s, Encoding.ASCII, true)) {

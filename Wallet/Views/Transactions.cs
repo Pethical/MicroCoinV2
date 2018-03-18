@@ -1,7 +1,7 @@
 ﻿//-----------------------------------------------------------------------
 // This file is part of MicroCoin - The first hungarian cryptocurrency
 // Copyright (c) 2018 Peter Nemeth
-// BlockStream.cs - Copyright (c) 2018 Németh Péter
+// Transactions.cs - Copyright (c) 2018 Németh Péter
 //-----------------------------------------------------------------------
 // MicroCoin is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -18,35 +18,28 @@
 //-----------------------------------------------------------------------
 
 
-using System.Collections.Generic;
-using System.IO;
+using DevExpress.XtraEditors;
+using MicroCoin;
+using MicroCoin.Chain;
+using MicroCoin.Transactions;
 
-namespace MicroCoin.Chain
+namespace Wallet.Views
 {
-    class BlockStream
+    public partial class Transactions : XtraForm
     {
-        public List<BlockStreamHeader> Header { get; set; }
-        public List<CheckPointBlock> Blocks { get; set; }
-        public BlockStream(Stream stream)
+        public Transactions()
         {
-            Header = new List<BlockStreamHeader>();
-            Blocks = new List<CheckPointBlock>();
-            using (BinaryReader br = new BinaryReader(stream))
-            {
-                for(int i = 0; i < 1000; i++)
-                {
-                    Header.Add(new BlockStreamHeader
-                    {
-                        BlockNumber = br.ReadUInt32(),
-                        Offset = br.ReadUInt64(),
-                        Size = br.ReadUInt32()
-                    });
-                }
-                foreach(BlockStreamHeader header in Header)
-                {
-                    
-                }
-            }
+            InitializeComponent();            
+        }
+
+        public void ShowAccount(int accountNumber)
+        {            
+            transactionBindingSource.DataSource = Node.Instance.Accounts[accountNumber].Transactions.Value;
+        }
+
+        private void repositoryItemButtonEdit1_ButtonClick(object sender, DevExpress.XtraEditors.Controls.ButtonPressedEventArgs e)
+        {
+            
         }
     }
 }

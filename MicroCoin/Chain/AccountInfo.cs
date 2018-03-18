@@ -23,31 +23,46 @@ using MicroCoin.Util;
 using System;
 using System.IO;
 
+
 namespace MicroCoin.Chain
 {
     public class AccountInfo : IEquatable<AccountInfo>
     {
-        public enum AccountState { Unknown, Normal, Sale}
+        public enum AccountState {
+            Unknown,
+            Normal,
+            Sale
+        }
         public AccountState State { get; set; }
+        public string StateString
+        {
+            get
+            {
+                switch (State)
+                {
+                    case AccountState.Normal: return "Normál";
+                    case AccountState.Sale: return "Eladó";
+                    case AccountState.Unknown: return "Ismeretlen";
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
+            }
+        }
         public ECKeyPair AccountKey { get; set; }
         public uint LockedUntilBlock { get; set; }
-        public ulong Price { get; set; }
+        public MCC Price { get; set; }
+        public decimal VisiblePrice => Price;
         public AccountNumber AccountToPayPrice { get; set; }
         public ECKeyPair NewPublicKey { get; set; }
 
-        public AccountInfo()
-        {
-
-        }
-
         public static AccountInfo CreateFromStream(BinaryReader br)
         {
-            AccountInfo ai = new AccountInfo();
+            var ai = new AccountInfo();
             ai.LoadFromStream(br);
             return ai;
         }
 
-        public void SaveToStream(BinaryWriter bw, bool writeLengths = true)
+        internal void SaveToStream(BinaryWriter bw, bool writeLengths = true)
         {
             ushort len = 0;
             long pos = bw.BaseStream.Position;
@@ -68,6 +83,8 @@ namespace MicroCoin.Chain
                     bw.Write(AccountToPayPrice);
                     NewPublicKey.SaveToStream(bw.BaseStream, false);
                     break;
+                case AccountState.Unknown:
+                    break;
                 default: throw new Exception("Invalid account state");
             }
             long size = bw.BaseStream.Position - pos - 2;
@@ -77,9 +94,9 @@ namespace MicroCoin.Chain
             bw.BaseStream.Position = reverse;
         }
 
-        public void LoadFromStream(BinaryReader br)
+        internal void LoadFromStream(BinaryReader br)
         {
-            ushort len = br.ReadUInt16();
+            ushort unused = br.ReadUInt16();
             ushort stateOrKeyType = br.ReadUInt16();
             switch (stateOrKeyType)
             {
@@ -113,6 +130,7 @@ namespace MicroCoin.Chain
 
         public bool Equals(AccountInfo other)
         {
+            if (other == null) return false;
             if (other.AccountToPayPrice != AccountToPayPrice) return false;
             if (other.LockedUntilBlock != LockedUntilBlock) return false;
             if (other.Price != Price) return false;
@@ -120,7 +138,7 @@ namespace MicroCoin.Chain
             if (!other.AccountKey.Equals(AccountKey)) return false;
             if (other.NewPublicKey == null)
             {
-                if (NewPublicKey != null && (NewPublicKey.PrivateKey!=null|| NewPublicKey.X!=null))
+                if (NewPublicKey != null)
                     return false;
             }
             else

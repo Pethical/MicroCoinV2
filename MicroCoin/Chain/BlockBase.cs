@@ -20,13 +20,12 @@
 
 using MicroCoin.Cryptography;
 using MicroCoin.Util;
-using System;
 using System.IO;
 using System.Text;
 
 namespace MicroCoin.Chain
 {
-    
+
     // TPCOperationsComp
     /// <summary>
     /// One block in the blockchain
@@ -34,13 +33,13 @@ namespace MicroCoin.Chain
     public class BlockBase
     {
 
-        public byte BlockSignature { get; set; } = 3;
-        public ushort ProtocolVersion { get; set; }
-        public ushort AvailableProtocol { get; set; }
+        internal byte BlockSignature { get; set; } = 3;
+        internal ushort ProtocolVersion { get; set; }
+        internal ushort AvailableProtocol { get; set; }
         public uint BlockNumber { get; set; }
         public ECKeyPair AccountKey { get; set; } = new ECKeyPair();
-        public ulong Reward { get; set; }
-        public ulong Fee { get; set; }
+        public MCC Reward { get; set; }
+        public MCC Fee { get; set; }
         public Timestamp Timestamp { get; set; }
         public uint CompactTarget { get; set; }
         public int Nonce { get; set; }
@@ -48,18 +47,14 @@ namespace MicroCoin.Chain
         public Hash CheckPointHash { get; set; }
         public Hash TransactionHash { get; set; }
         public Hash ProofOfWork { get; set; }
-        public static BlockBase NullBlock { get
-            {
-                return new BlockBase
-                {
-                    BlockNumber = 0
-                };
-            }
-        }
+        public static BlockBase GenesisBlock => new BlockBase
+        {
+            BlockNumber = 0
+        };
 
         internal BlockBase(Stream s)
         {
-            using (BinaryReader br = new BinaryReader(s, Encoding.ASCII, true))
+            using (var br = new BinaryReader(s, Encoding.ASCII, true))
             {
                 BlockSignature = br.ReadByte();
                 if (BlockSignature > 0)
@@ -103,9 +98,9 @@ namespace MicroCoin.Chain
 
         }
 
-        public virtual void SaveToStream(Stream s)
+        internal virtual void SaveToStream(Stream s)
         {
-            using (BinaryWriter bw = new BinaryWriter(s, Encoding.ASCII, true))
+            using (var bw = new BinaryWriter(s, Encoding.ASCII, true))
             {
                 bw.Write(BlockSignature);
                 bw.Write(ProtocolVersion);
@@ -127,42 +122,10 @@ namespace MicroCoin.Chain
                 bw.Write(Timestamp);
                 bw.Write(CompactTarget);
                 bw.Write(Nonce);
-                if (Payload != null)
-                {
-                    bw.Write((ushort)Payload.Length);
-                    bw.Write((byte[])Payload);
-                }
-                else
-                {
-                    bw.Write((ushort)0);
-                }
-                if (CheckPointHash != null)
-                {
-                    bw.Write((ushort)CheckPointHash.Length);
-                    bw.Write((byte[])CheckPointHash);
-                }
-                else
-                {
-                    bw.Write((ushort)0);
-                }
-                if (TransactionHash != null)
-                {
-                    bw.Write((ushort)TransactionHash.Length);
-                    bw.Write((byte[])TransactionHash);
-                }
-                else
-                {
-                    bw.Write((ushort)0);
-                }
-                if (ProofOfWork != null)
-                {
-                    bw.Write((ushort)ProofOfWork.Length);
-                    bw.Write((byte[])ProofOfWork);
-                }
-                else
-                {
-                    bw.Write((ushort)0);
-                }
+                Payload.SaveToStream(bw);
+                CheckPointHash.SaveToStream(bw);
+                TransactionHash.SaveToStream(bw);
+                ProofOfWork.SaveToStream(bw);
             }
         }
 

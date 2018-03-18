@@ -18,7 +18,6 @@
 //-----------------------------------------------------------------------
 
 
-using MicroCoin.Chain;
 using MicroCoin.Transactions;
 using MicroCoin.Util;
 using System;
@@ -31,24 +30,24 @@ namespace MicroCoin.Protocol
     {
         
         public uint TransactionCount { get; set; }
-        private TransactionType[] TransactionTypes { get; set; }
+        private TransactionType[] TransactionTypes { get; }
         public ITransaction[] Transactions { get; set; }
         public DateTime Created { get; set; } = DateTime.Now;
 
-        public NewTransactionMessage(Transaction[] transactions)
+        public NewTransactionMessage(ITransaction[] transactions)
         {
             Transactions = transactions;
         }
-        public NewTransactionMessage() : base()
+        public NewTransactionMessage() 
         {
         }
 
-        public NewTransactionMessage(Stream stream, MessageHeader rp) : base(rp)
+        internal NewTransactionMessage(Stream stream, MessageHeader rp) : base(rp)
         {
             using(BinaryReader br = new BinaryReader(stream))
             {
                 TransactionCount = br.ReadUInt32();
-                Transactions = new Transaction[TransactionCount];
+                Transactions = new ITransaction[TransactionCount];
                 TransactionTypes = new TransactionType[TransactionCount];
                 for (int i = 0; i < TransactionCount; i++)
                 {
@@ -80,7 +79,7 @@ namespace MicroCoin.Protocol
 
         }
 
-        override public void SaveToStream(Stream s)
+        internal override void SaveToStream(Stream s)
         {
             base.SaveToStream(s);
             MemoryStream memoryStream = new MemoryStream();
@@ -106,7 +105,6 @@ namespace MicroCoin.Protocol
             finally
             {
                 memoryStream.Dispose();
-                memoryStream = null;
             }
         }
 
@@ -120,17 +118,14 @@ namespace MicroCoin.Protocol
                     foreach (var t in Transactions)
                     {
                         bw.Write(t.Fee);
-                        if (t.Payload != null)
-                        {
-                            t.Payload.SaveToStream(bw);
-                        }
+                        t.Payload.SaveToStream(bw);
                         bw.Write(t.SignerAccount);
                         bw.Write(t.TargetAccount);
                         t.Signature.SaveToStream(ms);
                         t.AccountKey.SaveToStream(ms);
                         bw.Write((uint)t.TransactionType);
                         bw.Write(Created.Hour);
-                        bw.Write((int)(Created.Minute / 10));
+                        bw.Write(Created.Minute / 10);
                     }
                     System.Security.Cryptography.SHA256Managed sha = new System.Security.Cryptography.SHA256Managed();
                     ms.Position = 0;                    

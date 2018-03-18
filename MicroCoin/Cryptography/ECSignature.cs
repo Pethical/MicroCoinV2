@@ -1,7 +1,7 @@
 ﻿//-----------------------------------------------------------------------
 // This file is part of MicroCoin - The first hungarian cryptocurrency
 // Copyright (c) 2018 Peter Nemeth
-// ECSig.cs - Copyright (c) 2018 Németh Péter
+// ECSignature.cs - Copyright (c) 2018 Németh Péter
 //-----------------------------------------------------------------------
 // MicroCoin is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -18,65 +18,60 @@
 //-----------------------------------------------------------------------
 
 
-using Org.BouncyCastle.Asn1.Ocsp;
-using Org.BouncyCastle.Crypto;
-using Org.BouncyCastle.Crypto.Parameters;
-using Org.BouncyCastle.Security;
-using System;
-using System.Linq;
 using System.IO;
+using System.Linq;
 using System.Text;
-using System.Collections.Generic;
 using MicroCoin.Util;
 
 namespace MicroCoin.Cryptography
 {
-    public class ECSig
+    public class ECSignature
     {
-        private Hash sign;
+        public ECSignature()
+        {
+        }
 
-        public byte[] r { get; set; }
-        public byte[] s { get; set; }
+        internal ECSignature(Stream stream)
+        {
+            using (var br = new BinaryReader(stream, Encoding.ASCII, true))
+            {
+                var len = br.ReadUInt16();
+                R = new byte[len];
+                br.Read(R, 0, len);
+                len = br.ReadUInt16();
+                S = new byte[len];
+                br.Read(S, 0, len);
+            }
+        }
+
+        public ECSignature(Hash sign)
+        {
+            byte[] data = sign;
+            R = data.Take(32).ToArray();
+            S = data.Skip(32).Take(32).ToArray();
+        }
+
+        public byte[] R { get; set; }
+        public byte[] S { get; set; }
 
         public byte[] Signature
         {
             get
             {
-                var ret = r.ToList();
-                ret.AddRange(s);
+                var ret = R.ToList();
+                ret.AddRange(S);
                 return ret.ToArray();
             }
         }
-        
-        public ECSig() { }
-        public ECSig(Stream stream) {
-            using (BinaryReader br = new BinaryReader(stream, Encoding.ASCII, true))
-            {
-                ushort len = br.ReadUInt16();
-                r = new byte[len];
-                br.Read(r, 0, len);
-                len = br.ReadUInt16();
-                s = new byte[len];
-                br.Read(s, 0, len);
-            }
-        }
 
-        public ECSig(Hash sign)
+        internal void SaveToStream(Stream stream)
         {
-            this.sign = sign;
-            byte[] data = sign;
-            r = data.Take(32).ToArray();
-            s = data.Skip(32).Take(32).ToArray();
-        }
-
-        public void SaveToStream(Stream stream)
-        {
-            using (BinaryWriter bw = new BinaryWriter(stream, Encoding.ASCII, true))
+            using (var bw = new BinaryWriter(stream, Encoding.ASCII, true))
             {
-                bw.Write((ushort)r.Length);
-                bw.Write(r);
-                bw.Write((ushort)s.Length);
-                bw.Write(s);
+                bw.Write((ushort) R.Length);
+                bw.Write(R);
+                bw.Write((ushort) S.Length);
+                bw.Write(S);
             }
         }
     }

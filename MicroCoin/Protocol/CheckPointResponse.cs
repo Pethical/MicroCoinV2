@@ -20,13 +20,8 @@
 
 using MicroCoin.Chain;
 using MicroCoin.Util;
-using System;
-using System.Collections.Generic;
 using System.IO;
-using System.IO.Compression;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using zlib;
 
 namespace MicroCoin.Protocol
@@ -35,28 +30,32 @@ namespace MicroCoin.Protocol
     {
         public ByteString CheckPointResponseMagic { get; set; }
         public ushort Version { get; set; }
-        public uint UncompressedSize { get; set; }
-        public uint CompressedSize { get; set; }
+        protected uint UncompressedSize { get; set; }
+        protected uint CompressedSize { get; set; }
         public CheckPoint CheckPoint { get; set; }
 
-        public CheckPointResponse() : base()
+        public CheckPointResponse() 
         {
             RequestType = Net.RequestType.Response;
         }
 
-        public static void DecompressData(byte[] inData, out byte[] outData)
+        private static void DecompressData(byte[] inData, out byte[] outData)
         {
             using (MemoryStream outMemoryStream = new MemoryStream())
-            using (ZOutputStream outZStream = new ZOutputStream(outMemoryStream))
-            using (Stream inMemoryStream = new MemoryStream(inData))
             {
-                CopyStream(inMemoryStream, outZStream);
-                outZStream.finish();
-                outData = outMemoryStream.ToArray();
+                using (ZOutputStream outZStream = new ZOutputStream(outMemoryStream))
+                {
+                    using (Stream inMemoryStream = new MemoryStream(inData))
+                    {
+                        CopyStream(inMemoryStream, outZStream);
+                        outZStream.finish();
+                        outData = outMemoryStream.ToArray();
+                    }
+                }
             }
         }
 
-        public static void CompressData(byte[] inData, out byte[] outData)
+        private static void CompressData(byte[] inData, out byte[] outData)
         {
             using (MemoryStream outMemoryStream = new MemoryStream())
             using (ZOutputStream outZStream = new ZOutputStream(outMemoryStream, zlibConst.Z_DEFAULT_COMPRESSION))
@@ -68,7 +67,7 @@ namespace MicroCoin.Protocol
             }
         }
 
-        public static void CopyStream(Stream input, Stream output)
+        private static void CopyStream(Stream input, Stream output)
         {
             byte[] buffer = new byte[2000];
             int len;
@@ -79,7 +78,7 @@ namespace MicroCoin.Protocol
             output.Flush();
         }
 
-        public override void SaveToStream(Stream s)
+        internal override void SaveToStream(Stream s)
         {
             base.SaveToStream(s);
             using(BinaryWriter bw  = new BinaryWriter(s, Encoding.Default, true))
@@ -111,7 +110,6 @@ namespace MicroCoin.Protocol
             unCompressed.Position = 0;
             CheckPoint = new CheckPoint(unCompressed);
             unCompressed.Dispose();
-            unCompressed = null;
             //Node.Instance.CheckPoint.Append(CheckPoint);
             CheckPoint.Dispose();
             CheckPoint = null;

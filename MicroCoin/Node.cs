@@ -17,55 +17,50 @@
 // along with MicroCoin. If not, see <http://www.gnu.org/licenses/>.
 //-----------------------------------------------------------------------
 
-
-using log4net;
-using log4net.Appender;
-using log4net.Core;
-using log4net.Layout;
-using log4net.Repository.Hierarchy;
-using MicroCoin.Net;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using MicroCoin.Chain;
 using System.IO;
-using MicroCoin.Protocol;
-using MicroCoin.Cryptography;
-using System.Net.Sockets;
+using System.Linq;
 using System.Net;
+using System.Net.Sockets;
+using System.Reflection;
 using System.Threading;
-using MicroCoin.Util;
+using System.Threading.Tasks;
+using log4net;
+using MicroCoin.Chain;
+using MicroCoin.Cryptography;
+using MicroCoin.Net;
+using MicroCoin.Protocol;
 using MicroCoin.Transactions;
+using MicroCoin.Util;
 
 namespace MicroCoin
 {
     public class Node
-    {        
-        private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
-        private static Node s_instance;
-        public ECKeyPair AccountKey { get; } = ECKeyPair.CreateNew(false);
+    {
+        private static readonly ILog Log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private static Node _sInstance;
+
+        protected Node()
+        {
+        }
+
+        internal ECKeyPair NodeKey { get; } = ECKeyPair.CreateNew(false);
         public static IList<ECKeyPair> Keys { get; set; }
         private static MicroCoinClient MicroCoinClient { get; set; }
-        public NodeServerList NodeServers { get; set; } = new NodeServerList();        
+        public NodeServerList NodeServers { get; set; } = new NodeServerList();
         public BlockChain BlockChain { get; set; } = BlockChain.Instance;
+        public List<Account> Accounts => CheckPoints.Accounts;
         public static Node Instance
         {
-            get
-            {
-                if (s_instance == null) s_instance = new Node();
-                return s_instance;
-            }
-            set => s_instance = value;
+            get => _sInstance ?? (_sInstance = new Node());
+            set => _sInstance = value;
         }
-        public Thread listenerThread { get; set; }
-        public List<MicroCoinClient> Clients { get; set; } = new List<MicroCoinClient>();
-        public Node()
-        {
-            
-        }
-        public static async Task<Node> StartNode(int port=4004, IList<ECKeyPair> keys = null)
+        protected Thread ListenerThread { get; set; }
+        private static readonly List<string> Transmitted = new List<string>();
+
+        protected List<MicroCoinClient> Clients { get; set; } = new List<MicroCoinClient>();
+        public static async Task<Node> StartNode(int port = 4004, IList<ECKeyPair> keys = null)
         {
             Keys = keys;
             MicroCoinClient = new MicroCoinClient();
@@ -74,174 +69,336 @@ namespace MicroCoin
             {
                 MicroCoinClient.Connect("127.0.0.1", port);
                 //MicroCoinClient.Connect("micro-225.microbyte.cloud", 4004);
-                MicroCoinClient.ServerPort = (ushort)((IPEndPoint)MicroCoinClient.TcpClient.Client.LocalEndPoint).Port;
+                P2PClient.ServerPort = 4004;
                 CheckPoints.Init();
-                HelloResponse response = await MicroCoinClient.SendHelloAsync();
-                uint start = (response.Block.BlockNumber / 100) * 100;
-                int bl = BlockChain.Instance.BlockHeight();
+                var response = await MicroCoinClient.SendHelloAsync();
+                var bl = BlockChain.Instance.BlockHeight();
                 while (bl <= response.Block.BlockNumber)
                 {
-                    var blocks = await MicroCoinClient.RequestBlocksAsync((uint)bl, 1000); //response.TransactionBlock.BlockNumber);
-                    log.Info($"BlockChain downloading {bl} => {bl + 999}");
-                    log.Info(blocks.Blocks.First().BlockNumber.ToString() + " " + blocks.Blocks.Last().BlockNumber.ToString());
-                    log.Info(blocks.Blocks.Count.ToString());
+                    var blocks =
+                        await MicroCoinClient.RequestBlocksAsync((uint) bl,
+                            1000); //response.TransactionBlock.BlockNumber);
+                    Log.Info($"BlockChain downloading {bl} => {bl + 999}");
+                    Log.Info(blocks.Blocks.First().BlockNumber + " " + blocks.Blocks.Last().BlockNumber);
+                    Log.Info(blocks.Blocks.Count.ToString());
                     BlockChain.Instance.AppendAll(blocks.Blocks, true);
                     bl += 1000;
-                    using (FileStream fs = File.Open(BlockChain.Instance.BlockChainFileName, FileMode.OpenOrCreate, FileAccess.ReadWrite))
+                    /*using (FileStream fs = File.Open(BlockChain.Instance.BlockChainFileName, FileMode.OpenOrCreate, FileAccess.ReadWrite))
                     {
                         BlockChain.Instance.SaveToStorage(fs);
-                    }
+                    }*/
                 }
-		        log.Info("BlockChain OK");
-                if (!File.Exists(CheckPoints.checkPointFileName))
+
+                Log.Info("BlockChain OK");
+                if (!File.Exists(CheckPoints.CheckPointFileName))
                 {
-                    var cpList = CheckPoint.BuildFromBlockChain(BlockChain.Instance);
-                    FileStream cpFile = File.Create(CheckPoints.checkPointFileName);
-                    FileStream indexFile = File.Create(CheckPoints.checkPointIndexName);
-                    CheckPoint.SaveList(cpList, cpFile, indexFile);
-                    Hash hash = CheckPoint.CheckPointHash(cpList);
+                    var cpList = CheckPoints.BuildFromBlockChain(BlockChain.Instance);
+                    var cpFile = File.Create(CheckPoints.CheckPointFileName);
+                    var indexFile = File.Create(CheckPoints.CheckPointIndexName);
+                    CheckPoints.SaveList(cpList, cpFile, indexFile);
                     cpFile.Dispose();
                     indexFile.Dispose();
                 }
-                if (File.Exists(CheckPoints.checkPointFileName))
+
+                if (File.Exists(CheckPoints.CheckPointFileName))
                 {
                     CheckPoints.Init();
-                    uint blocks = CheckPoints.GetLastBlock().BlockNumber;
-                    uint need = BlockChain.Instance.GetLastBlock().BlockNumber;
-                    for (uint i = blocks; i <= need; i++)
-                    {
-                        CheckPoints.AppendBlock(BlockChain.Instance.Get((int)i));
-                    }
+                    var blocks = CheckPoints.GetLastBlock().BlockNumber;
+                    var need = BlockChain.Instance.GetLastBlock().BlockNumber;
+                    for (var i = blocks; i <= need; i++) CheckPoints.AppendBlock(BlockChain.Instance.Get((int) i));
                 }
                 else
                 {
-                    throw new FileNotFoundException("Checkpoint file not found", CheckPoints.checkPointFileName);
+                    throw new FileNotFoundException("Checkpoint file not found", CheckPoints.CheckPointFileName);
                 }
+
                 GC.Collect();
                 MicroCoinClient.HelloResponse += (o, e) =>
                 {
-                    log.DebugFormat("Network CheckPointBlock height: {0}. My CheckPointBlock height: {1}", e.HelloResponse.Block.BlockNumber, BlockChain.Instance.BlockHeight());
+                    Log.DebugFormat("Network CheckPointBlock height: {0}. My CheckPointBlock height: {1}",
+                        e.HelloResponse.Block.BlockNumber, BlockChain.Instance.BlockHeight());
                     if (BlockChain.Instance.BlockHeight() < e.HelloResponse.Block.BlockNumber)
                     {
-                        MicroCoinClient.RequestBlockChain((uint)(BlockChain.Instance.BlockHeight()), 100);
+                        MicroCoinClient?.RequestBlockChain((uint) BlockChain.Instance.BlockHeight(), 100);
                     }
                 };
                 MicroCoinClient.BlockResponse += (ob, eb) =>
                 {
-                    log.DebugFormat("Received {0} CheckPointBlock from blockchain. BlockChain size: {1}. CheckPointBlock height: {2}", eb.BlockResponse.Blocks.Count, BlockChain.Instance.Count, eb.BlockResponse.Blocks.Last().BlockNumber);
+                    Log.DebugFormat(
+                        "Received {0} CheckPointBlock from blockchain. BlockChain size: {1}. CheckPointBlock height: {2}",
+                        eb.BlockResponse.Blocks.Count, BlockChain.Instance.Count,
+                        eb.BlockResponse.Blocks.Last().BlockNumber);
                     BlockChain.Instance.AppendAll(eb.BlockResponse.Blocks);
                 };
                 MicroCoinClient.Dispose();
+                MicroCoinClient = null;
+                Instance.NodeServers.NewNode += (sender, ev) =>
+                {
+                    
+                    var microCoinClient = ev.Node.MicroCoinClient;
+                    microCoinClient.HelloResponse += (o, e) =>
+                    {
+                        if (BlockChain.Instance.BlockHeight() < e.HelloResponse.Block.BlockNumber)
+                        {
+                            microCoinClient.RequestBlockChain((uint)(BlockChain.Instance.BlockHeight()), 100);
+                        }
+                    };
+                    microCoinClient.BlockResponse += (ob, eb) =>
+                    {
+                        BlockChain.Instance.AppendAll(eb.BlockResponse.Blocks);
+                    };
+                    microCoinClient.NewTransaction += (o, e) =>
+                    {
+                        string hash = e.Transaction.GetHash();
+                        if (Transmitted.Contains(hash))
+                        {
+                            return;
+                        }
+                        var client = (MicroCoinClient)o;
+                        var ip = ((IPEndPoint)client.TcpClient.Client.RemoteEndPoint).Address.ToString();
+                        Transmitted.Add(hash);
+                        if (e.Transaction.Transactions[0] is TransferTransaction t)
+                        {
+                            if (!t.IsValid() || !t.SignatureValid())
+                            {
+                                return;
+                            }
+                        }
+                        using (MemoryStream ms = new MemoryStream())
+                        {
+                            foreach (var c in Instance.NodeServers)
+                            {
+                                if (c.Value.IP == ip) continue;
+                                ms.Position = 0;
+                                try
+                                {
+                                    c.Value.MicroCoinClient.SendRaw(ms);
+                                }
+                                catch
+                                {
+
+                                }
+                            }
+                        }
+                    };
+                    microCoinClient.SendHello();
+
+                };
                 Instance.NodeServers.TryAddNew("127.0.0.1:4004", new NodeServer
                 {
                     IP = "127.0.0.1",
                     LastConnection = DateTime.Now,
-                    Port=4004                    
+                    Port = 4004
                 });
             }
-            catch(Exception e)
+            catch (Exception e)
             {
-                log.Error(e.Message, e);
-                throw e;
+                Log.Error(e.Message, e);
+                throw;
             }
+
             Instance.Listen();
             return Instance;
         }
         protected void Listen()
         {
-            listenerThread = new Thread(() =>
+            ListenerThread = new Thread(() =>
             {
                 try
                 {
                     try
                     {
-                        log.Warn("starting listener");
-                        TcpListener tcpListener = new TcpListener(IPAddress.Any, 4041); //
-                        log.Warn("started listener");
+                        Log.Warn("starting listener");
+                        var tcpListener = new TcpListener(IPAddress.Any, 4041); //
+                        Log.Warn("started listener");
                         try
                         {
-                            MicroCoinClient.ServerPort = 4040;
+                            P2PClient.ServerPort = 4040;
                             tcpListener.Start();
-                            ManualResetEvent connected = new ManualResetEvent(false);
+                            var connected = new ManualResetEvent(false);
                             while (true)
                             {
                                 connected.Reset();
-                                var asyncResult = tcpListener.BeginAcceptTcpClient((state) =>
+                                var asyncResult = tcpListener.BeginAcceptTcpClient(state =>
                                 {
                                     try
                                     {
                                         var client = tcpListener.EndAcceptTcpClient(state);
-                                        log.Warn($"New client {client.Client.RemoteEndPoint}");
-                                        MicroCoinClient mClient = new MicroCoinClient();
-                                        mClient.Disconnected += (o, e)=>{
-                                            Clients.Remove((MicroCoinClient)o);                                            
-                                        };
+                                        Log.Warn($"New client {client.Client.RemoteEndPoint}");
+                                        var mClient = new MicroCoinClient();
+                                        mClient.Disconnected += (o, e) => { Clients.Remove((MicroCoinClient) o); };
                                         Clients.Add(mClient);
                                         mClient.Handle(client);
-                                        connected.Set();                                        
+                                        connected.Set();
                                     }
                                     catch (ObjectDisposedException)
                                     {
-                                        return;
                                     }
                                 }, null);
                                 while (!connected.WaitOne(1)) ;
                             }
                         }
-                        catch (ThreadAbortException ta)
+                        catch (ThreadAbortException)
                         {
                             tcpListener.Stop();
-                            return;
                         }
                     }
-                    catch (Exception e)
+                    catch (Exception)
                     {
-                        return;
                     }
                 }
                 finally
                 {
-                    log.Warn("Listener exited");
+                    Log.Warn("Listener exited");
                 }
             });
-            listenerThread.Start();
+            ListenerThread.Start();
         }
         public void Dispose()
         {
             foreach (var c in Clients)
-            {
                 if (!c.IsDisposed)
                 {
                     c.Dispose();
                     Clients.Remove(c);
                 }
+
+            ListenerThread?.Abort();
+            MicroCoinClient?.Dispose();
+            NodeServers?.Dispose();
+        }
+
+        public void SendTransaction(Transaction transaction)
+        {
+            if (!transaction.IsValid()) throw new InvalidOperationException("Transaction is invalid");
+            NewTransactionMessage message = new NewTransactionMessage
+            {
+                Operation = NetOperationType.AddOperations,
+                RequestType = RequestType.AutoSend,
+                TransactionCount = 1,
+                Transactions = new ITransaction[] { transaction }
+            };
+            using (Stream s = new MemoryStream())
+            {
+                message.SaveToStream(s);
+                s.Position = 0;
+                NodeServers.BroadCastMessage(s);
             }
-            if(listenerThread!=null) listenerThread.Abort();
-            MicroCoinClient.Dispose();
-            NodeServers.Dispose();
         }
 
         public bool SendCoin(Account sender, Account target, decimal amount, decimal fee, ECKeyPair key, string payload)
-        {            
-            TransferTransaction transaction = new TransferTransaction();
-            transaction.Amount = (ulong)(amount * 10000M);
-            transaction.Fee = (ulong)(fee * 10000M); ;
-            transaction.Payload = payload;
-            transaction.SignerAccount = sender.AccountNumber;
-            transaction.TargetAccount = target.AccountNumber;
-            transaction.TransactionStyle = TransferTransaction.TransferType.Transaction;
-            transaction.TransactionType = TransactionType.Transaction;
-            transaction.AccountKey = key;
+        {
+            var transaction = new TransferTransaction
+            {
+                Amount = (ulong)(amount * 10000M),
+                Fee = (ulong)(fee * 10000M),
+                Payload = payload,
+                SignerAccount = sender.AccountNumber,
+                TargetAccount = target.AccountNumber,
+                TransactionStyle = TransferTransaction.TransferType.Transaction,
+                TransactionType = TransactionType.Transaction,
+                AccountKey = key
+            };
             CheckPoints.Account(transaction.SignerAccount).NumberOfOperations++;
             transaction.NumberOfOperations = CheckPoints.Account(transaction.SignerAccount).NumberOfOperations;
             transaction.Signature = transaction.GetSignature();
-            //bool ok = transaction.AccountKey.ValidateSignature(transaction.GetHash(), transaction.Signature);
-            sender.Balance -= (transaction.Amount + transaction.Fee);
+            sender.Balance -= transaction.Amount + transaction.Fee;
             target.Balance += transaction.Amount;
             sender.Saved = false;
-            NodeServers.SendTransaction(transaction);
+            target.Saved = false;
+            if (!transaction.SignatureValid()) throw new InvalidDataException();
+            Instance.SendTransaction(transaction);
             return true;
         }
-
+        public bool ChangeAccountInfo(Account account, decimal fee, string payload, ECKeyPair key)
+        {
+            var transaction = new ChangeAccountInfoTransaction
+            {
+                NewName = account.Name,
+                Payload = payload,
+                Fee = (ulong)(fee * 10000M),
+                TargetAccount = account.AccountNumber,
+                ChangeType = (byte)ChangeAccountInfoTransaction.AccountInfoChangeType.AccountName,
+                SignerAccount = account.AccountNumber,
+                NumberOfOperations = ++account.NumberOfOperations,
+                AccountKey = account.AccountInfo.AccountKey,
+                NewAccountKey = account.AccountInfo.NewPublicKey
+            };
+            transaction.AccountKey = key;
+            transaction.Signature = transaction.GetSignature();
+            account.Saved = false;
+            if (transaction.NewAccountKey.CurveType != CurveType.Empty)
+                transaction.ChangeType |= (byte) ChangeAccountInfoTransaction.AccountInfoChangeType.PublicKey;
+            Instance.SendTransaction(transaction);
+            return true;
+        }
+        public bool SellAccount(Account account, decimal price, decimal fee, AccountNumber seller, ECKeyPair key)
+        {
+            var transaction = new ListAccountTransaction
+            {
+                AccountPrice = (ulong) (price * 10000M),
+                AccountToPay = seller,
+                Fee = (ulong) (fee * 10000M) + 1,
+                NumberOfOperations = ++account.NumberOfOperations,
+                SignerAccount = account.AccountNumber,
+                TargetAccount = account.AccountNumber,
+                Payload = "",
+                TransactionType = TransactionType.ListAccountForSale,
+                AccountKey = key,
+                LockedUntilBlock = 0
+            };
+            transaction.Signature = transaction.GetSignature();
+            Instance.SendTransaction(transaction);
+            return true;
+        }
+        public bool ChangeAccountKey(Account account, decimal fee, string payload, Account signer, ECKeyPair key,
+            string newKey)
+        {
+            var transaction = new ChangeKeyTransaction
+            {
+                AccountKey = key,
+                Fee = (ulong)(fee * 10000M),
+                NewAccountKey = ECKeyPair.FromEncodedString(newKey),
+                NumberOfOperations = ++signer.NumberOfOperations,
+                Payload = payload,
+                SignerAccount = signer.AccountNumber,
+                TargetAccount = account.AccountNumber,
+                TransactionType = TransactionType.ChangeKeySigned
+            };
+            transaction.Signature = transaction.GetSignature();
+            Instance.SendTransaction(transaction);
+            signer.Saved = account.Saved = false;
+            return true;
+        }
+        public bool BuyAccount(Account account, decimal fee, string payload, Account buyer, ECKeyPair key)
+        {
+            var transaction = new TransferTransaction
+            {
+                Amount = account.AccountInfo.Price,
+                Fee = (ulong)(fee * 10000M),
+                Payload = payload,
+                SignerAccount = buyer.AccountNumber,
+                TargetAccount = account.AccountNumber,
+                TransactionStyle = TransferTransaction.TransferType.BuyAccount,
+                TransactionType = TransactionType.BuyAccount,
+                AccountKey = key,
+                AccountPrice = account.AccountInfo.Price,
+                NewAccountKey = key
+            };
+            CheckPoints.Account(transaction.SignerAccount).NumberOfOperations++;
+            transaction.NumberOfOperations = CheckPoints.Account(transaction.SignerAccount).NumberOfOperations;
+            transaction.Signature = transaction.GetSignature();
+            var seller =
+                CheckPoints.Accounts.FirstOrDefault(p => p.AccountNumber == account.AccountInfo.AccountToPayPrice);
+            if(seller==null) throw new NullReferenceException("No seller");
+            seller.Balance += transaction.Amount;
+            buyer.Balance -= transaction.Amount + transaction.Fee;
+            transaction.SellerAccount = seller.AccountNumber;
+            buyer.Saved = false;
+            seller.Saved = false;
+            account.Saved = false;
+            Instance.SendTransaction(transaction);
+            return true;
+        }
     }
 }

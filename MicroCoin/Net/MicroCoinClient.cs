@@ -20,23 +20,18 @@
 
 using MicroCoin.Chain;
 using MicroCoin.Protocol;
+using MicroCoin.Util;
 using System;
-using System.Linq;
 using System.IO;
-using System.Net.Sockets;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
-using log4net;
-using System.Net;
-using MicroCoin.Util;
 
 namespace MicroCoin.Net
 {
 
-    public enum RequestType : ushort { None = 0, Request, Response, AutoSend, Unknown };
-
+    public enum RequestType : ushort { None = 0, Request, Response, AutoSend, Unknown }
     public enum NetOperationType : ushort
     {
         Hello = 1,
@@ -48,7 +43,6 @@ namespace MicroCoin.Net
         AddOperations = 0x20,
         CheckPoint = 0x21
     }
-
     public class HelloRequestEventArgs : EventArgs
     {
         public HelloRequest HelloRequest { get; set; }
@@ -73,8 +67,16 @@ namespace MicroCoin.Net
             BlockResponse = blockResponse;
         }
     }
+    public class NewBlockEventArgs : EventArgs
+    {
+        public Block Block { get; set; }
 
-    public class NewTransactionEventArgs
+        public NewBlockEventArgs(Block block)
+        {
+            Block = block;
+        }
+    }
+    public class NewTransactionEventArgs : EventArgs
     {
         public NewTransactionMessage Transaction { get; }
 
@@ -84,55 +86,39 @@ namespace MicroCoin.Net
         }
     }
 
-    public class MicroCoinClient : IDisposable
+    public class MicroCoinClient : P2PClient
     {
-        private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
-
         public event EventHandler<HelloRequestEventArgs> HelloRequest;
         public event EventHandler<HelloResponseEventArgs> HelloResponse;
         public event EventHandler<BlockResponseEventArgs> BlockResponse;
-        //public event EventHandler<BlockResponseEventArgs> TransactionBlockResponse;
         public event EventHandler<NewTransactionEventArgs> NewTransaction;
-        public event EventHandler Disconnected;
+        public event EventHandler<NewBlockEventArgs> NewBlock;
 
-        public static ushort ServerPort { get; set; }
-        public TcpClient TcpClient { get; set; }
-        private static object netLock = new object();
-
-        public bool Connected { get; internal set; } = false;
-        public bool IsDisposed { get; internal set; } = false;
-
-        public void OnHelloResponse(HelloResponse helloResponse)
+        protected virtual void OnHelloResponse(HelloResponse helloResponse)
         {
             HelloResponse?.Invoke(this, new HelloResponseEventArgs(helloResponse));
         }
-        public void OnNewTransaction(NewTransactionMessage newTransaction)
+        protected virtual void OnNewTransaction(NewTransactionMessage newTransaction)
         {
             NewTransaction?.Invoke(this, new NewTransactionEventArgs(newTransaction));
         }
-        public void OnGetBlockResponse(BlockResponse blockResponse)
+        protected virtual void OnGetBlockResponse(BlockResponse blockResponse)
         {
             BlockResponse?.Invoke(this, new BlockResponseEventArgs(blockResponse));
         }
-        public void OnHelloRequest(HelloRequest helloRequest)
+        protected virtual void OnHelloRequest(HelloRequest helloRequest)
         {
             HelloRequest?.Invoke(this, new HelloRequestEventArgs(helloRequest));
         }
-        /*private void OnGetTransactionBlockResponse(BlockResponse blockResponse)
+        protected virtual void OnNewBlock(NewBlockRequest newBlockRequest)
         {
-            TransactionBlockResponse?.Invoke(this, new BlockResponseEventArgs(blockResponse));
-        }*/
-
-        public MicroCoinClient()
-        {
-
+            NewBlock?.Invoke(this, new NewBlockEventArgs(newBlockRequest.Block));
         }
-
-        public void SendHello()
+        internal void SendHello()
         {
             HelloRequest request = new HelloRequest
             {
-                AccountKey = Node.Instance.AccountKey,
+                AccountKey = Node.Instance.NodeKey,
                 AvailableProtocol = 6,
                 Error = 0,
                 NodeServers = Node.Instance.NodeServers,
@@ -158,7 +144,6 @@ namespace MicroCoin.Net
                 Timestamp = 0
             };
             request.ProtocolVersion = 6;
-            request.RequestId = 1;
             request.RequestType = RequestType.Request;
             request.ServerPort = ServerPort;
             request.Timestamp = DateTime.UtcNow;
@@ -168,83 +153,28 @@ namespace MicroCoin.Net
             request.SaveToStream(ms);
             ms.Flush();
             ms.Position = 0;
-            NetworkStream ns = TcpClient.GetStream();
-            ms.CopyTo(ns);
+            SendRaw(ms);           
             ms.Dispose();
-            ns.Flush();
         }
-        protected int WaitForData(int timeoutMS)
-        {
-            while (TcpClient.Available == 0)
-            {
-                Thread.Sleep(1);
-            }
-            return TcpClient.Available;
-        }
-        protected async Task<MessageHeader> ReadResponse(MemoryStream responseStream)
+
+        private async Task<MessageHeader> ReadResponse(MemoryStream responseStream)
         {
             responseStream.Position = 0;
-            NetworkStream ns = TcpClient.GetStream();
             return await Task.Run(() =>
             {
-                while (TcpClient.Available > 0)
-                {
-                    byte[] buffer = new byte[TcpClient.Available];
-                    ns.Read(buffer, 0, buffer.Length);
-                    responseStream.Write(buffer, 0, buffer.Length);
-                }
-                responseStream.Position = 0;
-                MessageHeader rp = new MessageHeader(responseStream);
-                long pos = responseStream.Position;
-                responseStream.Position = responseStream.Length;
-                int wt = 0;
-                log.Debug($"Expected: {rp.DataLength + RequestHeader.Size} received: {responseStream.Length}. Memory {GC.GetTotalMemory(true)}");
-                while (rp.DataLength > responseStream.Length - RequestHeader.Size)
-                {
-                    do
-                    {
-                        Thread.Sleep(1);
-                        wt++;
-                        if (wt > 4000) break;
-                    } while (TcpClient.Available == 0);
-
-                    if (wt > 4000) break;
-
-                    while (TcpClient.Available > 0)
-                    {
-                        log.Debug($"Expected: {rp.DataLength + RequestHeader.Size} received: {responseStream.Length}. Available: {TcpClient.Available}  Memory {GC.GetTotalMemory(true)}");
-                        byte[] buffer = new byte[TcpClient.Available];
-                        ns.Read(buffer, 0, buffer.Length);
-                        responseStream.Write(buffer, 0, buffer.Length);
-                        log.Debug($"Expected: {rp.DataLength + RequestHeader.Size} received: {responseStream.Length}. Available: {TcpClient.Available}  Memory {GC.GetTotalMemory(true)}");
-                    }
-                    wt = 0;
-                }
-
-                if (wt > 1000)
-                {
-                    log.Error($"Timeout. Received {responseStream.Length}, expected {rp.DataLength + RequestHeader.Size}");
-                    throw new TimeoutException();
-                }
+                var rp = ReadHeader(responseStream);
+                var pos = responseStream.Position;
+                ReadBody(rp.DataLength, responseStream);
                 responseStream.Position = pos;
                 return rp;
             });
         }
 
-        public void SendRaw(Stream stream)
-        {
-            if (!TcpClient.Connected) return;
-            NetworkStream ns = TcpClient.GetStream();
-            stream.Position = 0;
-            stream.CopyTo(ns);
-            ns.Flush();
-        }
-
-        public async Task<HelloResponse> SendHelloAsync()
+        internal async Task<HelloResponse> SendHelloAsync()
         {
             HelloRequest request = new HelloRequest
             {
-                AccountKey = Node.Instance.AccountKey,
+                AccountKey = Node.Instance.NodeKey,
                 AvailableProtocol = 6,
                 Error = 0,
                 NodeServers = Node.Instance.NodeServers,
@@ -270,7 +200,6 @@ namespace MicroCoin.Net
                 Timestamp = 0
             };
             request.ProtocolVersion = 6;
-            request.RequestId = 1;
             request.RequestType = RequestType.Request;
             request.ServerPort = ServerPort;
             request.Timestamp = DateTime.UtcNow;
@@ -280,10 +209,8 @@ namespace MicroCoin.Net
             request.SaveToStream(ms);
             ms.Flush();
             ms.Position = 0;
-            NetworkStream ns = TcpClient.GetStream();
-            ms.CopyTo(ns);
+            SendRaw(ms);
             ms.Dispose();
-            ns.Flush();
             WaitForData(10000);
             using (var responseStream = new MemoryStream())
             {
@@ -296,26 +223,31 @@ namespace MicroCoin.Net
                 throw new InvalidDataException($"Not hello {rp.Operation}");
             }
         }
-        public async Task<bool> DownloadCheckPointAsync(uint blockCount)
+
+#if false
+        internal async Task<bool> DownloadCheckPointAsync(uint blockCount)
         {
             {
                 uint endBlock = (blockCount / 100) * 100;
-                var blockResponse = await RequestTransactionBlocksAsync(endBlock, 1, null);
+                var blockResponse = await RequestTransactionBlocksAsync(endBlock, 1);
                 var ns = TcpClient.GetStream();
                 using (var ms = new MemoryStream())
                 {
                     for (uint i = 0; i <= blockResponse.Blocks.Last().BlockNumber / 10000; i++)
                     {
-                        CheckPointRequest checkPointRequest = new CheckPointRequest();
-                        checkPointRequest.Operation = NetOperationType.CheckPoint;
-                        checkPointRequest.RequestType = RequestType.Request;
-                        checkPointRequest.StartBlock = (uint)(i * 10000);
-                        checkPointRequest.EndBlock = (uint)(((i + 1) * 10000) - 1);
+                        CheckPointRequest checkPointRequest =
+                            new CheckPointRequest
+                            {
+                                Operation = NetOperationType.CheckPoint,
+                                RequestType = RequestType.Request,
+                                StartBlock = i * 10000,
+                                EndBlock = ((i + 1) * 10000) - 1
+                            };
                         if (checkPointRequest.EndBlock > blockResponse.Blocks.Last().BlockNumber - 1)
                         {
                             checkPointRequest.EndBlock = blockResponse.Blocks.Last().BlockNumber - 1;
                         }
-                        checkPointRequest.checkPointBlockCount = endBlock;
+                        checkPointRequest.CheckPointBlockCount = endBlock;
                         checkPointRequest.RequestId = 12345;
                         checkPointRequest.CheckPointHash = blockResponse.Blocks.Last().CheckPointHash;
                         using (MemoryStream requestStream = new MemoryStream())
@@ -326,40 +258,43 @@ namespace MicroCoin.Net
                             ns.Flush();
                         }
                         WaitForData(10000);
-			            log.Info("Data received");
+			            Log.Info("Data received");
                         using (var responseStream = new MemoryStream())
                         {
                             var rp = await ReadResponse(responseStream);
-			                log.Info("All Data received");
+			                Log.Info("All Data received");
                             responseStream.Position = 0;
                             CheckPointResponse response = new CheckPointResponse(responseStream);
-                            response = null;
                         }
                     }
                     return true;
                 }
             }
         }
-        public void DownloadCheckPoint(uint blockCount)
+
+        internal void DownloadCheckPoint(uint blockCount)
         {
             const uint REQUEST_ID = 123456;
-            void handler(object o, BlockResponseEventArgs e)
+            void Handler(object o, BlockResponseEventArgs e)
             {
                 if (e.BlockResponse.RequestId == REQUEST_ID)
                 {
-                    log.Debug(e.BlockResponse.Blocks.First().BlockNumber);
+                    Log.Debug(e.BlockResponse.Blocks.First().BlockNumber);
                     for (uint i = 0; i <= e.BlockResponse.Blocks.Last().BlockNumber / 10000; i++)
                     {
-                        CheckPointRequest checkPointRequest = new CheckPointRequest();
-                        checkPointRequest.Operation = NetOperationType.CheckPoint;
-                        checkPointRequest.RequestType = RequestType.Request;
-                        checkPointRequest.StartBlock = (uint)(i * 10000);
-                        checkPointRequest.EndBlock = (uint)(((i + 1) * 10000) - 1);
+                        CheckPointRequest checkPointRequest =
+                            new CheckPointRequest
+                            {
+                                Operation = NetOperationType.CheckPoint,
+                                RequestType = RequestType.Request,
+                                StartBlock = i * 10000,
+                                EndBlock = ((i + 1) * 10000) - 1
+                            };
                         if (checkPointRequest.EndBlock > e.BlockResponse.Blocks.Last().BlockNumber - 1)
                         {
                             checkPointRequest.EndBlock = e.BlockResponse.Blocks.Last().BlockNumber - 1;
                         }
-                        checkPointRequest.checkPointBlockCount = 14700;
+                        checkPointRequest.CheckPointBlockCount = 14700;
                         checkPointRequest.RequestId = 12345;
                         checkPointRequest.CheckPointHash = e.BlockResponse.Blocks.Last().CheckPointHash;
                         using (MemoryStream ms = new MemoryStream())
@@ -373,83 +308,81 @@ namespace MicroCoin.Net
                     }
                 }
             }
-            BlockResponse += handler;
-            uint endBlock = (blockCount / 100) * 100;
+            BlockResponse += Handler;
             RequestBlockChain(blockCount, 1, REQUEST_ID, NetOperationType.Transactions);
         }
-        public async Task<BlockResponse> RequestBlocksAsync(uint startBlock, uint quantity, uint? requestId = null)
+#endif
+        internal async Task<BlockResponse> RequestBlocksAsync(uint startBlock, uint quantity, uint? requestId = null)
         {
+            BlockRequest br = new BlockRequest
             {
-                BlockRequest br = new BlockRequest
-                {
-                    StartBlock = startBlock,
-                    BlockNumber = quantity,
-                    Operation = NetOperationType.Blocks
-                };
-                if (requestId != null)
-                {
-                    br.RequestId = requestId.Value;
-                }
-                NetworkStream ns = TcpClient.GetStream();
+                StartBlock = startBlock,
+                BlockNumber = quantity,
+                Operation = NetOperationType.Blocks
+            };
+            if (requestId != null)
+            {
+                br.RequestId = requestId.Value;
+            }
 
-                using (MemoryStream ms = new MemoryStream())
+            using (MemoryStream ms = new MemoryStream())
+            {
+                br.SaveToStream(ms);
+                ms.Position = 0;
+                SendRaw(ms);
+            }
+
+            WaitForData(10000);
+            using (var rs = new MemoryStream())
+            {
+                var rp = await ReadResponse(rs);
+                switch (rp.Operation)
                 {
-                    br.SaveToStream(ms);
-                    ms.Position = 0;
-                    ms.CopyTo(ns);
-                }
-                ns.Flush();
-                WaitForData(10000);
-                using (var rs = new MemoryStream())
-                {
-                    var rp = await ReadResponse(rs);
-                    switch (rp.Operation)
-                    {
-                        case NetOperationType.Blocks:
-                            return new BlockResponse(rs, rp);
-                        default:
-                            throw new InvalidDataException();
-                    }
+                    case NetOperationType.Blocks:
+                        return new BlockResponse(rs, rp);
+                    default:
+                        throw new InvalidDataException();
                 }
             }
         }
-        public async Task<BlockResponse> RequestTransactionBlocksAsync(uint startBlock, uint quantity, uint? requestId = null)
-        {
-            {
-                BlockRequest br = new BlockRequest
-                {
-                    StartBlock = startBlock,
-                    BlockNumber = quantity,
-                    Operation = NetOperationType.Transactions
-                };
-                if (requestId != null)
-                {
-                    br.RequestId = requestId.Value;
-                }
-                NetworkStream ns = TcpClient.GetStream();
 
-                using (MemoryStream ms = new MemoryStream())
+        internal async Task<BlockResponse> RequestTransactionBlocksAsync(uint startBlock, uint quantity,
+            uint? requestId = null)
+        {
+            BlockRequest br = new BlockRequest
+            {
+                StartBlock = startBlock,
+                BlockNumber = quantity,
+                Operation = NetOperationType.Transactions
+            };
+            if (requestId != null)
+            {
+                br.RequestId = requestId.Value;
+            }
+
+
+            using (MemoryStream ms = new MemoryStream())
+            {
+                br.SaveToStream(ms);
+                ms.Position = 0;
+                SendRaw(ms);
+            }
+
+            WaitForData(10000);
+            using (var rs = new MemoryStream())
+            {
+                var rp = await ReadResponse(rs);
+                switch (rp.Operation)
                 {
-                    br.SaveToStream(ms);
-                    ms.Position = 0;
-                    ms.CopyTo(ns);
-                }
-                ns.Flush();
-                WaitForData(10000);
-                using (var rs = new MemoryStream())
-                {
-                    var rp = await ReadResponse(rs);
-                    switch (rp.Operation)
-                    {
-                        case NetOperationType.Transactions:
-                            return new BlockResponse(rs, rp);
-                        default:
-                            throw new InvalidDataException();
-                    }
+                    case NetOperationType.Transactions:
+                        return new BlockResponse(rs, rp);
+                    default:
+                        throw new InvalidDataException();
                 }
             }
         }
-        public void RequestBlockChain(uint startBlock, uint quantity, uint? requestId = null, NetOperationType netOperationType = NetOperationType.Blocks)
+
+        internal void RequestBlockChain(uint startBlock, uint quantity, uint? requestId = null, NetOperationType netOperationType = NetOperationType.Blocks)
         {
             BlockRequest br = new BlockRequest
             {
@@ -460,284 +393,179 @@ namespace MicroCoin.Net
             if (requestId != null)
             {
                 br.RequestId = requestId.Value;
-            }
-            NetworkStream ns = TcpClient.GetStream();
+            }            
             using (MemoryStream ms = new MemoryStream())
             {
                 br.SaveToStream(ms);
                 ms.Position = 0;
-                ms.CopyTo(ns);
-            }
-            ns.Flush();
-        }
-        public bool Connect(string hostname, int port)
-        {
-            try
-            {
-                TcpClient = new TcpClient();                
-                var result = TcpClient.BeginConnect(hostname, port, null, null);
-                Connected = result.AsyncWaitHandle.WaitOne(TimeSpan.FromSeconds(1));
-                TcpClient.EndConnect(result);                
-                if (!Connected)
-                {
-                    throw new Exception("");
-                }
-                log.Info($"Connected to {hostname}:{port}");
-            }
-            catch (Exception e)
-            {
-                if (TcpClient != null)
-                {
-                    TcpClient.Dispose();
-                    TcpClient = null;
-                }
-                Connected = false;
-                log.Debug($"Can't connect to {hostname}:{port}. {e.Message}");
-                TcpClient = null;
-                return false;
-            }
-            return Connected;
+                SendRaw(ms);
+            }            
         }
 
-        public void Handle(TcpClient client)
+        protected override bool HandleConnection()
         {
-            log.Info($"Connected client {client.Client.RemoteEndPoint}");
-            TcpClient = client;
-            Connected = true;
-            Start();
+            var ms = new MemoryStream();
+            ms.SetLength(0);
+            MessageHeader rp = ReadHeader(ms);
+            long pos = ms.Position; // Header end
+            ms.Position = ms.Length;
+            if (ReadBody(rp.DataLength, ms)) return true;
+            ms.Position = pos;
+            HandleNetworkPacket(rp, ms);
+            ms.Dispose();
+            return false;
         }
 
-        private Thread listenerThread;
-
-        private bool stop = false;
-
-        public void Start()
+        protected bool ReadBody(int dataLength, MemoryStream ms)
         {
-            listenerThread = new Thread(() =>
+            var requiredSize = dataLength + RequestHeader.Size;
+            return ReadData(requiredSize, ms);
+        }
+
+        protected MessageHeader ReadHeader(MemoryStream ms)
+        {
+            ReadAvailable(ms);
+            ms.Position = 0;
+            MessageHeader rp = new MessageHeader(ms);
+            return rp;
+        }
+
+        protected void HandleNetworkPacket(MessageHeader rp, MemoryStream ms)
+        {
+            switch (rp.RequestType)
             {
-                try
-                {
-                    while (true)
+                case RequestType.Response:
+                    HandleResponses(rp, ms);
+                    break;
+                case RequestType.Request:
+                    HandleRequests(rp, ms);
+                    break;
+                case RequestType.AutoSend:
+                    HandleAutoSend(rp, ms);
+                    break;
+            }
+        }
+
+        protected virtual void HandleAutoSend(MessageHeader rp, MemoryStream ms)
+        {
+            switch (rp.Operation)
+            {
+                case NetOperationType.Error:
+                    ByteString buffer = new byte[rp.DataLength];
+                    ms.Read(buffer, 0, rp.DataLength);
+                    break;
+                case NetOperationType.NewBlock:
+                    NewBlockRequest response = new NewBlockRequest(ms, rp);
+                    OnNewBlock(response);
+                    //BlockChain.Instance.Append(response.Block);
+                    break;
+                case NetOperationType.AddOperations:
+                    var newTransaction = new NewTransactionMessage(ms, rp);
+                    OnNewTransaction(newTransaction);
+                    break;
+            }
+        }
+
+        protected virtual void HandleRequests(MessageHeader rp, MemoryStream ms)
+        {
+            switch (rp.Operation)
+            {
+                case NetOperationType.Blocks:
+                    BlockRequest blockRequest = new BlockRequest(ms, rp);
+                    var blockResponse = new BlockResponse
                     {
-                        int timeout = 0;
-                        while (TcpClient.Available == 0)
-                        {
-                            if (stop)
-                            {
-                                log.Info("Stopping Thread");
-                                return;
-                            }
-                            Thread.Sleep(1);
-                            /*timeout++;
-                            if (timeout > 30000)
-                            {
-                                return;
-                            }*/
-                        }
-                        var ms = new MemoryStream();
-                        NetworkStream ns = TcpClient.GetStream();
-                        while (TcpClient.Available > 0)
-                        {
-                            byte[] buffer = new byte[TcpClient.Available];
-                            ns.Read(buffer, 0, buffer.Length);
-                            ms.Write(buffer, 0, buffer.Length);
-                        }
-                        ms.Position = 0;
-                        MessageHeader rp = new MessageHeader(ms);
-                        long pos = ms.Position;
-                        ms.Position = ms.Length;
-                        int wt = 0;
-                        log.Debug($"Expected: {rp.DataLength + RequestHeader.Size} received: {ms.Length}");
-                        while (rp.DataLength > ms.Length - RequestHeader.Size)
-                        {
-                            do
-                            {
-                                Thread.Sleep(1);
-                                wt++;
-                                if (wt > 4000) break;
-                            } while (TcpClient.Available == 0);
-                            if (wt > 4000) break;
-                            while (TcpClient.Available > 0)
-                            {
-                                log.Debug($"Expected: {rp.DataLength + RequestHeader.Size} received: {ms.Length}. Available: {TcpClient.Available}");
-                                byte[] buffer = new byte[TcpClient.Available];
-                                ns.Read(buffer, 0, buffer.Length);
-                                ms.Write(buffer, 0, buffer.Length);
-                                log.Debug($"Expected: {rp.DataLength + RequestHeader.Size} received: {ms.Length}. Available: {TcpClient.Available}");
-                            }
-                            wt = 0;
-                        }
-
-                        if (wt > 1000)
-                        {
-                            log.Error($"Timeout. Received {ms.Length}, expected {rp.DataLength + RequestHeader.Size}");
-                            continue;
-                        }
-
-                        ms.Position = pos;
-                        log.Info($"{TcpClient.Client.RemoteEndPoint.ToString()} => {rp.Operation} {rp.RequestType} from {TcpClient.Client.RemoteEndPoint}. Data length: {rp.DataLength}");
-                        if (rp.RequestType == RequestType.Response)
-                        {
-                            switch (rp.Operation)
-                            {
-                                case NetOperationType.Hello:
-                                    try
-                                    {
-                                        HelloResponse response = new HelloResponse(ms, rp);
-                                        log.Info($"{response.WorkSum} {CheckPoints.WorkSum}");
-                                        Node.Instance.NodeServers.UpdateNodeServers(response.NodeServers);
-                                        OnHelloResponse(response);
-                                    }
-                                    catch (Exception e)
-                                    {
-                                        log.Error(e.Message, e);
-                                    }
-
-                                    break;
-                                case NetOperationType.Transactions:
-                                    BlockResponse transactionBlockResponse = new BlockResponse(ms, rp);
-                                    OnGetBlockResponse(transactionBlockResponse);
-                                    break;
-                                case NetOperationType.Blocks:
-                                    BlockResponse blockResponse = new BlockResponse(ms, rp);
-                                    OnGetBlockResponse(blockResponse);
-                                    break;
-                                case NetOperationType.CheckPoint:
-                                    ms.Position = 0;
-                                    CheckPointResponse checkPointResponse = new CheckPointResponse(ms);
-                                    break;
-                                default:
-                                    break;
-                            }
-                        }
-                        else if (rp.RequestType == RequestType.Request)
-                        {
-                            switch (rp.Operation)
-                            {
-                                case NetOperationType.Blocks:
-                                    BlockRequest blockRequest = new BlockRequest(ms, rp);
-                                    var blockResponse = new BlockResponse
-                                    {
-                                        RequestId = blockRequest.RequestId,
-                                        Blocks = BlockChain.Instance.GetBlocks(blockRequest.StartBlock, blockRequest.EndBlock)
-                                    };
-                                    using (MemoryStream memoryStream = new MemoryStream())
-                                    {
-                                        blockResponse.SaveToStream(memoryStream);
-                                        memoryStream.Position = 0;
-                                        memoryStream.CopyTo(ns);
-                                    }
-                                    break;
-                                case NetOperationType.Transactions:
-                                    {
-                                        BlockRequest transactionBlockRequest = new BlockRequest(ms, rp);
-                                        BlockResponse transactionBlockResponse = new BlockResponse()
-                                        {
-                                            RequestId = transactionBlockRequest.RequestId
-                                        };
-                                        transactionBlockResponse.Blocks = BlockChain.Instance.GetBlocks(transactionBlockRequest.StartBlock, transactionBlockRequest.EndBlock).ToList<Block>();
-                                        using (MemoryStream memoryStream = new MemoryStream())
-                                        {
-                                            transactionBlockResponse.SaveToStream(memoryStream);
-                                            memoryStream.Position = 0;
-                                            memoryStream.CopyTo(ns);
-                                        }
-                                        break;
-                                    }
-                                case NetOperationType.CheckPoint:
-                                    CheckPointRequest checkPointRequest = new CheckPointRequest(ms, rp);
-                                    CheckPointResponse checkPointResponse = new CheckPointResponse();
-                                    checkPointResponse.RequestId = checkPointRequest.RequestId;
-                                    using (MemoryStream m = new MemoryStream())
-                                    {
-                                        /*var CheckPoint = Node.Instance.CheckPoint.SaveChunk(checkPointRequest.StartBlock, checkPointRequest.EndBlock);
-                                        checkPointResponse.CheckPoint = CheckPoint;
-                                        checkPointResponse.SaveToStream(m);
-                                        m.Position = 0;
-                                        m.CopyTo(ns);*/
-                                    }
-                                    break;
-                                case NetOperationType.Hello:
-                                    HelloRequest request = new HelloRequest(ms, rp);
-                                    Node.Instance.NodeServers.UpdateNodeServers(request.NodeServers);
-                                    HelloResponse response = new HelloResponse(request);
-                                    response.Timestamp = DateTime.UtcNow;
-                                    response.Error = 0;
-                                    response.ServerPort = (ushort)((IPEndPoint)TcpClient.Client.LocalEndPoint).Port;
-                                    response.Block = BlockChain.Instance.GetLastBlock();
-                                    response.WorkSum = CheckPoints.WorkSum;
-                                    response.AccountKey = Node.Instance.AccountKey;
-                                    response.RequestType = RequestType.Response;
-                                    response.Operation = NetOperationType.Hello;
-                                    using (MemoryStream vm = new MemoryStream())
-                                    {
-                                        response.SaveToStream(vm);
-                                        vm.Position = 0;
-                                        vm.CopyTo(ns);
-                                        ns.Flush();
-                                    }
-                                    break;
-                            }
-                        }
-                        else if (rp.RequestType == RequestType.AutoSend)
-                        {
-                            switch (rp.Operation)
-                            {
-                                case NetOperationType.Error:
-                                    byte[] buffer = new byte[rp.DataLength];
-                                    ms.Read(buffer, 0, rp.DataLength);
-                                    log.Error(TcpClient.Client.RemoteEndPoint.ToString() + " => " + Encoding.ASCII.GetString(buffer));
-                                    break;
-                                case NetOperationType.NewBlock:
-                                    log.Info($"Received new block from client");
-                                    NewBlockRequest response = new NewBlockRequest(ms, rp);
-                                    log.Debug($"CheckPointBlock number {response.Block.BlockNumber}");
-                                    BlockChain.Instance.Append(response.Block);
-                                    break;
-                                case NetOperationType.AddOperations:
-                                    log.Info($"Received new operation");
-                                    var newTransaction = new NewTransactionMessage(ms, rp);
-                                    OnNewTransaction(newTransaction);
-                                    break;
-                            }
-
-                        }
-                        ms.Dispose();
-                        ms = null;
+                        RequestId = blockRequest.RequestId,
+                        Blocks = BlockChain.Instance.GetBlocks(blockRequest.StartBlock, blockRequest.EndBlock)
+                    };
+                    using (MemoryStream memoryStream = new MemoryStream())
+                    {
+                        blockResponse.SaveToStream(memoryStream);
+                        memoryStream.Position = 0;
+                        SendRaw(memoryStream);
                     }
-                }
-                finally
-                {
-                    TcpClient.Close();
-         //           Dispose();
-                }
-            });
-            listenerThread.Name = TcpClient.Client.RemoteEndPoint.ToString();
-            listenerThread.Start();            
-        }
-        public void Dispose()
-        {
-            if (Disconnected != null)
-            {
-                Disconnected.Invoke(this, new EventArgs());
-            }
-            Dispose(true);
-            GC.SuppressFinalize(this);
 
-        }
-        private void Dispose(bool disposing)
-        {
-            if (disposing && !IsDisposed)
-            {
-                stop = true;
-                while(listenerThread!=null && listenerThread.IsAlive)
-                {                    
-                    Thread.Sleep(1);
+                    break;
+                case NetOperationType.Transactions:
+                {
+                    BlockRequest transactionBlockRequest = new BlockRequest(ms, rp);
+                    BlockResponse transactionBlockResponse = new BlockResponse
+                    {
+                        RequestId = transactionBlockRequest.RequestId,
+                        Blocks = BlockChain.Instance.GetBlocks(transactionBlockRequest.StartBlock,
+                            transactionBlockRequest.EndBlock).ToList()
+                    };
+                    using (MemoryStream memoryStream = new MemoryStream())
+                    {
+                        transactionBlockResponse.SaveToStream(memoryStream);
+                        memoryStream.Position = 0;
+                        SendRaw(memoryStream);
+                    }
+
+                    break;
                 }
-                if(TcpClient!=null)
-                    TcpClient.Dispose();                
+                case NetOperationType.CheckPoint:
+                    var checkPointRequest = new CheckPointRequest(ms, rp);
+                    var checkPointResponse = new CheckPointResponse
+                    {
+                        RequestId = checkPointRequest.RequestId
+                    };
+                    break;
+                case NetOperationType.Hello:
+                    HelloRequest request = new HelloRequest(ms, rp);
+                    Node.Instance.NodeServers.UpdateNodeServers(request.NodeServers);
+                    HelloResponse response = new HelloResponse(request)
+                    {
+                        Timestamp = DateTime.UtcNow,
+                        Error = 0,
+                        ServerPort = 4004, // TODO: HardCoded
+                        Block = BlockChain.Instance.GetLastBlock(),
+                        WorkSum = CheckPoints.WorkSum,
+                        AccountKey = Node.Instance.NodeKey,
+                        RequestType = RequestType.Response,
+                        Operation = NetOperationType.Hello
+                    };
+                    using (MemoryStream vm = new MemoryStream())
+                    {
+                        response.SaveToStream(vm);
+                        vm.Position = 0;
+                        SendRaw(vm);
+                    }
+
+                    break;
             }
-            IsDisposed = true;
+        }
+
+        protected virtual void HandleResponses(MessageHeader rp, MemoryStream ms)
+        {
+            switch (rp.Operation)
+            {
+                case NetOperationType.Hello:
+                    try
+                    {
+                        HelloResponse response = new HelloResponse(ms, rp);
+                        Log.Info($"{response.WorkSum} {CheckPoints.WorkSum}");
+                        Node.Instance.NodeServers.UpdateNodeServers(response.NodeServers);
+                        OnHelloResponse(response);
+                    }
+                    catch (Exception e)
+                    {
+                        Log.Error(e.Message, e);
+                    }
+
+                    break;
+                case NetOperationType.Transactions:
+                    BlockResponse transactionBlockResponse = new BlockResponse(ms, rp);
+                    OnGetBlockResponse(transactionBlockResponse);
+                    break;
+                case NetOperationType.Blocks:
+                    BlockResponse blockResponse = new BlockResponse(ms, rp);
+                    OnGetBlockResponse(blockResponse);
+                    break;
+                case NetOperationType.CheckPoint:
+                    ms.Position = 0;
+                    CheckPointResponse checkPointResponse = new CheckPointResponse(ms);
+                    break;
+            }
         }
     }
 

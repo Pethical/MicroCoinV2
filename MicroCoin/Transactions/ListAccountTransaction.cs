@@ -18,6 +18,7 @@
 //-----------------------------------------------------------------------
 
 
+using MicroCoin.Chain;
 using MicroCoin.Cryptography;
 using MicroCoin.Util;
 using System.IO;
@@ -31,21 +32,24 @@ namespace MicroCoin.Transactions
         {
             ListAccount = 4,
             DeListAccount = 5
-        };
+        }
 
-        public AccountTransactionType TransactionType { get; set; }
 
-        public ulong AccountPrice { get; set; }
+        public MCC AccountPrice { get; set; }
 
         public AccountNumber AccountToPay { get; set; }
 
-        public ECKeyPair NewPublicKey { get; set; }
+        public ECKeyPair NewPublicKey { get; set; } = new ECKeyPair();
 
         public uint LockedUntilBlock { get; set; }
 
-        public ListAccountTransaction() { }
+        public ListAccountTransaction(TransactionType type = TransactionType.ListAccountForSale)
+        {
+            TransactionType = type;
+        }
 
-        public ListAccountTransaction(Stream stream) {
+        public ListAccountTransaction(Stream stream)
+        {
             LoadFromStream(stream);
         }
 
@@ -55,21 +59,29 @@ namespace MicroCoin.Transactions
             {
                 bw.Write(SignerAccount);
                 bw.Write(TargetAccount);
-                bw.Write((ushort)TransactionType);
+                bw.Write((ushort) TransactionType);
                 bw.Write(NumberOfOperations);
-                if (TransactionType == AccountTransactionType.ListAccount)
+                if (TransactionType == TransactionType.ListAccountForSale)
                 {
                     bw.Write(AccountPrice);
                     bw.Write(AccountToPay);
                     AccountKey.SaveToStream(s, false);
-                    NewPublicKey.SaveToStream(s);
+                    if (NewPublicKey.CurveType != CurveType.Empty)
+                    {
+                        NewPublicKey.SaveToStream(s);
+                    }
+                    else
+                    {
+                        bw.Write((ushort) 0);
+                    }
+
                     bw.Write(LockedUntilBlock);
                 }
+
                 bw.Write(Fee);
                 Payload.SaveToStream(bw);
                 Signature.SaveToStream(s);
             }
-
         }
 
         public override void LoadFromStream(Stream s)
@@ -78,22 +90,63 @@ namespace MicroCoin.Transactions
             {
                 SignerAccount = br.ReadUInt32();
                 TargetAccount = br.ReadUInt32();
-                TransactionType = (AccountTransactionType)br.ReadUInt16();
+                TransactionType = (TransactionType) br.ReadUInt16();
                 NumberOfOperations = br.ReadUInt32();
-                if (TransactionType == AccountTransactionType.ListAccount)
+                if (TransactionType == TransactionType.ListAccountForSale)
                 {
                     AccountPrice = br.ReadUInt64();
                     AccountToPay = br.ReadUInt32();
-                    AccountKey = new ECKeyPair();                    
+                    AccountKey = new ECKeyPair();
                     AccountKey.LoadFromStream(s, false);
                     NewPublicKey = new ECKeyPair();
                     NewPublicKey.LoadFromStream(s);
                     LockedUntilBlock = br.ReadUInt32();
                 }
+
                 Fee = br.ReadUInt64();
                 Payload = ByteString.ReadFromStream(br);
-                Signature = new ECSig(s);
+                Signature = new ECSignature(s);
             }
+        }
+
+        public override byte[] GetHash()
+        {
+            using (MemoryStream ms = new MemoryStream())
+            {
+                using (BinaryWriter bw = new BinaryWriter(ms))
+                {
+                    bw.Write(SignerAccount);
+                    bw.Write(TargetAccount);
+                    bw.Write(NumberOfOperations);
+                    bw.Write(AccountPrice);
+                    bw.Write(AccountToPay);
+                    bw.Write(Fee);
+                    Payload.SaveToStream(bw, false);
+                    if (AccountKey?.X != null && AccountKey.X.Length > 0 && AccountKey.Y.Length > 0)
+                    {
+                        bw.Write((ushort) AccountKey.CurveType);
+                        bw.Write((byte[]) AccountKey.X);
+                        bw.Write((byte[]) AccountKey.Y);
+                    }
+                    else
+                    {
+                        bw.Write((ushort) 0);
+                    }
+
+                    NewPublicKey.SaveToStream(ms, false);
+                    bw.Write(LockedUntilBlock);
+                    ms.Position = 0;
+                    return ms.ToArray();
+                }
+            }
+        }
+
+        public override bool IsValid()
+        {
+            if (!base.IsValid()) return false;
+            if (AccountPrice < 0) return false;
+            if (AccountToPay.IsValid()) return false;
+            return true;
         }
     }
 }

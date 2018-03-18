@@ -1,7 +1,7 @@
 ﻿//-----------------------------------------------------------------------
 // This file is part of MicroCoin - The first hungarian cryptocurrency
 // Copyright (c) 2018 Peter Nemeth
-// BlockStreamHeader.cs - Copyright (c) 2018 Németh Péter
+// Program.cs - Copyright (c) 2018 Németh Péter
 //-----------------------------------------------------------------------
 // MicroCoin is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -19,13 +19,27 @@
 
 
 using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+using Wallet.Views;
 
-namespace MicroCoin.Chain
+namespace Wallet
 {
-    public class BlockStreamHeader
+    static class Program
     {
-        public uint BlockNumber { get; set; }
-        public UInt64 Offset { get; set; }
-        public uint Size { get; set; }
+        /// <summary>
+        /// The main entry point for the application.
+        /// </summary>
+        [STAThread]
+        static void Main()
+        {
+            Application.EnableVisualStyles();
+            Application.SetCompatibleTextRenderingDefault(false);
+            Application.Run(new MainForm());
+        }
     }
 }

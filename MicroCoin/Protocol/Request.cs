@@ -22,7 +22,7 @@ namespace MicroCoin.Protocol
 {
     public class Request : MessageHeader
     {
-        public Request() : base()
+        public Request()
         {
 
         }

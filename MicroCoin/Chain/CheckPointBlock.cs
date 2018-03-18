@@ -49,7 +49,7 @@ namespace MicroCoin.Chain
         /// <value>The accumulated work.</value>
         public ulong AccumulatedWork { get; set; }
 
-        public override void SaveToStream(Stream stream)
+        internal override void SaveToStream(Stream stream)
         {
             using(BinaryWriter bw = new BinaryWriter(stream, Encoding.Default, true))
             {
@@ -57,9 +57,8 @@ namespace MicroCoin.Chain
             }
         }
 
-        public void SaveToStream(BinaryWriter bw, bool saveHash = true)
+        internal void SaveToStream(BinaryWriter bw, bool saveHash = true)
         {
-            long s = bw.BaseStream.Position;
             bw.Write(BlockNumber);
             AccountKey.SaveToStream(bw.BaseStream, false);
             bw.Write(Reward);
@@ -84,12 +83,12 @@ namespace MicroCoin.Chain
             bw.Write(AccumulatedWork);
         }
 
-        public CheckPointBlock() : base()
+        public CheckPointBlock() 
         {
 
         }
 
-        public Hash CalculateBlockHash()
+        internal Hash CalculateBlockHash()
         {
             MemoryStream ms = new MemoryStream();
             try
@@ -107,12 +106,12 @@ namespace MicroCoin.Chain
             finally
             {
                 ms.Dispose();
-                ms = null;
             }
         }
 
         public bool Equals(CheckPointBlock other)
         {
+            if (other == null) return false;
             if (other.AccumulatedWork != AccumulatedWork) return false;
             if (other.AvailableProtocol != AvailableProtocol) return false;
             if (other.BlockNumber != BlockNumber) return false;
@@ -136,9 +135,8 @@ namespace MicroCoin.Chain
             return true;
         }
 
-        public CheckPointBlock(Stream stream) : base()
+        internal CheckPointBlock(Stream stream)
         {
-            long s = stream.Position;
             using (BinaryReader br = new BinaryReader(stream, Encoding.Default, true))
             {
                 BlockNumber = br.ReadUInt32();
@@ -149,7 +147,6 @@ namespace MicroCoin.Chain
                 ProtocolVersion = br.ReadUInt16();
                 AvailableProtocol = br.ReadUInt16();
                 Timestamp = br.ReadUInt32();
-                DateTime t = Timestamp;
                 CompactTarget = br.ReadUInt32();
                 Nonce = br.ReadInt32();
                 ushort len = br.ReadUInt16();
@@ -168,8 +165,6 @@ namespace MicroCoin.Chain
                 BlockHash = Hash.ReadFromStream(br);
                 AccumulatedWork = br.ReadUInt64();
             }
-//            Hash h = CalculateBlockHash();
-            // log.Info("Hash calculated");
         }
     }
 }

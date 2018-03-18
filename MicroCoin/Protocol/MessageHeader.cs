@@ -27,24 +27,14 @@ namespace MicroCoin.Protocol
     public class MessageHeader : RequestHeader
     {
 
-        public MessageHeader() : base()
+        public MessageHeader() 
         {
             RequestType = RequestType.Response;            
         }
 
         public MessageHeader(Stream stream)
         {
-            using(BinaryReader br = new BinaryReader(stream, Encoding.ASCII, true))
-            {
-                Magic = br.ReadUInt32();
-                RequestType = (RequestType)br.ReadUInt16();
-                Operation = (NetOperationType)br.ReadUInt16();
-                Error = br.ReadUInt16();
-                RequestId = br.ReadUInt32();
-                ProtocolVersion = br.ReadUInt16();
-                AvailableProtocol = br.ReadUInt16();
-                DataLength = br.ReadInt32();
-            }
+            LoadFromStream(stream);
         }
 
         public MessageHeader(MessageHeader rp)
@@ -58,5 +48,22 @@ namespace MicroCoin.Protocol
             AvailableProtocol = rp.AvailableProtocol;
             DataLength = rp.DataLength;
         }
+
+        private void LoadFromStream(Stream stream)
+        {
+            using (BinaryReader br = new BinaryReader(stream, Encoding.ASCII, true))
+            {
+                Magic = br.ReadUInt32();
+                RequestType = (RequestType)br.ReadUInt16();
+                Operation = (NetOperationType)br.ReadUInt16();
+                Error = br.ReadUInt16();
+                RequestId = br.ReadUInt32();
+                ProtocolVersion = br.ReadUInt16();
+                AvailableProtocol = br.ReadUInt16();
+                DataLength = br.ReadInt32();
+            }
+
+        }
+
     }
 }

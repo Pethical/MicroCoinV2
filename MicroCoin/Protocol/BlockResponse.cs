@@ -19,7 +19,6 @@
 
 
 using MicroCoin.Chain;
-using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -33,13 +32,13 @@ namespace MicroCoin.Protocol
         public BlockResponse(Stream stream) : base(stream)
         {
         }
-        public BlockResponse() : base()
+        public BlockResponse()
         {
             Operation = Net.NetOperationType.Blocks;
             RequestType = Net.RequestType.Response;
         }
 
-        public override void SaveToStream(Stream s)
+        internal override void SaveToStream(Stream s)
         {
             MemoryStream ms = new MemoryStream();
             base.SaveToStream(s);
@@ -60,7 +59,7 @@ namespace MicroCoin.Protocol
             }
         }
 
-        public BlockResponse(Stream stream, MessageHeader rp) :base(rp)
+        internal BlockResponse(Stream stream, MessageHeader rp) :base(rp)
         {
             Blocks = new List<Block>();
             using (BinaryReader br = new BinaryReader(stream, Encoding.ASCII, true))

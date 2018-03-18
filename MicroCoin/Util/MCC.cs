@@ -18,15 +18,12 @@
 //-----------------------------------------------------------------------
 
 
-using System;
-using System.IO;
-using System.Text;
 
 namespace MicroCoin.Util
 {
     public struct MCC
     {
-        public decimal value { get; set; }
+        public decimal value { get; }
 
         public MCC(decimal value)
         {
@@ -37,6 +34,12 @@ namespace MicroCoin.Util
         {
             return m.value;
         }
+
+        public static implicit operator ulong(MCC m)
+        {
+            return (ulong)(m.value*10000M);
+        }
+
 
         public static implicit operator MCC(ulong m)
         {

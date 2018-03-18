@@ -28,26 +28,33 @@ namespace MicroCoin.Protocol
     {
         public static int Size = 4 + 2 + 2 + 2 + 4 + 2 + 2 + 4;
 
-        public uint Magic { get; set; }
-        public RequestType RequestType { get; set; }
+        public uint Magic { get; set; } = 0x0A043580;
+        public RequestType RequestType { get; set; } = RequestType.Request;
         public NetOperationType Operation { get; set; }
         public ushort Error { get; set; }
-        public uint RequestId { get; set; }
+        private static uint _requestId = 1;
+        public uint RequestId
+        {
+            get;
+            set;
+        }
         public ushort ProtocolVersion { get; set; }
         public ushort AvailableProtocol { get; set; }
         public int DataLength { get; set; }
+        public static readonly object RequestLock = new object();
 
         public RequestHeader()
         {
-            Magic = 0x0A043580;
-            RequestType = RequestType.Request;
+            lock(RequestLock) {
+                RequestId = _requestId++;
+            }
             Operation = NetOperationType.Hello;
             ProtocolVersion = 2;
             AvailableProtocol = 2;
             Error = 0;
         }
 
-        public virtual void SaveToStream(Stream s)
+        internal virtual void SaveToStream(Stream s)
         {
             using (BinaryWriter br = new BinaryWriter(s, Encoding.ASCII, true))
             {

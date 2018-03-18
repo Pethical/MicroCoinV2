@@ -26,8 +26,8 @@ namespace MicroCoin.Transactions
 {
     public interface ITransaction
     {
-        ulong Fee { get; set; }
-        ECSig Signature { get; set; }
+        MCC Fee { get; set; }
+        ECSignature Signature { get; set; }
         AccountNumber SignerAccount { get; set; }
         AccountNumber TargetAccount { get; set; }
         ECKeyPair AccountKey { get; set; }
@@ -36,5 +36,8 @@ namespace MicroCoin.Transactions
         byte[] GetHash();
         void LoadFromStream(Stream s);
         void SaveToStream(Stream s);
+        bool IsValid();
+        bool SignatureValid();
+        ECSignature GetSignature();
     }
 }

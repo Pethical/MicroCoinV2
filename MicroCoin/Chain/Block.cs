@@ -31,76 +31,74 @@ namespace MicroCoin.Chain
     public class Block : BlockBase
     {
         public uint TransactionCount { get; set; }
-        public TransactionType TransactionsType { get; set; }
+        internal TransactionType TransactionsType { get; set; }
         public List<Transaction> Transactions {get; set;}  = new List<Transaction>();
-        public static new Block NullBlock
+        public new static Block GenesisBlock => new Block
         {
-            get
-            {
-                return new Block
-                {
-                    BlockNumber = 0
-                };
-            }
-        }
+            BlockNumber = 0
+        };
 
-        public Block() : base()
+        public Block() 
         {
             BlockSignature = 4;
         }
 
-        public Block(Stream s) : base(s)
+        public bool BlockIsValid()
+        {
+            if (Reward < 0) return false;
+            if (Fee < 0) return false;
+            return true;
+        }
+
+        internal Block(Stream s) : base(s)
         {            
             if (BlockSignature==1 || BlockSignature == 3)
             {
                 return;
             }
-            using (BinaryReader br = new BinaryReader(s, Encoding.Default, true))
+            using (var br = new BinaryReader(s, Encoding.Default, true))
             {
                 TransactionCount = br.ReadUInt32();
-                if (TransactionCount > 0)
+                if (TransactionCount <= 0) return;
+                Transactions = new List<Transaction>();
+                for (var i = 0; i < TransactionCount; i++)
                 {
-                    Transactions = new List<Transaction>();
-                    for (int i = 0; i < TransactionCount; i++)
+                    TransactionsType = (TransactionType)br.ReadUInt32();
+                    Transaction t;
+                    switch (TransactionsType)
                     {
-                        TransactionsType = (TransactionType)br.ReadUInt32();
-                        Transaction t;
-                        switch (TransactionsType)
-                        {
-                            case TransactionType.Transaction:
-                            case TransactionType.BuyAccount:
-                                t = new TransferTransaction(s);
-                                break;
-                            case TransactionType.ChangeKey:
-                            case TransactionType.ChangeKeySigned:
-                                t = new ChangeKeyTransaction(s, TransactionsType);
-                                break;
-                            case TransactionType.ListAccountForSale:
-                            case TransactionType.DeListAccountForSale:
-                                t = new ListAccountTransaction(s);
-                                break;
-                            case TransactionType.ChangeAccountInfo:
-                                t = new ChangeAccountInfoTransaction(s);
-                                break;
-                            default:
-                                s.Position = s.Length;
-                                return;
-                        }
-			t.TransactionType = TransactionsType;
-                        Transactions.Add(t);
+                        case TransactionType.Transaction:
+                        case TransactionType.BuyAccount:
+                            t = new TransferTransaction(s);
+                            break;
+                        case TransactionType.ChangeKey:
+                        case TransactionType.ChangeKeySigned:
+                            t = new ChangeKeyTransaction(s, TransactionsType);
+                            break;
+                        case TransactionType.ListAccountForSale:
+                        case TransactionType.DeListAccountForSale:
+                            t = new ListAccountTransaction(s);
+                            break;
+                        case TransactionType.ChangeAccountInfo:
+                            t = new ChangeAccountInfoTransaction(s);
+                            break;
+                        default:
+                            s.Position = s.Length;
+                            return;
                     }
+                    t.TransactionType = TransactionsType;
+                    Transactions.Add(t);
                 }
             }
         }
-
-        public override void SaveToStream(Stream s)
+        internal override void SaveToStream(Stream s)
         {
             base.SaveToStream(s);
             if (BlockSignature == 1 || BlockSignature == 3)
             {
                 return;
             }
-            using (BinaryWriter bw = new BinaryWriter(s, Encoding.ASCII, true))
+            using (var bw = new BinaryWriter(s, Encoding.ASCII, true))
             {
                 if (Transactions == null)
                 {

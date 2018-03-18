@@ -18,11 +18,10 @@
 //-----------------------------------------------------------------------
 
 
-using log4net;
 using System;
-using System.Linq;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using MicroCoin.Transactions;
 
@@ -31,104 +30,97 @@ namespace MicroCoin.Chain
     public class BlockChain : List<Block>
     {
         private static BlockChain _sInstance;
-        private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
-        protected BlockChain() { }
+        private static readonly object Flock = new object();
 
-        public static BlockChain Instance
+        protected BlockChain()
         {
-            get { return _sInstance ?? (_sInstance = new BlockChain()); }
         }
 
-        public void LoadFromStream(Stream s)
+        internal static BlockChain Instance => _sInstance ?? (_sInstance = new BlockChain());
+
+        internal string BlockChainFileName { get; set; } = "block.chain";
+
+        internal void LoadFromStream(Stream s)
         {
-            while (s.Position < s.Length - 1)
-            {
-                Add(new Block(s));
-            }
-        }
-        public void SaveToStream(Stream s)
-        {
-            foreach (var t in this)
-            {
-                t.SaveToStream(s);
-            }
+            while (s.Position < s.Length - 1) Add(new Block(s));
         }
 
-        public string BlockChainFileName { get; set; } = "block.chain";
+        internal void SaveToStream(Stream s)
+        {
+            foreach (var t in this) t.SaveToStream(s);
+        }
+
         public int BlockHeight()
         {
-            lock (flock)
+            lock (Flock)
             {
                 if (true)
                 {
-                    FileStream fi = File.Open(BlockChainFileName + ".index", FileMode.OpenOrCreate, FileAccess.ReadWrite);
-                    try
+                    var fi = File.Open(BlockChainFileName + ".index", FileMode.OpenOrCreate, FileAccess.ReadWrite);
+                    using (var br = new BinaryReader(fi))
                     {
-                        using (BinaryReader br = new BinaryReader(fi, Encoding.Default, true))
-                        {
-                            if (fi.Length == 0) return 0;
-                            fi.Position = fi.Length - 16;
-                            return br.ReadInt32();
-                        }
+                        if (fi.Length == 0) return 0;
+                        fi.Position = fi.Length - 16;
+                        return br.ReadInt32();
                     }
-                    finally
-                    {
-                        fi.Close();
-                        fi.Dispose();
-                        fi = null;
-                    }
-                }                
+                }
             }
         }
 
         public List<Transaction> GetAccountOperations(int accountNumber)
         {
-            List<Transaction> result = new List<Transaction>();
-            for (uint i = GetLastBlock().BlockNumber; i > 0; i--)
+            var account = CheckPoints.Accounts[accountNumber];
+            uint i = 0;
+            var blocks = new List<Block>();
+            var result = new List<Transaction>();
+            while (i < account.UpdatedBlock)
             {
-                Block b = Get((int)i);
-                if (b.Transactions != null)
-                {
-                    var l = b.Transactions.Where(p => p.SignerAccount == accountNumber || p.TargetAccount == accountNumber || (p is Transactions.TransferTransaction && ((Transactions.TransferTransaction)p).SellerAccount == accountNumber));
-                    result.AddRange(l);
-                }
+                var start = i;
+                var end = i + 1000;
+                if (start > account.UpdatedBlock) start = account.UpdatedBlock;
+                if (end > account.UpdatedBlock) end = account.UpdatedBlock;
+                blocks.AddRange(Get(start, end));
+                i = end;
             }
+
+            foreach (var b in blocks)
+            {
+                var l = b.Transactions.Where(p =>
+                    p.SignerAccount == accountNumber || p.TargetAccount == accountNumber || p is TransferTransaction &&
+                    ((TransferTransaction) p).SellerAccount == accountNumber);
+                result.AddRange(l);
+            }
+
             return result;
         }
 
-        private static object flock = new object();
-
         public Block Get(int blockNumber)
         {
-            lock (flock)
+            lock (Flock)
             {
-                FileStream fi = File.Open(BlockChainFileName + ".index", FileMode.OpenOrCreate, FileAccess.ReadWrite);
+                var fi = File.Open(BlockChainFileName + ".index", FileMode.OpenOrCreate, FileAccess.ReadWrite);
                 try
                 {
-                    using (BinaryReader ir = new BinaryReader(fi, Encoding.Default, true))
+                    using (var ir = new BinaryReader(fi, Encoding.Default, true))
                     {
                         fi.Position = 16;
-                        uint first = ir.ReadUInt32();
-                        fi.Position = (blockNumber-first) * 16 + 16;
-                        uint bn = ir.ReadUInt32();
-                        long pos = ir.ReadInt64();
-                        if (bn != blockNumber)
-                        {
-                            return null;
-                        }
-                        FileStream f = File.Open(BlockChainFileName, FileMode.OpenOrCreate, FileAccess.ReadWrite);
+                        var first = ir.ReadUInt32();
+                        fi.Position = (blockNumber - first) * 16 + 16;
+                        var bn = ir.ReadUInt32();
+                        var pos = ir.ReadInt64();
+                        if (bn != blockNumber) return null;
+                        var f = File.Open(BlockChainFileName, FileMode.OpenOrCreate, FileAccess.ReadWrite);
                         try
                         {
                             f.Position = pos;
-                            Block tb = new Block(f);
+                            var tb = new Block(f);
                             return tb;
                         }
                         finally
                         {
                             f.Close();
                             f.Dispose();
-                            f = null;
                         }
                     }
                 }
@@ -136,45 +128,42 @@ namespace MicroCoin.Chain
                 {
                     fi.Close();
                     fi.Dispose();
-                    fi = null;
                 }
             }
         }
 
-        
-
-        public Block GetLastBlock()
+        public List<Block> Get(uint start, uint end)
         {
-            lock (flock)
+            lock (Flock)
             {
-                FileStream fi = File.Open(BlockChainFileName + ".index", FileMode.OpenOrCreate, FileAccess.ReadWrite);
+                var fi = File.Open(BlockChainFileName + ".index", FileMode.OpenOrCreate, FileAccess.ReadWrite);
                 try
                 {
-                    using (BinaryReader ir = new BinaryReader(fi, Encoding.Default, true))
+                    using (var ir = new BinaryReader(fi, Encoding.Default, true))
                     {
-                        if (fi.Length == 0) return Block.NullBlock;
-                        fi.Position = fi.Length - 16;
-                        uint blockNumber = ir.ReadUInt32();
-                        long position = ir.ReadInt64();
-			            //log.Debug($"Last block {blockNumber} {position}");
-                        FileStream f = File.Open(BlockChainFileName, FileMode.OpenOrCreate, FileAccess.ReadWrite);
+                        fi.Position = 16;
+                        var first = ir.ReadUInt32();
+                        fi.Position = (start - first) * 16 + 16;
+                        var bn = ir.ReadUInt32();
+                        var pos = ir.ReadInt64();
+                        if (bn != start) return null;
+                        var f = File.Open(BlockChainFileName, FileMode.OpenOrCreate, FileAccess.ReadWrite);
                         try
                         {
-                            if (f.Length == 0)
+                            f.Position = pos;
+                            var blocks = new List<Block>();
+                            for (var i = start; i <= end; i++)
                             {
-                                throw new Exception("No blockchain file.");
+                                var tb = new Block(f);
+                                blocks.Add(tb);
                             }
-                            using (BinaryReader br = new BinaryReader(f, Encoding.Default, true))
-                            {
-                                f.Position = position;
-                                return new Block(f);
-                            }
+
+                            return blocks;
                         }
                         finally
                         {
                             f.Close();
                             f.Dispose();
-                            f = null;
                         }
                     }
                 }
@@ -182,27 +171,60 @@ namespace MicroCoin.Chain
                 {
                     fi.Close();
                     fi.Dispose();
-                    fi = null;
                 }
             }
         }
 
-        public bool Append(Block t)
+        public Block GetLastBlock()
         {
-            lock (flock)
+            lock (Flock)
             {
-                uint blockHeight = GetLastBlock().BlockNumber+1;
-                FileStream fi = File.Open(BlockChainFileName + ".index", FileMode.OpenOrCreate, FileAccess.ReadWrite);
+                var fi = File.Open(BlockChainFileName + ".index", FileMode.OpenOrCreate, FileAccess.ReadWrite);
                 try
                 {
-                    FileStream f = File.Open(BlockChainFileName, FileMode.OpenOrCreate, FileAccess.ReadWrite);
+                    using (var ir = new BinaryReader(fi, Encoding.Default, true))
+                    {
+                        if (fi.Length == 0) return Block.GenesisBlock;
+                        fi.Position = fi.Length - 16;
+                        var blockNumber = ir.ReadUInt32();
+                        var position = ir.ReadInt64();
+                        var f = File.Open(BlockChainFileName, FileMode.OpenOrCreate, FileAccess.ReadWrite);
+                        try
+                        {
+                            if (f.Length == 0) throw new Exception("No blockchain file.");
+
+                            f.Position = position;
+                            return new Block(f);
+                        }
+                        finally
+                        {
+                            f.Close();
+                            f.Dispose();
+                        }
+                    }
+                }
+                finally
+                {
+                    fi.Close();
+                    fi.Dispose();
+                }
+            }
+        }
+
+        internal bool Append(Block t)
+        {
+            lock (Flock)
+            {
+                var blockHeight = GetLastBlock().BlockNumber + 1;
+                var fi = File.Open(BlockChainFileName + ".index", FileMode.OpenOrCreate, FileAccess.ReadWrite);
+                try
+                {
+                    var f = File.Open(BlockChainFileName, FileMode.OpenOrCreate, FileAccess.ReadWrite);
                     try
                     {
-                        using (BinaryReader br = new BinaryReader(fi, Encoding.Default, true))
+                        using (var br = new BinaryReader(fi, Encoding.Default, true))
                         {
-                            int count = 0;
-                            long size = 0;
-                            int indexSize = 0;
+                            int count;
                             if (fi.Length == 0)
                             {
                                 count = 0;
@@ -210,32 +232,32 @@ namespace MicroCoin.Chain
                             else
                             {
                                 count = br.ReadInt32();
-                                size = br.ReadInt64();
-                                indexSize = (int)(size + 16);
+                                var size = br.ReadInt64();
                             }
-                            if (blockHeight < t.BlockNumber-1)
+
+                            if (blockHeight < t.BlockNumber - 1)
                             {
                                 return false;
                             }
                             else if (blockHeight > t.BlockNumber)
                             {
-                                log.Warn($"CheckPointBlock already added to chain. My block height: #{blockHeight}. Received block: #{t.BlockNumber}");
                                 return true;
                             }
-                            using (BinaryWriter iw = new BinaryWriter(fi, Encoding.Default, true))
+
+                            using (var iw = new BinaryWriter(fi, Encoding.Default, true))
                             {
                                 iw.BaseStream.Position = iw.BaseStream.Length;
                                 fi.Position = 0;
-                                iw.Write(count+1);
+                                iw.Write(count + 1);
                                 f.Position = f.Length;
                                 fi.Position = fi.Length;
-                                long pos = f.Position;
+                                var pos = f.Position;
                                 t.SaveToStream(f);
                                 iw.Write(t.BlockNumber);
                                 iw.Write(pos);
-                                iw.Write((uint)(f.Position - pos));
-                                log.Info($"Added new block #{t.BlockNumber}");
+                                iw.Write((uint) (f.Position - pos));
                             }
+
                             CheckPoints.AppendBlock(t);
                             return true;
                         }
@@ -249,20 +271,20 @@ namespace MicroCoin.Chain
                 {
                     fi.Dispose();
                 }
-            }            
+            }
         }
-        public void AppendAll(List<Block> ts, bool ignoreCheckPointing=false)
+
+        internal void AppendAll(List<Block> blocks, bool ignoreCheckPointing = false)
         {
-            lock (flock)
+            lock (Flock)
             {
                 var blockHeight = GetLastBlock().BlockNumber;
-                FileStream f = File.Open(BlockChainFileName, FileMode.OpenOrCreate, FileAccess.ReadWrite);
-                FileStream fi = File.Open(BlockChainFileName + ".index", FileMode.OpenOrCreate, FileAccess.ReadWrite);
-                using (BinaryReader br = new BinaryReader(fi))
+                var f = File.Open(BlockChainFileName, FileMode.OpenOrCreate, FileAccess.ReadWrite);
+                var fi = File.Open(BlockChainFileName + ".index", FileMode.OpenOrCreate, FileAccess.ReadWrite);
+                using (var br = new BinaryReader(fi))
                 {
-                    int count = 0;
-                    int size = 0;
-                    int indexSize = 0;
+                    int count;
+                    var size = 0;
                     if (fi.Length == 0)
                     {
                         count = 0;
@@ -271,77 +293,70 @@ namespace MicroCoin.Chain
                     {
                         count = br.ReadInt32();
                         size = br.ReadInt32();
-                        indexSize = size + 16;
                         br.ReadUInt64(); // Padding
                     }
-                    using (BinaryWriter iw = new BinaryWriter(fi, Encoding.Default, true))
+
+                    using (var iw = new BinaryWriter(fi, Encoding.Default, true))
                     {
                         fi.Position = 0;
                         iw.Write(count);
                         iw.Write(size);
-                        iw.Write((ulong)0);
-                        foreach (var t in ts)
+                        iw.Write((ulong) 0);
+                        foreach (var block in blocks)
                         {
-                            if(t.BlockNumber!=0 ||blockHeight>0)
-                                if (t.BlockNumber <= blockHeight) continue;
+                            if (block.BlockNumber != 0 || blockHeight > 0)
+                                if (block.BlockNumber <= blockHeight)
+                                    continue;
                             f.Position = f.Length;
                             fi.Position = fi.Length;
-                            long pos = f.Position;
-                            t.SaveToStream(f);
-                            iw.Write(t.BlockNumber);
+                            var pos = f.Position;
+                            block.SaveToStream(f);
+                            iw.Write(block.BlockNumber);
                             iw.Write(pos);
-                            iw.Write((uint)(f.Position - pos));
+                            iw.Write((uint) (f.Position - pos));
                             iw.BaseStream.Position = 0;
-			                count++;
+                            count++;
                             iw.Write(count);
                             iw.Write(fi.Length);
-                            if(!ignoreCheckPointing) CheckPoints.AppendBlock(t);
+                            if (!ignoreCheckPointing) CheckPoints.AppendBlock(block);
                         }
-                        log.Info($"Saved {ts.Count} blocks. From {ts.FirstOrDefault()?.BlockNumber} to {ts.LastOrDefault()?.BlockNumber}. New count: {count}");
                     }
                 }
+
                 f.Close();
                 f.Dispose();
-                f = null;
             }
         }
 
-        public void SaveToStorage(Stream s)
+        internal void SaveToStorage(Stream s)
         {
-            lock (flock)
+            lock (Flock)
             {
 //                byte[] b;
-                int count = 0;
-                int size = 0;
-                FileStream f = File.Open(BlockChainFileName + ".index", FileMode.OpenOrCreate, FileAccess.ReadWrite);
+                var f = File.Open(BlockChainFileName + ".index", FileMode.OpenOrCreate, FileAccess.ReadWrite);
                 if (s.Length > 0 && f.Length > 0)
-                {
-                    using (BinaryReader br = new BinaryReader(f, Encoding.Default, true))
+                    using (var br = new BinaryReader(f, Encoding.Default, true))
                     {
-                        count = br.ReadInt32();
-                        size = br.ReadInt32();
-                        int indexSize = size > Count * 16 ? size : Count * 16;
+                        br.ReadInt32();
+                        var size = br.ReadInt32();
                         br.ReadUInt64(); // Padding
                     }
-                }
-                using (BinaryWriter iw = new BinaryWriter(f))
+
+                using (var iw = new BinaryWriter(f))
                 {
-                    using (BinaryWriter bw = new BinaryWriter(s, Encoding.Default, true))
-                    {
-                        f.Position = 0;
-                        s.Position = s.Length;
-                        iw.Write((uint)Count);
-                        iw.Write((uint)0);
-                        iw.Write((ulong)0);
+                    f.Position = 0;
+                    s.Position = s.Length;
+                    iw.Write((uint) Count);
+                    iw.Write((uint) 0);
+                    iw.Write((ulong) 0);
 //                        b = null;
-                        foreach (var t in this)
-                        {
-                            long pos = s.Position;
-                            t.SaveToStream(s);
-                            iw.Write(t.BlockNumber);
-                            iw.Write(pos);
-                            iw.Write((uint)(s.Position - pos));
-                        }
+                    foreach (var t in this)
+                    {
+                        var pos = s.Position;
+                        t.SaveToStream(s);
+                        iw.Write(t.BlockNumber);
+                        iw.Write(pos);
+                        iw.Write((uint) (s.Position - pos));
                     }
                 }
             }
@@ -349,17 +364,8 @@ namespace MicroCoin.Chain
 
         public List<Block> GetBlocks(uint startBlock, uint endBlock)
         {
-            log.Info($"GetBlocks {startBlock}=>{endBlock}");
-            if (endBlock >= GetLastBlock().BlockNumber)
-            {
-                endBlock = GetLastBlock().BlockNumber - 1;
-            }
-            List<Block> list = new List<Block>();
-            for(uint i = startBlock; i < endBlock+1; i++)
-            {
-                list.Add(Get((int)i));
-            }
-            return list;
+            if (endBlock >= GetLastBlock().BlockNumber) endBlock = GetLastBlock().BlockNumber - 1;
+            return Get(startBlock, endBlock);
         }
     }
 }
