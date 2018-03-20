@@ -75,23 +75,29 @@ namespace Wallet.Views
                 {
                     barStaticItem7.Caption = Node.Instance.NodeServers.Count.ToString();
                 };
+                
                 await Node.StartNode(4004, Keys);
                 Action action = () =>
-                {                    
+                {
                     repositoryItemMarqueeProgressBar1.Paused = true;
                     var myAccounts = Node.Instance.Accounts.Where(p => Keys.Contains(p.AccountInfo.AccountKey));
                     accountBindingSource.DataSource = myAccounts;
                     accountCount.Text = myAccounts.Count().ToString("N0") + " db";
                     currentBalance.Text = myAccounts.Sum(p => p.VisibleBalance).ToString("N") + " MCC";
-                    var b = Node.Instance.BlockChain.GetNewTarget();
-                    var lastBlock = Node.Instance.BlockChain.Get(2048);
+                    var lastBlock = Node.Instance.BlockChain.GetLastBlock();
                     lastBlock.GetBlockHeaderForHash();
-                    /*var timer = new Timer
+                    difficulty.Caption = Node.Instance.BlockChain.GetNewTarget().Item2.ToString("X");
+                    var timer = new Timer
                     {
                         Interval = 5000
                     };
-                    timer.Tick += (o, ev) => { barStaticItem7.Caption = Node.Instance.NodeServers.Count.ToString(); };
-                    timer.Enabled = true;*/
+                    timer.Tick += (o, ev) =>
+                    {
+                        lastBlock = Node.Instance.BlockChain.GetLastBlock();
+                        lastBlockTime.Caption = "Utolsó blokk " + DateTime.Now.Subtract(lastBlock.Timestamp).ToString("%m") + " perce";
+                        minerCount.Caption = $"{Node.Instance.MinerServer.Clients.Count} bányászó kliens";
+                    };
+                    timer.Enabled = true;
                 };
                 Invoke(action);
             });
@@ -99,7 +105,7 @@ namespace Wallet.Views
 
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
         {
-            Node.Instance.Dispose();
+            Node.Instance.Dispose();            
         }
 
         private void button1_Click(object sender, EventArgs e)

@@ -30,6 +30,7 @@ using System.Threading.Tasks;
 using log4net;
 using MicroCoin.Chain;
 using MicroCoin.Cryptography;
+using MicroCoin.Mining;
 using MicroCoin.Net;
 using MicroCoin.Protocol;
 using MicroCoin.Transactions;
@@ -59,6 +60,7 @@ namespace MicroCoin
         }
         protected Thread ListenerThread { get; set; }
         private static readonly List<string> Transmitted = new List<string>();
+        public MinerServer MinerServer { get; set; }
 
         protected List<MicroCoinClient> Clients { get; set; } = new List<MicroCoinClient>();
         public static async Task<Node> StartNode(int port = 4004, IList<ECKeyPair> keys = null)
@@ -134,8 +136,7 @@ namespace MicroCoin
                 MicroCoinClient.Dispose();
                 MicroCoinClient = null;
                 Instance.NodeServers.NewNode += (sender, ev) =>
-                {
-                    
+                {                    
                     var microCoinClient = ev.Node.MicroCoinClient;
                     microCoinClient.HelloResponse += (o, e) =>
                     {
@@ -182,7 +183,10 @@ namespace MicroCoin
                             }
                         }
                     };
-                    microCoinClient.SendHello();
+                    microCoinClient.NewBlock += (o, e) =>
+                    {
+                        BlockChain.Instance.Append(e.Block);
+                    };
 
                 };
                 Instance.NodeServers.TryAddNew("127.0.0.1:4004", new NodeServer
@@ -199,6 +203,8 @@ namespace MicroCoin
             }
 
             Instance.Listen();
+            Instance.MinerServer = new MinerServer();
+            Instance.MinerServer.Start();
             return Instance;
         }
         protected void Listen()
@@ -209,9 +215,7 @@ namespace MicroCoin
                 {
                     try
                     {
-                        Log.Warn("starting listener");
                         var tcpListener = new TcpListener(IPAddress.Any, 4041); //
-                        Log.Warn("started listener");
                         try
                         {
                             P2PClient.ServerPort = 4040;
@@ -225,7 +229,6 @@ namespace MicroCoin
                                     try
                                     {
                                         var client = tcpListener.EndAcceptTcpClient(state);
-                                        Log.Warn($"New client {client.Client.RemoteEndPoint}");
                                         var mClient = new MicroCoinClient();
                                         mClient.Disconnected += (o, e) => { Clients.Remove((MicroCoinClient) o); };
                                         Clients.Add(mClient);
@@ -258,12 +261,12 @@ namespace MicroCoin
         public void Dispose()
         {
             foreach (var c in Clients)
-                if (!c.IsDisposed)
-                {
-                    c.Dispose();
-                    Clients.Remove(c);
-                }
-
+            {
+                if (c.IsDisposed) continue;
+                Clients.Remove(c);
+                c.Dispose();                
+            }
+            MinerServer.Stop = true;
             ListenerThread?.Abort();
             MicroCoinClient?.Dispose();
             NodeServers?.Dispose();

@@ -139,6 +139,7 @@ namespace MicroCoin.Chain
             {
                 foreach (var block in checkpoint)
                 {
+                    block.BlockHash = block.CalculateBlockHash();
                     ms.Write(block.BlockHash, 0, block.BlockHash.Length);
                 }
                 var sha = new SHA256Managed();

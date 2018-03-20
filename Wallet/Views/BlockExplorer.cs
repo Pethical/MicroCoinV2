@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System.ComponentModel;
+using System.Linq;
 using DevExpress.XtraEditors;
 using MicroCoin;
 using MicroCoin.Chain;
@@ -10,8 +11,10 @@ namespace Wallet.Views
         public BlockExplorer()
         {
             InitializeComponent();
-            blockBindingSource.DataSource = Node.Instance.BlockChain.Get(0, (uint)Node.Instance.BlockChain.BlockHeight())
-                .OrderByDescending(p => p.BlockNumber);
+
+            blockBindingSource.DataSource = new BindingList<Block>(
+                    Node.Instance.BlockChain.Get(0, (uint)Node.Instance.BlockChain.BlockHeight())
+                        .OrderByDescending(p => p.BlockNumber).ToList());
         }
     }
 }

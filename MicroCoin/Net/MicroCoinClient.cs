@@ -126,6 +126,8 @@ namespace MicroCoin.Net
             };
             SHA256Managed sha = new SHA256Managed();
             Hash h = sha.ComputeHash(Encoding.ASCII.GetBytes("(c) Peter Nemeth - Okes rendben okes"));
+            sha.Dispose();
+            sha = null;
             request.Block = new Block
             {
                 AccountKey = null,
@@ -182,6 +184,8 @@ namespace MicroCoin.Net
             };
             SHA256Managed sha = new SHA256Managed();
             byte[] h = sha.ComputeHash(Encoding.ASCII.GetBytes("(c) Peter Nemeth - Okes rendben okes"));
+            sha.Dispose();
+            sha = null;
             request.Block = new Block
             {
                 AccountKey = null,
@@ -543,7 +547,6 @@ namespace MicroCoin.Net
                     try
                     {
                         HelloResponse response = new HelloResponse(ms, rp);
-                        Log.Info($"{response.WorkSum} {CheckPoints.WorkSum}");
                         Node.Instance.NodeServers.UpdateNodeServers(response.NodeServers);
                         OnHelloResponse(response);
                     }

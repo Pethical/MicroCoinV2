@@ -151,7 +151,11 @@ namespace MicroCoin.Net
             if (!disposing) return;
             foreach (var n in this)
             {
-                n.Value.MicroCoinClient.Dispose();
+                try
+                {
+                    n.Value.MicroCoinClient.Dispose();
+                }
+                catch { }
             }
         }
     }

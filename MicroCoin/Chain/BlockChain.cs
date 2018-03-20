@@ -24,6 +24,7 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text;
+using MicroCoin.Cryptography;
 using MicroCoin.Transactions;
 using MicroCoin.Util;
 
@@ -37,6 +38,27 @@ namespace MicroCoin.Chain
 
         protected BlockChain()
         {
+        }
+
+        public Block NextBlock(ByteString payload, ECKeyPair accountKey)
+        {
+            Block block = new Block
+            {
+                TransactionCount = 0,
+                Payload = payload,
+                AvailableProtocol = 2,
+                CompactTarget = GetNewTarget().Item2,
+                Reward = 100ul,
+                Timestamp = DateTime.Now,
+                AccountKey = accountKey,
+                BlockNumber = GetLastBlock().BlockNumber + 1,
+                BlockSignature = 4,
+                CheckPointHash = CheckPoints.CheckPointHash(CheckPoints.Current),
+                ProtocolVersion = 2,
+                Fee = 0,
+                TransactionHash = Utils.Sha256("")
+            };
+            return block;
         }
 
         public static uint TargetToCompact(BigInteger targetPow)
@@ -62,7 +84,6 @@ namespace MicroCoin.Chain
         }
         public static uint TargetToCompact(Hash targetPow)
         {
-
             BigInteger bn = new BigInteger( targetPow.Reverse() );
             BigInteger bn2 = BigInteger.Parse("0800000000000000000000000000000000000000000000000000000000000000", System.Globalization.NumberStyles.HexNumber);
             uint nbits = 4;
@@ -82,38 +103,43 @@ namespace MicroCoin.Chain
             return (nbits << 24) + ((uint)bn & 0x00FFFFFF) ^ 0x00FFFFFF;
         }
 
-        public Hash GetNewTarget()
+        public Tuple<Hash, uint> GetNewTarget()
         {
             var lastBlock = Get(BlockHeight());
-            var lastCheckPointBlock = Get(BlockHeight() - 10);
+            var lastCheckPointBlock = Get(BlockHeight() - 100);
             var s = String.Format("{0:X}", lastBlock.CompactTarget);
             Hash actualTarget = TargetFromCompact(lastBlock.CompactTarget);
             DateTime ts1 = lastBlock.Timestamp;
             DateTime ts2 = lastCheckPointBlock.Timestamp;
             var tsReal = ts1.Subtract(ts2).TotalSeconds;            
-            long tsTeorical = 10*300;
+            long tsTeorical = 100*300;
             //long tsReal = vreal;
             long factor1000 = ((long)(((tsTeorical - tsReal) * 1000) / tsTeorical) * -1);
             long factor1000Min = -500 / (100 / 2);
             long factor1000Max = 1000 / (100 / 2);
             if (factor1000 < factor1000Min) factor1000 = factor1000Min;
             else if (factor1000 > factor1000Max) factor1000 = factor1000Max;
-            else if (factor1000 == 0) return actualTarget;
-            byte[] aT = (byte[]) actualTarget;
-            var bnact = new BigInteger(aT.Reverse().ToArray());
-            var bnaux = new BigInteger(aT.Reverse().ToArray()); 
-            var abc = new BigInteger(0xABCDEF);
-            Hash h = abc.ToByteArray();
-            bnact *=  factor1000;
-            bnact /= 1000;
-            bnact += bnaux;
-            Hash h1 = bnact.ToByteArray().ToArray();
-            Hash h2 = bnact.ToByteArray().Reverse().ToArray();
-            var nt = TargetToCompact(bnact);
-            var newTarget = nt;
-            var sa = String.Format("{0:X}", newTarget);
-            Hash Pow = TargetFromCompact(newTarget);
-            return Pow;
+            else if (factor1000 == 0) return Tuple.Create(actualTarget, TargetToCompact(actualTarget));
+            ts2 = Get(BlockHeight() - 10).Timestamp;
+            var tsRealStop = ts1.Subtract(ts2).TotalSeconds;
+            var tsTeoricalStop = 3000;
+            if (
+                (tsTeorical > tsReal && tsTeoricalStop > tsRealStop) || 
+                (tsTeoricalStop < tsRealStop && tsTeorical < tsReal)
+                )
+            {
+                byte[] aT = actualTarget;
+                var bnact = new BigInteger(aT.Reverse().ToArray());
+                var bnaux = new BigInteger(aT.Reverse().ToArray());                
+                bnact *= factor1000;
+                bnact /= 1000;
+                bnact += bnaux;
+                var nt = TargetToCompact(bnact);
+                var newTarget = nt;
+                return Tuple.Create(TargetFromCompact(newTarget), newTarget);
+            }
+
+            return Tuple.Create(actualTarget, TargetToCompact(actualTarget));
         }
 
         public static Hash TargetFromCompact(uint encoded)

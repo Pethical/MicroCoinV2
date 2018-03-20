@@ -70,6 +70,14 @@ namespace MicroCoin.Cryptography
             }
         }
 
+        public static Hash Sha256(Hash data)
+        {
+            using (SHA256Managed sha = new SHA256Managed())
+            {
+                return sha.ComputeHash(data);
+            }
+        }
+
         public static Hash DoubleSha256(Hash data)
         {
             using (SHA256Managed sha = new SHA256Managed())

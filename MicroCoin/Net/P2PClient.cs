@@ -185,6 +185,7 @@ namespace MicroCoin.Net
                 finally
                 {
                     TcpClient.Close();
+                    TcpClient.Dispose();
                 }
             }) {Name = TcpClient.Client.RemoteEndPoint.ToString()};
             ListenerThread.Start();            

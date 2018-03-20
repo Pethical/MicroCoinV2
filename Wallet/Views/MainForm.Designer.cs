@@ -76,16 +76,16 @@
             this.accountsButton = new DevExpress.XtraBars.BarButtonItem();
             this.barButtonItem11 = new DevExpress.XtraBars.BarButtonItem();
             this.barButtonItem12 = new DevExpress.XtraBars.BarButtonItem();
-            this.barStaticItem1 = new DevExpress.XtraBars.BarStaticItem();
+            this.difficulty = new DevExpress.XtraBars.BarStaticItem();
             this.progressBar = new DevExpress.XtraBars.BarEditItem();
             this.repositoryItemMarqueeProgressBar1 = new DevExpress.XtraEditors.Repository.RepositoryItemMarqueeProgressBar();
             this.barStaticItem2 = new DevExpress.XtraBars.BarStaticItem();
             this.barStaticItem3 = new DevExpress.XtraBars.BarStaticItem();
             this.barStaticItem4 = new DevExpress.XtraBars.BarStaticItem();
-            this.barStaticItem5 = new DevExpress.XtraBars.BarStaticItem();
+            this.lastBlockTime = new DevExpress.XtraBars.BarStaticItem();
             this.barButtonItem13 = new DevExpress.XtraBars.BarButtonItem();
             this.changeAccountKey = new DevExpress.XtraBars.BarButtonItem();
-            this.barStaticItem6 = new DevExpress.XtraBars.BarStaticItem();
+            this.minerCount = new DevExpress.XtraBars.BarStaticItem();
             this.barStaticItem7 = new DevExpress.XtraBars.BarStaticItem();
             this.ribbonPage1 = new DevExpress.XtraBars.Ribbon.RibbonPage();
             this.ribbonPageGroup2 = new DevExpress.XtraBars.Ribbon.RibbonPageGroup();
@@ -514,15 +514,15 @@
             this.accountsButton,
             this.barButtonItem11,
             this.barButtonItem12,
-            this.barStaticItem1,
+            this.difficulty,
             this.progressBar,
             this.barStaticItem2,
             this.barStaticItem3,
             this.barStaticItem4,
-            this.barStaticItem5,
+            this.lastBlockTime,
             this.barButtonItem13,
             this.changeAccountKey,
-            this.barStaticItem6,
+            this.minerCount,
             this.barStaticItem7});
             this.ribbonControl1.Location = new System.Drawing.Point(0, 0);
             this.ribbonControl1.MaxItemId = 34;
@@ -628,12 +628,12 @@
             this.barButtonItem12.Name = "barButtonItem12";
             this.barButtonItem12.RibbonStyle = DevExpress.XtraBars.Ribbon.RibbonItemStyles.Large;
             // 
-            // barStaticItem1
+            // difficulty
             // 
-            this.barStaticItem1.Caption = "Rendben";
-            this.barStaticItem1.Id = 17;
-            this.barStaticItem1.Name = "barStaticItem1";
-            this.barStaticItem1.TextAlignment = System.Drawing.StringAlignment.Near;
+            this.difficulty.Caption = "Rendben";
+            this.difficulty.Id = 17;
+            this.difficulty.Name = "difficulty";
+            this.difficulty.TextAlignment = System.Drawing.StringAlignment.Near;
             // 
             // progressBar
             // 
@@ -668,13 +668,13 @@
             this.barStaticItem4.Name = "barStaticItem4";
             this.barStaticItem4.TextAlignment = System.Drawing.StringAlignment.Near;
             // 
-            // barStaticItem5
+            // lastBlockTime
             // 
-            this.barStaticItem5.Alignment = DevExpress.XtraBars.BarItemLinkAlignment.Right;
-            this.barStaticItem5.Caption = "Utolsó blokk: 7 perce";
-            this.barStaticItem5.Id = 24;
-            this.barStaticItem5.Name = "barStaticItem5";
-            this.barStaticItem5.TextAlignment = System.Drawing.StringAlignment.Near;
+            this.lastBlockTime.Alignment = DevExpress.XtraBars.BarItemLinkAlignment.Right;
+            this.lastBlockTime.Caption = "Utolsó blokk: 7 perce";
+            this.lastBlockTime.Id = 24;
+            this.lastBlockTime.Name = "lastBlockTime";
+            this.lastBlockTime.TextAlignment = System.Drawing.StringAlignment.Near;
             // 
             // barButtonItem13
             // 
@@ -694,12 +694,12 @@
             this.changeAccountKey.RibbonStyle = DevExpress.XtraBars.Ribbon.RibbonItemStyles.Large;
             this.changeAccountKey.ItemClick += new DevExpress.XtraBars.ItemClickEventHandler(this.changeAccountKey_ItemClick);
             // 
-            // barStaticItem6
+            // minerCount
             // 
-            this.barStaticItem6.Caption = "Nem csatlakozik bányász";
-            this.barStaticItem6.Id = 32;
-            this.barStaticItem6.Name = "barStaticItem6";
-            this.barStaticItem6.TextAlignment = System.Drawing.StringAlignment.Near;
+            this.minerCount.Caption = "Nem csatlakozik bányász";
+            this.minerCount.Id = 32;
+            this.minerCount.Name = "minerCount";
+            this.minerCount.TextAlignment = System.Drawing.StringAlignment.Near;
             // 
             // barStaticItem7
             // 
@@ -780,14 +780,14 @@
             // 
             // ribbonStatusBar1
             // 
-            this.ribbonStatusBar1.ItemLinks.Add(this.barStaticItem1);
+            this.ribbonStatusBar1.ItemLinks.Add(this.difficulty);
             this.ribbonStatusBar1.ItemLinks.Add(this.progressBar);
             this.ribbonStatusBar1.ItemLinks.Add(this.barStaticItem2);
             this.ribbonStatusBar1.ItemLinks.Add(this.barStaticItem7);
             this.ribbonStatusBar1.ItemLinks.Add(this.barStaticItem3);
             this.ribbonStatusBar1.ItemLinks.Add(this.barStaticItem4);
-            this.ribbonStatusBar1.ItemLinks.Add(this.barStaticItem5);
-            this.ribbonStatusBar1.ItemLinks.Add(this.barStaticItem6);
+            this.ribbonStatusBar1.ItemLinks.Add(this.lastBlockTime);
+            this.ribbonStatusBar1.ItemLinks.Add(this.minerCount);
             this.ribbonStatusBar1.Location = new System.Drawing.Point(0, 558);
             this.ribbonStatusBar1.Name = "ribbonStatusBar1";
             this.ribbonStatusBar1.Ribbon = this.ribbonControl1;
@@ -1096,7 +1096,7 @@
         private DevExpress.XtraBars.Ribbon.RibbonPageGroup ribbonPageGroup5;
         private DevExpress.XtraBars.Ribbon.RibbonPageGroup ribbonPageGroup6;
         private DevExpress.XtraBars.Ribbon.RibbonPageGroup ribbonPageGroup7;
-        private DevExpress.XtraBars.BarStaticItem barStaticItem1;
+        private DevExpress.XtraBars.BarStaticItem difficulty;
         private DevExpress.XtraBars.BarEditItem progressBar;
         private DevExpress.XtraEditors.Repository.RepositoryItemMarqueeProgressBar repositoryItemMarqueeProgressBar1;
         private DevExpress.XtraEditors.Repository.RepositoryItemProgressBar repositoryItemProgressBar1;
@@ -1104,11 +1104,11 @@
         private DevExpress.XtraBars.BarStaticItem barStaticItem2;
         private DevExpress.XtraBars.BarStaticItem barStaticItem3;
         private DevExpress.XtraBars.BarStaticItem barStaticItem4;
-        private DevExpress.XtraBars.BarStaticItem barStaticItem5;
+        private DevExpress.XtraBars.BarStaticItem lastBlockTime;
         private DevExpress.XtraBars.BarButtonItem barButtonItem13;
         private DevExpress.XtraBars.BarButtonItem changeAccountKey;
         private DevExpress.XtraBars.Ribbon.RibbonPageGroup ribbonPageGroup8;
-        private DevExpress.XtraBars.BarStaticItem barStaticItem6;
+        private DevExpress.XtraBars.BarStaticItem minerCount;
         private DevExpress.XtraBars.BarManager barManager1;
         private DevExpress.XtraEditors.Repository.RepositoryItemSpinEdit repositoryItemSpinEdit1;
         private DevExpress.XtraBars.BarDockControl barDockControlTop;
