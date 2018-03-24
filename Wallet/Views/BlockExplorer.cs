@@ -12,9 +12,14 @@ namespace Wallet.Views
         {
             InitializeComponent();
 
-            blockBindingSource.DataSource = new BindingList<Block>(
+            blockBindingSource.DataSource = 
                     Node.Instance.BlockChain.Get(0, (uint)Node.Instance.BlockChain.BlockHeight())
-                        .OrderByDescending(p => p.BlockNumber).ToList());
+                        .OrderByDescending(p => p.BlockNumber);
+        }
+
+        private void BlockExplorer_FormClosed(object sender, System.Windows.Forms.FormClosedEventArgs e)
+        {
+
         }
     }
 }

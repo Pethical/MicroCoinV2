@@ -23,6 +23,7 @@ using System;
 using System.Linq;
 using System.Collections.Concurrent;
 using System.IO;
+using System.Net;
 using System.Text;
 using System.Threading;
 
@@ -44,11 +45,12 @@ namespace MicroCoin.Net
         private static readonly ILog Log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         public event EventHandler<NewConnectionEventArgs> NewNode;
+        public event EventHandler<EventArgs> NodesChanged;
 
         public ConcurrentDictionary<string, NodeServer> BlackList { get; set; } = new ConcurrentDictionary<string, NodeServer>();
 
         internal void SaveToStream(Stream s)
-        {
+        {            
             using (BinaryWriter bw = new BinaryWriter(s, Encoding.ASCII, true))
             {
                 bw.Write((uint)Count);
@@ -66,6 +68,10 @@ namespace MicroCoin.Net
             NewNode?.Invoke(this, new NewConnectionEventArgs(newNode));
         }
 
+        protected void OnNodesChanged()
+        {
+            NodesChanged?.Invoke(this,new EventArgs());
+        }
         public void BroadCastMessage(Stream message)
         {
             foreach (var item in this)
@@ -78,31 +84,35 @@ namespace MicroCoin.Net
         {
             if (BlackList.ContainsKey(key)) return;
             if (ContainsKey(key)) return;
-            Log.Debug($"{Count} nodes registered");
             new Thread(() =>
             {
                 var microCoinClient = nodeServer.Connect();
                 if (microCoinClient != null && nodeServer.Connected)
                 {
                     TryAdd(key, nodeServer);
+                    nodeServer.Disconnected += (o, e) =>
+                    {
+                        TryRemove(key, out nodeServer);
+                        if (nodeServer != null)
+                        {                            
+                            TryAddNew(key, nodeServer);
+                        }
+                    };
                     OnNewConnection(nodeServer);
                 }
                 else
                 {
-                    Log.Debug($"{nodeServer} dead");
                     BlackList.TryAdd(key, nodeServer);
-                    TryRemove(key, out NodeServer outs);
-                    var cnt = this.Count(p => p.Value.Connected);
-                    Log.Debug($"{Count} nodes registered. {cnt} connected. {BlackList.Count} dead");
+                    TryRemove(key, out nodeServer);
                 }
-
+                OnNodesChanged();
             })
             {
                 Name = nodeServer.ToString()
             }.Start();
         }
 
-        internal static NodeServerList LoadFromStream(Stream stream)
+        internal static NodeServerList LoadFromStream(Stream stream, ushort serverPort)
         {
             NodeServerList ns = new NodeServerList();
             using (BinaryReader br = new BinaryReader(stream, Encoding.ASCII, true))
@@ -115,6 +125,7 @@ namespace MicroCoin.Net
                     server.IP = br.ReadBytes(iplen);
                     server.Port = br.ReadUInt16();
                     server.LastConnection = br.ReadUInt32();
+                    server.ServerPort = serverPort;
                     ns.TryAdd(server.ToString(), server);
                 }
             }
@@ -123,20 +134,19 @@ namespace MicroCoin.Net
 
         internal void UpdateNodeServers(NodeServerList nodeServers)
         {
-            foreach (var n in nodeServers)
+            IPAddress[] localIPs = Dns.GetHostAddresses(Dns.GetHostName());
+            foreach (var nodeServer in nodeServers)
             {
-                if (ContainsKey(n.Value.ToString())) continue;
-                TryAddNew(n.Value.ToString(), n.Value);
-                Log.Debug($"New node server: {n.Value}");
+                if (IPAddress.IsLoopback(nodeServer.Value.EndPoint.Address)) continue;
+                if (localIPs.Contains(nodeServer.Value.EndPoint.Address)) continue;
+                if (ContainsKey(nodeServer.Value.ToString())) continue;
+                if (nodeServer.Value.Port != 4004) continue;
+                TryAddNew(nodeServer.Value.ToString(), nodeServer.Value);
             }
-
             if (Count <= 100) return;
+            foreach (var l in nodeServers)
             {
-                foreach (var l in nodeServers)
-                {
-                    TryRemove(l.Key, out NodeServer n);
-                    Log.Debug($"Removed connection: {n}");
-                }
+                TryRemove(l.Key, out NodeServer n);
             }
         }
 
@@ -157,6 +167,7 @@ namespace MicroCoin.Net
                 }
                 catch { }
             }
+            Clear();
         }
     }
     }

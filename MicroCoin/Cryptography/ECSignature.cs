@@ -25,11 +25,10 @@ using MicroCoin.Util;
 
 namespace MicroCoin.Cryptography
 {
-    public class ECSignature
+    public struct ECSignature
     {
-        public ECSignature()
-        {
-        }
+        public byte[] R { get; set; }
+        public byte[] S { get; set; }
 
         internal ECSignature(Stream stream)
         {
@@ -50,9 +49,6 @@ namespace MicroCoin.Cryptography
             R = data.Take(32).ToArray();
             S = data.Skip(32).Take(32).ToArray();
         }
-
-        public byte[] R { get; set; }
-        public byte[] S { get; set; }
 
         public byte[] Signature
         {

@@ -37,6 +37,11 @@ namespace MicroCoin.Net
         internal bool Connected { get; set; }
         internal bool IsDisposed { get; set; }
 
+        protected virtual void OnDisconnected()
+        {
+            Disconnected?.Invoke(this, new EventArgs());
+        }
+
         protected int WaitForData(int timeoutMs)
         {
             while (TcpClient.Available == 0)
@@ -85,14 +90,14 @@ namespace MicroCoin.Net
 
         public void Dispose()
         {
-            Disconnected?.Invoke(this, new EventArgs());
             Dispose(true);
             GC.SuppressFinalize(this);
 
         }
 
-        private void Dispose(bool disposing)
+        protected virtual void Dispose(bool disposing)
         {
+            // Disconnected?.Invoke(this, new EventArgs());
             if (disposing && !IsDisposed)
             {
                 Stop = true;
@@ -120,13 +125,6 @@ namespace MicroCoin.Net
 
                 if (wt > 10000) break;
                 ReadAvailable(ms);
-                /*while (TcpClient.Available > 0)
-                {
-                    byte[] buffer = new byte[TcpClient.Available];
-                    ns.Read(buffer, 0, buffer.Length);
-                    ms.Write(buffer, 0, buffer.Length);
-                }
-                */
                 wt = 0;
             }
 
@@ -135,12 +133,19 @@ namespace MicroCoin.Net
 
         protected void ReadAvailable(MemoryStream ms)
         {
-            NetworkStream ns = TcpClient.GetStream();
-            while (TcpClient.Available > 0)
+            try
             {
-                byte[] buffer = new byte[TcpClient.Available];
-                ns.Read(buffer, 0, buffer.Length);
-                ms.Write(buffer, 0, buffer.Length);
+                NetworkStream ns = TcpClient.GetStream();
+                while (TcpClient.Available > 0)
+                {
+                    byte[] buffer = new byte[TcpClient.Available];
+                    ns.Read(buffer, 0, buffer.Length);
+                    ms.Write(buffer, 0, buffer.Length);
+                }
+            }
+            catch
+            {
+                OnDisconnected();
             }
         }
 
@@ -159,13 +164,27 @@ namespace MicroCoin.Net
             return false;
         }
 
-        internal void SendRaw(Stream stream)
+        internal bool SendRaw(Stream stream)
         {
-            if (!TcpClient.Connected) return;
-            NetworkStream ns = TcpClient.GetStream();
-            stream.Position = 0;
-            stream.CopyTo(ns);
-            ns.Flush();
+            if (!TcpClient.Connected)
+            {
+                OnDisconnected();
+                return false;
+            }
+            try
+            {
+                NetworkStream ns = TcpClient.GetStream();
+                stream.Position = 0;
+                stream.CopyTo(ns);
+                ns.Flush();
+            }
+            catch
+            {
+                OnDisconnected();
+                return false;
+            }
+
+            return true;
         }
 
         protected abstract bool HandleConnection();

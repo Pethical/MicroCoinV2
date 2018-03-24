@@ -40,7 +40,7 @@ namespace MicroCoin.Chain
         internal ushort ProtocolVersion { get; set; }
         internal ushort AvailableProtocol { get; set; }
         public uint BlockNumber { get; set; }
-        public ECKeyPair AccountKey { get; set; } = new ECKeyPair();
+        public ECKeyPair AccountKey { get; set; }
         public MCC Reward { get; set; }
         public MCC Fee { get; set; }
         public Timestamp Timestamp { get; set; }        
@@ -98,7 +98,7 @@ namespace MicroCoin.Chain
 
         internal BlockBase()
         {
-
+            AccountKey = new ECKeyPair();
         }
 
         internal virtual void SaveToStream(Stream s)

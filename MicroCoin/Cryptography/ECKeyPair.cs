@@ -42,35 +42,24 @@ namespace MicroCoin.Cryptography
     public class ECKeyPair : IEquatable<ECKeyPair>
     {
         private ECParameters? _eCParameters;
-        public Hash X { get; set; }
-        public Hash Y { get; set; }
-
         public ECPoint PublicKey
         {
-            get => new ECPoint
-            {
-                X = X,
-                Y = Y
-            };
-            set
-            {
-                X = value.X;
-                Y = value.Y;
-            }
-        }
+            get;
+            set;
+        } = new ECPoint()
+        {
+            X = new byte[0],
+            Y = new byte[0]
+        };
         public ECParameters ECParameters
         {
             get
             {
-                if (_eCParameters != null) return _eCParameters.Value;
+                if (_eCParameters != null) return _eCParameters.Value;                
                 ECCurve curve = ECCurve.CreateFromFriendlyName(CurveType.ToString().ToLower());
                 ECParameters parameters = new ECParameters
                 {
-                    Q =
-                    {
-                        X = X,
-                        Y = Y
-                    }
+                    Q = PublicKey
                 };
                 if (D != null)
                 {
@@ -84,8 +73,7 @@ namespace MicroCoin.Cryptography
             }
         }
         public CurveType CurveType { get; set; } = CurveType.Empty;
-        public byte[] D { get; set; }
-
+        public byte[] D { get; set; }        
         public BigInteger PrivateKey
         {
             get => new BigInteger(D);
@@ -101,7 +89,7 @@ namespace MicroCoin.Cryptography
 
         public string ToEncodedString()
         {
-            ByteString result = CurveType + ":" + X + ":" + Y;
+            ByteString result = CurveType + ":" + PublicKey.X + ":" + PublicKey.Y;
             using (SHA256Managed managed = new SHA256Managed())
             {
                 Hash hash = managed.ComputeHash(result);
@@ -112,7 +100,6 @@ namespace MicroCoin.Cryptography
                         ByteString bs = result + ":" + hash;
                         deflateStream.Write(bs, 0, bs.Length);
                     }
-
                     Hash h = ms.ToArray();
                     return h;
                 }
@@ -141,11 +128,16 @@ namespace MicroCoin.Cryptography
                             }
                         }
 
+                        Hash x = parts[1];
+                        Hash y = parts[2];
                         ECKeyPair result = new ECKeyPair
                         {
                             CurveType = (CurveType) Enum.Parse(typeof(CurveType), parts[0]),
-                            X = parts[1],
-                            Y = parts[2]
+                            PublicKey = new ECPoint
+                            {
+                                X =  x,
+                                Y =  y
+                            }
                         };
                         return result;
                     }
@@ -158,7 +150,7 @@ namespace MicroCoin.Cryptography
         {
             using (BinaryWriter bw = new BinaryWriter(s, Encoding.ASCII, true))
             {
-                var len = X.Length + Y.Length + 6;
+                var len = PublicKey.X.Length + PublicKey.Y.Length + 6;
 
                 if (writeName) Name.SaveToStream(bw);
                 if (writeLength) bw.Write((ushort) len);
@@ -170,24 +162,24 @@ namespace MicroCoin.Cryptography
                     return;
                 }
 
-                ushort xLen = (ushort) X.Length;
-                byte[] x = X;
+                ushort xLen = (ushort)PublicKey.X.Length;
+                byte[] x = PublicKey.X;
                 if (x[0] == 0) xLen--;
                 bw.Write(xLen);
                 bw.Write(x, x[0] == 0 ? 1 : 0, x.Length - (x[0] == 0 ? 1 : 0));
                 ushort yLen;
                 if (CurveType == CurveType.Sect283K1)
                 {
-                    byte[] b = Y;
-                    yLen = (ushort) Y.Length;
+                    byte[] b = PublicKey.Y;
+                    yLen = (ushort)PublicKey.Y.Length;
                     if (b[0] == 0) yLen--;
                     bw.Write(yLen);
                     bw.Write(b, b[0] == 0 ? 1 : 0, b.Length - (b[0] == 0 ? 1 : 0));
                 }
                 else
                 {
-                    byte[] b = Y;
-                    yLen = (ushort) Y.Length;
+                    byte[] b = PublicKey.Y;
+                    yLen = (ushort)PublicKey.Y.Length;
                     if (b[0] == 0) yLen--;
                     bw.Write(yLen);
                     bw.Write(b, b[0] == 0 ? 1 : 0, b.Length - (b[0] == 0 ? 1 : 0));
@@ -208,8 +200,7 @@ namespace MicroCoin.Cryptography
             ECKeyPair pair = new ECKeyPair
             {
                 CurveType = CurveType.Secp256K1,
-                X = parameters.Q.X,
-                Y = parameters.Q.Y,
+                PublicKey = parameters.Q,
                 D = parameters.D,
                 Name = name
             };
@@ -230,9 +221,10 @@ namespace MicroCoin.Cryptography
 
                 CurveType = (CurveType) br.ReadUInt16();
                 ushort xLen = br.ReadUInt16();
-                X = br.ReadBytes(xLen);
+                var X = br.ReadBytes(xLen);
                 ushort yLen = br.ReadUInt16();
-                Y = br.ReadBytes(yLen);
+                var Y = br.ReadBytes(yLen);
+                PublicKey = new ECPoint() { X = X, Y = Y };
                 if (readPrivateKey)
                 {
                     D = Hash.ReadFromStream(br);
@@ -243,8 +235,8 @@ namespace MicroCoin.Cryptography
         public bool Equals(ECKeyPair other)
         {
             if (other == null) return false;
-            if (!X.SequenceEqual(other.X)) return false;
-            if (!Y.SequenceEqual(other.Y)) return false;
+            if (!PublicKey.X.SequenceEqual(other.PublicKey.X)) return false;
+            if (!PublicKey.Y.SequenceEqual(other.PublicKey.Y)) return false;
             return true;
         }
 

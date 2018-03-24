@@ -189,6 +189,7 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="MicroCoinWallet.ico" />
+    <None Include="Resources\network-connect.png" />
     <None Include="Resources\document-decrypt.png" />
     <None Include="Resources\list-add.png" />
     <None Include="Resources\edit-copy.png" />

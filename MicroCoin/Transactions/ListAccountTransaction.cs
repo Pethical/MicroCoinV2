@@ -122,11 +122,11 @@ namespace MicroCoin.Transactions
                     bw.Write(AccountToPay);
                     bw.Write(Fee);
                     Payload.SaveToStream(bw, false);
-                    if (AccountKey?.X != null && AccountKey.X.Length > 0 && AccountKey.Y.Length > 0)
+                    if (AccountKey?.PublicKey.X != null && AccountKey.PublicKey.X.Length > 0 && AccountKey.PublicKey.Y.Length > 0)
                     {
                         bw.Write((ushort) AccountKey.CurveType);
-                        bw.Write((byte[]) AccountKey.X);
-                        bw.Write((byte[]) AccountKey.Y);
+                        bw.Write((byte[]) AccountKey.PublicKey.X);
+                        bw.Write((byte[]) AccountKey.PublicKey.Y);
                     }
                     else
                     {

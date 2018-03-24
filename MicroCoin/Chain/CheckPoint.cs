@@ -130,7 +130,7 @@ namespace MicroCoin.Chain
                         AccountInfo = new AccountInfo
                         {
                             AccountKey = b.AccountKey,
-                            State = AccountInfo.AccountState.Normal                            
+                            State = AccountState.Normal                            
                         }
                     });
                     accNumber++;
@@ -183,7 +183,7 @@ namespace MicroCoin.Chain
                             account.AccountInfo.AccountKey = transferTransaction.NewAccountKey;
                             account.AccountInfo.Price = 0;
                             account.AccountInfo.LockedUntilBlock = 0;
-                            account.AccountInfo.State = AccountInfo.AccountState.Normal;
+                            account.AccountInfo.State = AccountState.Normal;
                             account.AccountInfo.AccountToPayPrice = 0;
                             account.AccountInfo.NewPublicKey = null;
                             break;
@@ -198,14 +198,14 @@ namespace MicroCoin.Chain
                             if (listAccountTransaction.TransactionType == TransactionType.ListAccountForSale) {
                                 account.AccountInfo.Price = listAccountTransaction.AccountPrice;
                                 account.AccountInfo.LockedUntilBlock = listAccountTransaction.LockedUntilBlock;
-                                account.AccountInfo.State = AccountInfo.AccountState.Sale;                                    
+                                account.AccountInfo.State = AccountState.Sale;                                    
                                 account.AccountInfo.Price = listAccountTransaction.AccountPrice;
                                 account.AccountInfo.NewPublicKey = listAccountTransaction.NewPublicKey;
                                 account.AccountInfo.AccountToPayPrice = listAccountTransaction.AccountToPay;
                             }
                             else
                             {
-                                account.AccountInfo.State = AccountInfo.AccountState.Normal;
+                                account.AccountInfo.State = AccountState.Normal;
                                 account.AccountInfo.Price = 0;
                                 account.AccountInfo.NewPublicKey = null;
                                 account.AccountInfo.LockedUntilBlock = 0;

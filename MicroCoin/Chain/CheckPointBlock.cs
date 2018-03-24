@@ -104,8 +104,9 @@ namespace MicroCoin.Chain
                 }
             }
             finally
-            {
+            {                
                 ms.Dispose();
+                ms = null;
             }
         }
 

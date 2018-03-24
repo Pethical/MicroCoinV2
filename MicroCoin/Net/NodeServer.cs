@@ -41,6 +41,16 @@ namespace MicroCoin.Net
         public bool Connected { get; set; }
 
         internal MicroCoinClient MicroCoinClient { get; set; }
+        public ushort ServerPort { get; internal set; }
+
+        public event EventHandler<EventArgs> Disconnected;
+
+        private readonly object _clientLock = new object();
+
+        protected virtual void OnDisconnected()
+        {
+            Disconnected?.Invoke(this, new EventArgs());
+        }
 
         internal static void LoadFromStream(Stream stream)
         {
@@ -52,16 +62,22 @@ namespace MicroCoin.Net
             return IP +":"+ Port;
         }
 
-        private readonly object _clientLock = new object();
-
         internal MicroCoinClient Connect()
         {
             lock (_clientLock)
             {
-                if (Connected) return MicroCoinClient;
+                if (Connected) return MicroCoinClient;                
                 MicroCoinClient = new MicroCoinClient();
+                MicroCoinClient.Disconnected += (o, e) =>
+                {
+                    Connected = false;
+                    OnDisconnected();
+                    MicroCoinClient.Dispose();
+                };
                 if(!MicroCoinClient.Connect(IP, Port))
                 {
+                    MicroCoinClient.Dispose();
+                    OnDisconnected();
                     return null;
                 }
                 MicroCoinClient.Start();
@@ -72,6 +88,6 @@ namespace MicroCoin.Net
                 }
                 return null;
             }
-        }
+        }        
     }
 }

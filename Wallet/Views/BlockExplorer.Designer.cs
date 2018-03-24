@@ -356,6 +356,7 @@
             this.Controls.Add(this.gridControl1);
             this.Name = "BlockExplorer";
             this.Text = "Block felfedező";
+            this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.BlockExplorer_FormClosed);
             ((System.ComponentModel.ISupportInitialize)(this.gridView2)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.gridControl1)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.blockBindingSource)).EndInit();

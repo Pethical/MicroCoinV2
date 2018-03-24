@@ -31,6 +31,8 @@
             this.components = new System.ComponentModel.Container();
             DevExpress.XtraGrid.StyleFormatCondition styleFormatCondition2 = new DevExpress.XtraGrid.StyleFormatCondition();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(MainForm));
+            DevExpress.Utils.SuperToolTip superToolTip2 = new DevExpress.Utils.SuperToolTip();
+            DevExpress.Utils.ToolTipTitleItem toolTipTitleItem2 = new DevExpress.Utils.ToolTipTitleItem();
             this.colSaved1 = new DevExpress.XtraGrid.Columns.GridColumn();
             this.accountBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.styleController1 = new DevExpress.XtraEditors.StyleController(this.components);
@@ -63,9 +65,9 @@
             this.label7 = new System.Windows.Forms.Label();
             this.currentBalance = new System.Windows.Forms.Label();
             this.label5 = new System.Windows.Forms.Label();
-            this.groupControl2 = new DevExpress.XtraEditors.GroupControl();
+            this.transaction = new DevExpress.XtraEditors.GroupControl();
             this.targetAccount = new DevExpress.XtraEditors.ButtonEdit();
-            this.ribbonControl1 = new DevExpress.XtraBars.Ribbon.RibbonControl();
+            this.ribbon = new DevExpress.XtraBars.Ribbon.RibbonControl();
             this.sellAccount = new DevExpress.XtraBars.BarButtonItem();
             this.buyAccount = new DevExpress.XtraBars.BarButtonItem();
             this.editAccount = new DevExpress.XtraBars.BarButtonItem();
@@ -78,7 +80,7 @@
             this.barButtonItem12 = new DevExpress.XtraBars.BarButtonItem();
             this.difficulty = new DevExpress.XtraBars.BarStaticItem();
             this.progressBar = new DevExpress.XtraBars.BarEditItem();
-            this.repositoryItemMarqueeProgressBar1 = new DevExpress.XtraEditors.Repository.RepositoryItemMarqueeProgressBar();
+            this.repositoryItemProgressBar1 = new DevExpress.XtraEditors.Repository.RepositoryItemProgressBar();
             this.barStaticItem2 = new DevExpress.XtraBars.BarStaticItem();
             this.barStaticItem3 = new DevExpress.XtraBars.BarStaticItem();
             this.barStaticItem4 = new DevExpress.XtraBars.BarStaticItem();
@@ -96,7 +98,7 @@
             this.ribbonPageGroup5 = new DevExpress.XtraBars.Ribbon.RibbonPageGroup();
             this.ribbonPageGroup6 = new DevExpress.XtraBars.Ribbon.RibbonPageGroup();
             this.ribbonPageGroup7 = new DevExpress.XtraBars.Ribbon.RibbonPageGroup();
-            this.repositoryItemProgressBar1 = new DevExpress.XtraEditors.Repository.RepositoryItemProgressBar();
+            this.repositoryItemMarqueeProgressBar1 = new DevExpress.XtraEditors.Repository.RepositoryItemMarqueeProgressBar();
             this.ribbonStatusBar1 = new DevExpress.XtraBars.Ribbon.RibbonStatusBar();
             this.defaultToolTipController1 = new DevExpress.Utils.DefaultToolTipController(this.components);
             this.label4 = new System.Windows.Forms.Label();
@@ -128,12 +130,12 @@
             this.flowLayoutPanel1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.groupControl1)).BeginInit();
             this.groupControl1.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.groupControl2)).BeginInit();
-            this.groupControl2.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.transaction)).BeginInit();
+            this.transaction.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.targetAccount.Properties)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.ribbonControl1)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.repositoryItemMarqueeProgressBar1)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.ribbon)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.repositoryItemProgressBar1)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.repositoryItemMarqueeProgressBar1)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.payload.Properties)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.fee.Properties)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.amountToPay.Properties)).BeginInit();
@@ -206,7 +208,7 @@
             this.panel1.Location = new System.Drawing.Point(301, 145);
             this.panel1.Name = "panel1";
             this.panel1.Padding = new System.Windows.Forms.Padding(10);
-            this.panel1.Size = new System.Drawing.Size(448, 413);
+            this.panel1.Size = new System.Drawing.Size(542, 428);
             this.panel1.TabIndex = 1;
             // 
             // groupControl3
@@ -216,7 +218,7 @@
             this.groupControl3.Dock = System.Windows.Forms.DockStyle.Fill;
             this.groupControl3.Location = new System.Drawing.Point(10, 10);
             this.groupControl3.Name = "groupControl3";
-            this.groupControl3.Size = new System.Drawing.Size(428, 393);
+            this.groupControl3.Size = new System.Drawing.Size(522, 408);
             this.groupControl3.TabIndex = 0;
             this.groupControl3.Text = "Saját számlák";
             // 
@@ -230,7 +232,7 @@
             this.gridControl1.RepositoryItems.AddRange(new DevExpress.XtraEditors.Repository.RepositoryItem[] {
             this.repositoryItemHyperLinkEdit1,
             this.repositoryItemComboBox1});
-            this.gridControl1.Size = new System.Drawing.Size(424, 370);
+            this.gridControl1.Size = new System.Drawing.Size(518, 385);
             this.gridControl1.TabIndex = 0;
             this.gridControl1.UseEmbeddedNavigator = true;
             this.gridControl1.ViewCollection.AddRange(new DevExpress.XtraGrid.Views.Base.BaseView[] {
@@ -392,12 +394,12 @@
             // 
             this.defaultToolTipController1.SetAllowHtmlText(this.flowLayoutPanel1, DevExpress.Utils.DefaultBoolean.Default);
             this.flowLayoutPanel1.Controls.Add(this.groupControl1);
-            this.flowLayoutPanel1.Controls.Add(this.groupControl2);
+            this.flowLayoutPanel1.Controls.Add(this.transaction);
             this.flowLayoutPanel1.Dock = System.Windows.Forms.DockStyle.Left;
             this.flowLayoutPanel1.Location = new System.Drawing.Point(0, 145);
             this.flowLayoutPanel1.Name = "flowLayoutPanel1";
             this.flowLayoutPanel1.Padding = new System.Windows.Forms.Padding(5);
-            this.flowLayoutPanel1.Size = new System.Drawing.Size(301, 413);
+            this.flowLayoutPanel1.Size = new System.Drawing.Size(301, 428);
             this.flowLayoutPanel1.TabIndex = 15;
             // 
             // groupControl1
@@ -458,29 +460,29 @@
             this.label5.TabIndex = 4;
             this.label5.Text = "Egyenleg:";
             // 
-            // groupControl2
+            // transaction
             // 
-            this.defaultToolTipController1.SetAllowHtmlText(this.groupControl2, DevExpress.Utils.DefaultBoolean.Default);
-            this.groupControl2.Controls.Add(this.targetAccount);
-            this.groupControl2.Controls.Add(this.simpleButton1);
-            this.groupControl2.Controls.Add(this.payload);
-            this.groupControl2.Controls.Add(this.fee);
-            this.groupControl2.Controls.Add(this.amountToPay);
-            this.groupControl2.Controls.Add(this.label4);
-            this.groupControl2.Controls.Add(this.label3);
-            this.groupControl2.Controls.Add(this.label2);
-            this.groupControl2.Controls.Add(this.label1);
-            this.groupControl2.Dock = System.Windows.Forms.DockStyle.Top;
-            this.groupControl2.Location = new System.Drawing.Point(8, 93);
-            this.groupControl2.Name = "groupControl2";
-            this.groupControl2.Size = new System.Drawing.Size(286, 211);
-            this.groupControl2.TabIndex = 16;
-            this.groupControl2.Text = "Gyors utalás";
+            this.defaultToolTipController1.SetAllowHtmlText(this.transaction, DevExpress.Utils.DefaultBoolean.Default);
+            this.transaction.Controls.Add(this.targetAccount);
+            this.transaction.Controls.Add(this.simpleButton1);
+            this.transaction.Controls.Add(this.payload);
+            this.transaction.Controls.Add(this.fee);
+            this.transaction.Controls.Add(this.amountToPay);
+            this.transaction.Controls.Add(this.label4);
+            this.transaction.Controls.Add(this.label3);
+            this.transaction.Controls.Add(this.label2);
+            this.transaction.Controls.Add(this.label1);
+            this.transaction.Dock = System.Windows.Forms.DockStyle.Top;
+            this.transaction.Location = new System.Drawing.Point(8, 93);
+            this.transaction.Name = "transaction";
+            this.transaction.Size = new System.Drawing.Size(286, 211);
+            this.transaction.TabIndex = 16;
+            this.transaction.Text = "Gyors utalás";
             // 
             // targetAccount
             // 
             this.targetAccount.Location = new System.Drawing.Point(82, 63);
-            this.targetAccount.MenuManager = this.ribbonControl1;
+            this.targetAccount.MenuManager = this.ribbon;
             this.targetAccount.Name = "targetAccount";
             this.targetAccount.Properties.Appearance.Options.UseTextOptions = true;
             this.targetAccount.Properties.Appearance.TextOptions.HAlignment = DevExpress.Utils.HorzAlignment.Far;
@@ -496,14 +498,14 @@
             this.targetAccount.EditValueChanged += new System.EventHandler(this.targetAccount_EditValueChanged);
             this.targetAccount.Validating += new System.ComponentModel.CancelEventHandler(this.targetAccount_Validating);
             // 
-            // ribbonControl1
+            // ribbon
             // 
-            this.ribbonControl1.AllowMinimizeRibbon = false;
-            this.ribbonControl1.ApplicationCaption = "MicroCoin Wallet";
-            this.ribbonControl1.ColorScheme = DevExpress.XtraBars.Ribbon.RibbonControlColorScheme.Orange;
-            this.ribbonControl1.ExpandCollapseItem.Id = 0;
-            this.ribbonControl1.Items.AddRange(new DevExpress.XtraBars.BarItem[] {
-            this.ribbonControl1.ExpandCollapseItem,
+            this.ribbon.AllowMinimizeRibbon = false;
+            this.ribbon.ApplicationCaption = "MicroCoin Wallet";
+            this.ribbon.ColorScheme = DevExpress.XtraBars.Ribbon.RibbonControlColorScheme.Orange;
+            this.ribbon.ExpandCollapseItem.Id = 0;
+            this.ribbon.Items.AddRange(new DevExpress.XtraBars.BarItem[] {
+            this.ribbon.ExpandCollapseItem,
             this.sellAccount,
             this.buyAccount,
             this.editAccount,
@@ -524,21 +526,21 @@
             this.changeAccountKey,
             this.minerCount,
             this.barStaticItem7});
-            this.ribbonControl1.Location = new System.Drawing.Point(0, 0);
-            this.ribbonControl1.MaxItemId = 34;
-            this.ribbonControl1.Name = "ribbonControl1";
-            this.ribbonControl1.Pages.AddRange(new DevExpress.XtraBars.Ribbon.RibbonPage[] {
+            this.ribbon.Location = new System.Drawing.Point(0, 0);
+            this.ribbon.MaxItemId = 34;
+            this.ribbon.Name = "ribbon";
+            this.ribbon.Pages.AddRange(new DevExpress.XtraBars.Ribbon.RibbonPage[] {
             this.ribbonPage1,
             this.ribbonPage3});
-            this.ribbonControl1.RepositoryItems.AddRange(new DevExpress.XtraEditors.Repository.RepositoryItem[] {
+            this.ribbon.RepositoryItems.AddRange(new DevExpress.XtraEditors.Repository.RepositoryItem[] {
             this.repositoryItemProgressBar1,
             this.repositoryItemMarqueeProgressBar1});
-            this.ribbonControl1.RibbonStyle = DevExpress.XtraBars.Ribbon.RibbonControlStyle.Office2013;
-            this.ribbonControl1.ShowApplicationButton = DevExpress.Utils.DefaultBoolean.False;
-            this.ribbonControl1.ShowExpandCollapseButton = DevExpress.Utils.DefaultBoolean.False;
-            this.ribbonControl1.ShowFullScreenButton = DevExpress.Utils.DefaultBoolean.False;
-            this.ribbonControl1.Size = new System.Drawing.Size(749, 145);
-            this.ribbonControl1.StatusBar = this.ribbonStatusBar1;
+            this.ribbon.RibbonStyle = DevExpress.XtraBars.Ribbon.RibbonControlStyle.Office2013;
+            this.ribbon.ShowApplicationButton = DevExpress.Utils.DefaultBoolean.False;
+            this.ribbon.ShowExpandCollapseButton = DevExpress.Utils.DefaultBoolean.False;
+            this.ribbon.ShowFullScreenButton = DevExpress.Utils.DefaultBoolean.False;
+            this.ribbon.Size = new System.Drawing.Size(843, 145);
+            this.ribbon.StatusBar = this.ribbonStatusBar1;
             // 
             // sellAccount
             // 
@@ -637,15 +639,22 @@
             // 
             // progressBar
             // 
-            this.progressBar.Edit = this.repositoryItemMarqueeProgressBar1;
+            this.progressBar.AutoHideEdit = false;
+            this.progressBar.CanOpenEdit = false;
+            this.progressBar.Caption = "Blokkánc letöltése";
+            this.progressBar.Edit = this.repositoryItemProgressBar1;
+            this.progressBar.EditValue = "0";
             this.progressBar.Id = 20;
             this.progressBar.Name = "progressBar";
-            this.progressBar.Width = 100;
+            this.progressBar.Width = 200;
             // 
-            // repositoryItemMarqueeProgressBar1
+            // repositoryItemProgressBar1
             // 
-            this.repositoryItemMarqueeProgressBar1.Name = "repositoryItemMarqueeProgressBar1";
-            this.repositoryItemMarqueeProgressBar1.ProgressViewStyle = DevExpress.XtraEditors.Controls.ProgressViewStyle.Solid;
+            this.repositoryItemProgressBar1.Name = "repositoryItemProgressBar1";
+            this.repositoryItemProgressBar1.ProgressViewStyle = DevExpress.XtraEditors.Controls.ProgressViewStyle.Solid;
+            this.repositoryItemProgressBar1.ReadOnly = true;
+            this.repositoryItemProgressBar1.ShowTitle = true;
+            this.repositoryItemProgressBar1.Step = 1;
             // 
             // barStaticItem2
             // 
@@ -706,6 +715,12 @@
             this.barStaticItem7.Caption = "barStaticItem7";
             this.barStaticItem7.Id = 33;
             this.barStaticItem7.Name = "barStaticItem7";
+            toolTipTitleItem2.Appearance.Image = global::Wallet.Properties.Resources.network_connect;
+            toolTipTitleItem2.Appearance.Options.UseImage = true;
+            toolTipTitleItem2.Image = global::Wallet.Properties.Resources.network_connect;
+            toolTipTitleItem2.Text = "Kapcsolatok";
+            superToolTip2.Items.Add(toolTipTitleItem2);
+            this.barStaticItem7.SuperTip = superToolTip2;
             this.barStaticItem7.TextAlignment = System.Drawing.StringAlignment.Near;
             // 
             // ribbonPage1
@@ -774,9 +789,10 @@
             this.ribbonPageGroup7.Name = "ribbonPageGroup7";
             this.ribbonPageGroup7.Text = "Csomópontok";
             // 
-            // repositoryItemProgressBar1
+            // repositoryItemMarqueeProgressBar1
             // 
-            this.repositoryItemProgressBar1.Name = "repositoryItemProgressBar1";
+            this.repositoryItemMarqueeProgressBar1.Name = "repositoryItemMarqueeProgressBar1";
+            this.repositoryItemMarqueeProgressBar1.ProgressViewStyle = DevExpress.XtraEditors.Controls.ProgressViewStyle.Solid;
             // 
             // ribbonStatusBar1
             // 
@@ -788,10 +804,10 @@
             this.ribbonStatusBar1.ItemLinks.Add(this.barStaticItem4);
             this.ribbonStatusBar1.ItemLinks.Add(this.lastBlockTime);
             this.ribbonStatusBar1.ItemLinks.Add(this.minerCount);
-            this.ribbonStatusBar1.Location = new System.Drawing.Point(0, 558);
+            this.ribbonStatusBar1.Location = new System.Drawing.Point(0, 573);
             this.ribbonStatusBar1.Name = "ribbonStatusBar1";
-            this.ribbonStatusBar1.Ribbon = this.ribbonControl1;
-            this.ribbonStatusBar1.Size = new System.Drawing.Size(749, 32);
+            this.ribbonStatusBar1.Ribbon = this.ribbon;
+            this.ribbonStatusBar1.Size = new System.Drawing.Size(843, 32);
             // 
             // defaultToolTipController1
             // 
@@ -847,15 +863,15 @@
             this.barDockControlTop.CausesValidation = false;
             this.barDockControlTop.Dock = System.Windows.Forms.DockStyle.Top;
             this.barDockControlTop.Location = new System.Drawing.Point(0, 0);
-            this.barDockControlTop.Size = new System.Drawing.Size(749, 0);
+            this.barDockControlTop.Size = new System.Drawing.Size(843, 0);
             // 
             // barDockControlBottom
             // 
             this.defaultToolTipController1.SetAllowHtmlText(this.barDockControlBottom, DevExpress.Utils.DefaultBoolean.Default);
             this.barDockControlBottom.CausesValidation = false;
             this.barDockControlBottom.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this.barDockControlBottom.Location = new System.Drawing.Point(0, 590);
-            this.barDockControlBottom.Size = new System.Drawing.Size(749, 0);
+            this.barDockControlBottom.Location = new System.Drawing.Point(0, 605);
+            this.barDockControlBottom.Size = new System.Drawing.Size(843, 0);
             // 
             // barDockControlLeft
             // 
@@ -863,15 +879,15 @@
             this.barDockControlLeft.CausesValidation = false;
             this.barDockControlLeft.Dock = System.Windows.Forms.DockStyle.Left;
             this.barDockControlLeft.Location = new System.Drawing.Point(0, 0);
-            this.barDockControlLeft.Size = new System.Drawing.Size(0, 590);
+            this.barDockControlLeft.Size = new System.Drawing.Size(0, 605);
             // 
             // barDockControlRight
             // 
             this.defaultToolTipController1.SetAllowHtmlText(this.barDockControlRight, DevExpress.Utils.DefaultBoolean.Default);
             this.barDockControlRight.CausesValidation = false;
             this.barDockControlRight.Dock = System.Windows.Forms.DockStyle.Right;
-            this.barDockControlRight.Location = new System.Drawing.Point(749, 0);
-            this.barDockControlRight.Size = new System.Drawing.Size(0, 590);
+            this.barDockControlRight.Location = new System.Drawing.Point(843, 0);
+            this.barDockControlRight.Size = new System.Drawing.Size(0, 605);
             // 
             // simpleButton1
             // 
@@ -990,10 +1006,10 @@
             this.defaultToolTipController1.SetAllowHtmlText(this, DevExpress.Utils.DefaultBoolean.Default);
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(749, 590);
+            this.ClientSize = new System.Drawing.Size(843, 605);
             this.Controls.Add(this.panel1);
             this.Controls.Add(this.flowLayoutPanel1);
-            this.Controls.Add(this.ribbonControl1);
+            this.Controls.Add(this.ribbon);
             this.Controls.Add(this.ribbonStatusBar1);
             this.Controls.Add(this.barDockControlLeft);
             this.Controls.Add(this.barDockControlRight);
@@ -1001,7 +1017,7 @@
             this.Controls.Add(this.barDockControlTop);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "MainForm";
-            this.Ribbon = this.ribbonControl1;
+            this.Ribbon = this.ribbon;
             this.StatusBar = this.ribbonStatusBar1;
             this.Text = "MicroCoin Wallet";
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.Form1_FormClosing);
@@ -1020,13 +1036,13 @@
             ((System.ComponentModel.ISupportInitialize)(this.groupControl1)).EndInit();
             this.groupControl1.ResumeLayout(false);
             this.groupControl1.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.groupControl2)).EndInit();
-            this.groupControl2.ResumeLayout(false);
-            this.groupControl2.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.transaction)).EndInit();
+            this.transaction.ResumeLayout(false);
+            this.transaction.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.targetAccount.Properties)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.ribbonControl1)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.repositoryItemMarqueeProgressBar1)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.ribbon)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.repositoryItemProgressBar1)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.repositoryItemMarqueeProgressBar1)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.payload.Properties)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.fee.Properties)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.amountToPay.Properties)).EndInit();
@@ -1062,7 +1078,7 @@
         private DevExpress.XtraGrid.Columns.GridColumn colName;
         private DevExpress.XtraGrid.Columns.GridColumn colVisibleBalance;
         private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel1;
-        private DevExpress.XtraEditors.GroupControl groupControl2;
+        private DevExpress.XtraEditors.GroupControl transaction;
         private DevExpress.XtraEditors.SimpleButton simpleButton1;
         private DevExpress.XtraEditors.MemoEdit payload;
         private DevExpress.XtraEditors.SpinEdit fee;
@@ -1076,7 +1092,7 @@
         private System.Windows.Forms.Label label7;
         private System.Windows.Forms.Label currentBalance;
         private System.Windows.Forms.Label label5;
-        private DevExpress.XtraBars.Ribbon.RibbonControl ribbonControl1;
+        private DevExpress.XtraBars.Ribbon.RibbonControl ribbon;
         private DevExpress.XtraBars.Ribbon.RibbonPage ribbonPage1;
         private DevExpress.XtraBars.Ribbon.RibbonStatusBar ribbonStatusBar1;
         private DevExpress.XtraBars.BarButtonItem sellAccount;

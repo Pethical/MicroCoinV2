@@ -35,7 +35,7 @@ namespace MicroCoin.Chain
     {
         public uint TransactionCount { get; set; }
         internal TransactionType TransactionsType { get; set; }
-        public List<Transaction> Transactions {get; set;}  = new List<Transaction>();
+        public List<Transaction> Transactions { get; set; } = new List<Transaction>();
         public new static Block GenesisBlock => new Block
         {
             BlockNumber = 0

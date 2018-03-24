@@ -30,12 +30,21 @@ using System.Text;
 
 namespace MicroCoin.Chain
 {
+
+    public class CheckPointBuildingEventArgs
+    {
+        public int BlocksNeeded { get; set; }
+        public int BlocksDone { get; set; }
+
+    }
+
     public class CheckPoints
     {
         private static readonly ILog Log =
             LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
         public const string CheckPointIndexName = "checkpoints.idx";
         public const string CheckPointFileName = "checkpoints.mcc";
+        public static event EventHandler<CheckPointBuildingEventArgs> CheckPointBuilding;
         private static List<uint> _offsets = new List<uint>();
         internal static ulong WorkSum { get; set; }
         internal static List<Account> Accounts { get; set; } = new List<Account>();
@@ -110,6 +119,14 @@ namespace MicroCoin.Chain
                 long pos = stream.Position;
                 offsets.Add((uint) pos);
                 item.SaveToStream(stream);
+                if (item.BlockNumber % 100 == 0)
+                {
+                    CheckPointBuilding?.Invoke(new object(), new CheckPointBuildingEventArgs
+                    {
+                        BlocksDone = (int)(item.BlockNumber),
+                        BlocksNeeded = (int)(list.Count)
+                    });
+                }
             }
 
             using (BinaryWriter bw = new BinaryWriter(indexStream, Encoding.Default, true))
@@ -154,11 +171,6 @@ namespace MicroCoin.Chain
             ulong accWork = 0;
             for (int block = 0; block < 100 * ((blockChain.GetLastBlock().BlockNumber + 1) / 100); block++)
             {
-                if (block % 1000 == 0)
-                {
-                    Log.Info($"Building checkpont: {block} block");
-                }
-
                 Block currentBlock = blockChain.Get(block);
                 CheckPointBlock checkPointBlock = new CheckPointBlock {AccountKey = currentBlock.AccountKey};
                 for (int i = 0; i < 5; i++)
@@ -176,7 +188,7 @@ namespace MicroCoin.Chain
                         AccountInfo = new AccountInfo
                         {
                             AccountKey = currentBlock.AccountKey,
-                            State = AccountInfo.AccountState.Normal
+                            State = AccountState.Normal
                         }
                     });
                     accNumber++;
@@ -243,7 +255,7 @@ namespace MicroCoin.Chain
                             account.AccountInfo.AccountKey = transferTransaction.NewAccountKey;
                             account.AccountInfo.Price = 0;
                             account.AccountInfo.LockedUntilBlock = 0;
-                            account.AccountInfo.State = AccountInfo.AccountState.Normal;
+                            account.AccountInfo.State = AccountState.Normal;
                             account.AccountInfo.AccountToPayPrice = 0;
                             account.AccountInfo.NewPublicKey = null;
                             break;
@@ -261,14 +273,14 @@ namespace MicroCoin.Chain
                             {
                                 account.AccountInfo.Price = listAccountTransaction.AccountPrice;
                                 account.AccountInfo.LockedUntilBlock = listAccountTransaction.LockedUntilBlock;
-                                account.AccountInfo.State = AccountInfo.AccountState.Sale;
+                                account.AccountInfo.State = AccountState.Sale;
                                 account.AccountInfo.Price = listAccountTransaction.AccountPrice;
                                 account.AccountInfo.NewPublicKey = listAccountTransaction.NewPublicKey;
                                 account.AccountInfo.AccountToPayPrice = listAccountTransaction.AccountToPay;
                             }
                             else
                             {
-                                account.AccountInfo.State = AccountInfo.AccountState.Normal;
+                                account.AccountInfo.State = AccountState.Normal;
                                 account.AccountInfo.Price = 0;
                                 account.AccountInfo.NewPublicKey = null;
                                 account.AccountInfo.LockedUntilBlock = 0;
@@ -318,9 +330,28 @@ namespace MicroCoin.Chain
                 }
 
                 checkPoint.Add(checkPointBlock);
+                if (block % 100 == 0)
+                {
+                    CheckPointBuilding?.Invoke(new object(), new CheckPointBuildingEventArgs
+                    {
+                        BlocksDone = block,
+                        BlocksNeeded = (int)(100 * ((blockChain.GetLastBlock().BlockNumber + 1) / 100))*2
+                    });
+                }
             }
 
-            foreach (var p in checkPoint) p.BlockHash = p.CalculateBlockHash();
+            foreach (var p in checkPoint) { p.BlockHash = p.CalculateBlockHash();
+
+                if (p.BlockNumber % 100 == 0)
+                {
+                    CheckPointBuilding?.Invoke(new object(), new CheckPointBuildingEventArgs
+                    {
+                        BlocksDone = (int)(p.BlockNumber+checkPoint.Count),
+                        BlocksNeeded = (int)(checkPoint.Count * 2)
+                    });
+                }
+
+            }
             return checkPoint;
         }
         internal static CheckPointBlock GetLastBlock()
@@ -351,7 +382,6 @@ namespace MicroCoin.Chain
 
             File.Copy(CheckPointIndexName + $".{chunk}", CheckPointIndexName, true);
             File.Copy(CheckPointFileName + $".{chunk}", CheckPointFileName, true);
-            Log.Info("Saved next checkpont");
         }
         internal static void AppendBlock(Block b)
         {
@@ -371,7 +401,7 @@ namespace MicroCoin.Chain
 
             ulong accWork = WorkSum;
             for (int i = 0; i < 5; i++)
-            {
+            {                
                 checkPointBlock.Accounts.Add(new Account
                 {
                     AccountNumber = accNumber,
@@ -385,7 +415,7 @@ namespace MicroCoin.Chain
                     AccountInfo = new AccountInfo
                     {
                         AccountKey = b.AccountKey,
-                        State = AccountInfo.AccountState.Normal
+                        State = AccountState.Normal
                     }
                 });
                 accNumber++;
@@ -445,7 +475,7 @@ namespace MicroCoin.Chain
                         targetAccount.AccountInfo.AccountKey = transferTransaction.NewAccountKey;
                         targetAccount.AccountInfo.Price = 0;
                         targetAccount.AccountInfo.LockedUntilBlock = 0;
-                        targetAccount.AccountInfo.State = AccountInfo.AccountState.Normal;
+                        targetAccount.AccountInfo.State = AccountState.Normal;
                         targetAccount.AccountInfo.AccountToPayPrice = 0;
                         targetAccount.AccountInfo.NewPublicKey = null;
                         targetAccount.Saved = true;
@@ -464,14 +494,14 @@ namespace MicroCoin.Chain
                             {
                                 targetAccount.AccountInfo.Price = listAccountTransaction.AccountPrice;
                                 targetAccount.AccountInfo.LockedUntilBlock = listAccountTransaction.LockedUntilBlock;
-                                targetAccount.AccountInfo.State = AccountInfo.AccountState.Sale;
+                                targetAccount.AccountInfo.State = AccountState.Sale;
                                 targetAccount.AccountInfo.Price = listAccountTransaction.AccountPrice;
                                 targetAccount.AccountInfo.NewPublicKey = listAccountTransaction.NewPublicKey;
                                 targetAccount.AccountInfo.AccountToPayPrice = listAccountTransaction.AccountToPay;
                             }
                             else
                             {
-                                targetAccount.AccountInfo.State = AccountInfo.AccountState.Normal;
+                                targetAccount.AccountInfo.State = AccountState.Normal;
                                 targetAccount.AccountInfo.Price = 0;
                                 targetAccount.AccountInfo.NewPublicKey = null;
                                 targetAccount.AccountInfo.LockedUntilBlock = 0;
@@ -528,6 +558,8 @@ namespace MicroCoin.Chain
             }
         }
     }
+
+ 
 
     public static class AccountNumberExtensions
     {

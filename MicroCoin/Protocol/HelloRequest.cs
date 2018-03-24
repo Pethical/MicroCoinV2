@@ -87,10 +87,8 @@ namespace MicroCoin.Protocol
                 AccountKey.LoadFromStream(stream);
                 Timestamp = br.ReadUInt32();
                 Block = new Block(stream);
-                NodeServers = NodeServerList.LoadFromStream(stream);
-                ushort vlen = br.ReadUInt16();
-                byte[] vb = br.ReadBytes(vlen);
-                Version = Encoding.ASCII.GetString(vb);
+                NodeServers = NodeServerList.LoadFromStream(stream, ServerPort);
+                Version = ByteString.ReadFromStream(br);
                 WorkSum = br.ReadInt64();
             }
 

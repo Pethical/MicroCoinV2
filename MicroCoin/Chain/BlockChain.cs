@@ -223,7 +223,7 @@ namespace MicroCoin.Chain
                     ((TransferTransaction) p).SellerAccount == accountNumber);
                 result.AddRange(l);
             }
-
+            blocks.Clear();
             return result;
         }
 
@@ -251,14 +251,12 @@ namespace MicroCoin.Chain
                         }
                         finally
                         {
-                            f.Close();
                             f.Dispose();
                         }
                     }
                 }
                 finally
                 {
-                    fi.Close();
                     fi.Dispose();
                 }
             }
@@ -285,23 +283,20 @@ namespace MicroCoin.Chain
                             f.Position = pos;
                             var blocks = new List<Block>();
                             for (var i = start; i <= end; i++)
-                            {
-                                var tb = new Block(f);
-                                blocks.Add(tb);
+                            {                                
+                                blocks.Add(new Block(f));
                             }
 
                             return blocks;
                         }
                         finally
                         {
-                            f.Close();
                             f.Dispose();
                         }
                     }
                 }
                 finally
                 {
-                    fi.Close();
                     fi.Dispose();
                 }
             }
@@ -330,14 +325,12 @@ namespace MicroCoin.Chain
                         }
                         finally
                         {
-                            f.Close();
                             f.Dispose();
                         }
                     }
                 }
                 finally
                 {
-                    fi.Close();
                     fi.Dispose();
                 }
             }
@@ -455,7 +448,6 @@ namespace MicroCoin.Chain
                     }
                 }
 
-                f.Close();
                 f.Dispose();
             }
         }

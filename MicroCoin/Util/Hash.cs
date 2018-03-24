@@ -28,7 +28,7 @@ namespace MicroCoin.Util
     {
 
         private readonly byte[] _value;
-
+        
         public Hash(byte[] b)
         {
             _value = b;

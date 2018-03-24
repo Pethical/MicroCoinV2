@@ -117,7 +117,7 @@ namespace MicroCoin.Mining
                                 new Thread(() =>
                                 {
                                     HandleClient(client);
-                                }).Start();                                
+                                }).Start();
                                 connected.Set();
                             }
                             catch (ObjectDisposedException)
@@ -126,7 +126,7 @@ namespace MicroCoin.Mining
                         }, null);
                         while (!connected.WaitOne(1))
                         {
-                            if(Stop) break;
+                            if (Stop) break;
                         }
                     }
 
@@ -139,7 +139,10 @@ namespace MicroCoin.Mining
                         client.Dispose();
                     }
                 }
-            }).Start();
+            })
+            {
+                Name="MinerServer"
+            }.Start();
         }
 
     }

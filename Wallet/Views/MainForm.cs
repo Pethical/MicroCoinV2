@@ -21,8 +21,10 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using DevExpress.Skins;
@@ -36,6 +38,7 @@ using MicroCoin;
 using MicroCoin.Chain;
 using MicroCoin.Cryptography;
 using MicroCoin.Util;
+using Wallet.Properties;
 
 namespace Wallet.Views
 {
@@ -45,7 +48,7 @@ namespace Wallet.Views
         {
             InitializeComponent();
             SkinManager.EnableFormSkins();
-            repositoryItemMarqueeProgressBar1.ProgressAnimationMode = ProgressAnimationMode.PingPong;
+            //repositoryItemMarqueeProgressBar1.ProgressAnimationMode = ProgressAnimationMode.PingPong;
         }
 
         private List<ECKeyPair> Keys { get; } = new List<ECKeyPair>();
@@ -68,34 +71,76 @@ namespace Wallet.Views
                     keyPair.DecriptKey("");
                 }
             }
+            Node.Instance.NodeServers.NodesChanged += (ob, ev) =>
+            {
+                Invoke((Action)(() =>
+                {
+                    var i = 0;
+                    barStaticItem7.Caption = Node.Instance.NodeServers.Count.ToString();
+                    barStaticItem7.SuperTip.Items.Clear();
+                    foreach (var nodeServer in Node.Instance.NodeServers)
+                    {
+                        barStaticItem7.SuperTip.Items.Add(nodeServer.Value.EndPoint.ToString()).Image =
+                            Resources.network_connect;
+                        i++;
+                    }
 
+                    if (i > Node.Instance.NodeServers.Count)
+                    {
+                        i = 0;
+                    }
+                }));
+
+            };
+            Node.Instance.BlockDownloadProgress += (o, ev) =>
+            {
+                Invoke((Action)(() =>
+                {
+                    progressBar.Caption = "Blokklánc letöltése";
+                    repositoryItemProgressBar1.Maximum = ev.BlocksToDownload;
+                    progressBar.EditValue = ev.DownloadedBlocks;
+                }));
+            };
+            CheckPoints.CheckPointBuilding += (oo, ee) =>
+            {
+                Invoke((Action)(() =>
+                {
+                    progressBar.Caption = "Checkpoint számítása";
+                    repositoryItemProgressBar1.Maximum = ee.BlocksNeeded;
+                    progressBar.EditValue = ee.BlocksDone;
+                }));
+            };
+
+            ribbon.Enabled = false;
+            transaction.Enabled = false;
             Task.Run(async () =>
             {
-                Node.Instance.NodeServers.NewNode += (ob, ev) =>
+
+                //
+                await Node.Instance.StartNode(4004, Keys);
+                Invoke((Action)(() =>
                 {
-                    barStaticItem7.Caption = Node.Instance.NodeServers.Count.ToString();
-                };
-                
-                await Node.StartNode(4004, Keys);
+                    ribbon.Enabled = true;
+                    transaction.Enabled = true;
+                }));
+
                 Action action = () =>
                 {
-                    repositoryItemMarqueeProgressBar1.Paused = true;
+                    //repositoryItemMarqueeProgressBar1.Paused = true;
                     var myAccounts = Node.Instance.Accounts.Where(p => Keys.Contains(p.AccountInfo.AccountKey));
                     accountBindingSource.DataSource = myAccounts;
                     accountCount.Text = myAccounts.Count().ToString("N0") + " db";
                     currentBalance.Text = myAccounts.Sum(p => p.VisibleBalance).ToString("N") + " MCC";
-                    var lastBlock = Node.Instance.BlockChain.GetLastBlock();
-                    lastBlock.GetBlockHeaderForHash();
-                    difficulty.Caption = Node.Instance.BlockChain.GetNewTarget().Item2.ToString("X");
                     var timer = new Timer
                     {
                         Interval = 5000
                     };
                     timer.Tick += (o, ev) =>
                     {
-                        lastBlock = Node.Instance.BlockChain.GetLastBlock();
+                        var lastBlock = Node.Instance.BlockChain.GetLastBlock();
                         lastBlockTime.Caption = "Utolsó blokk " + DateTime.Now.Subtract(lastBlock.Timestamp).ToString("%m") + " perce";
                         minerCount.Caption = $"{Node.Instance.MinerServer.Clients.Count} bányászó kliens";
+                        difficulty.Caption = Node.Instance.BlockChain.GetNewTarget().Item2.ToString("X");
                     };
                     timer.Enabled = true;
                 };
@@ -115,8 +160,8 @@ namespace Wallet.Views
                 ((IEnumerable<Account>) accountBindingSource.DataSource).FirstOrDefault(p =>
                     p.AccountNumber == targetAccount.Text);
             var accountKey = Keys.FirstOrDefault(p =>
-                p.PublicKey.X.SequenceEqual((byte[]) signer.AccountInfo.AccountKey.X) &&
-                p.PublicKey.Y.SequenceEqual((byte[]) signer.AccountInfo.AccountKey.Y)
+                p.PublicKey.X.SequenceEqual((byte[]) signer.AccountInfo.AccountKey.PublicKey.X) &&
+                p.PublicKey.Y.SequenceEqual((byte[]) signer.AccountInfo.AccountKey.PublicKey.Y)
             );
             if (accountKey == null)
             {
@@ -148,7 +193,7 @@ namespace Wallet.Views
 
         private void targetAccount_Validating(object sender, CancelEventArgs e)
         {
-            AccountNumber an = targetAccount.Text;
+            // AccountNumber an = targetAccount.Text;
         }
 
         private void barButtonItem6_ItemClick(object sender, ItemClickEventArgs e)
@@ -162,14 +207,15 @@ namespace Wallet.Views
             var acc = (Account) accountBindingSource.Current;
             t.ShowAccount(acc.AccountNumber);
             t.ShowDialog(this);
+            t.Dispose();
         }
 
         private void editAccount_ItemClick(object sender, ItemClickEventArgs e)
         {
             var account = (Account) accountBindingSource.Current;
             var accountKey = Keys.FirstOrDefault(p =>
-                p.PublicKey.X.SequenceEqual((byte[]) account.AccountInfo.AccountKey.X) &&
-                p.PublicKey.Y.SequenceEqual((byte[]) account.AccountInfo.AccountKey.Y)
+                p.PublicKey.X.SequenceEqual((byte[]) account.AccountInfo.AccountKey.PublicKey.X) &&
+                p.PublicKey.Y.SequenceEqual((byte[]) account.AccountInfo.AccountKey.PublicKey.Y)
             );
             account.AccountInfo.AccountKey = accountKey;
             if (AccountEdit.EditAccount(account)) Node.Instance.ChangeAccountInfo(account, 0, "", accountKey);
@@ -179,8 +225,8 @@ namespace Wallet.Views
         {
             var account = (Account) accountBindingSource.Current;
             var accountKey = Keys.FirstOrDefault(p =>
-                p.PublicKey.X.SequenceEqual((byte[]) account.AccountInfo.AccountKey.X) &&
-                p.PublicKey.Y.SequenceEqual((byte[]) account.AccountInfo.AccountKey.Y)
+                p.PublicKey.X.SequenceEqual((byte[]) account.AccountInfo.AccountKey.PublicKey.X) &&
+                p.PublicKey.Y.SequenceEqual((byte[]) account.AccountInfo.AccountKey.PublicKey.Y)
             );
             account.AccountInfo.AccountKey = accountKey;
             var a = SellAccount.ShowSellAccount();
@@ -191,7 +237,7 @@ namespace Wallet.Views
         private void buyAccount_ItemClick(object sender, ItemClickEventArgs e)
         {
             var accountSelector = new AccountSelector(Node.Instance.Accounts
-                .Where(p => p.AccountInfo.State == AccountInfo.AccountState.Sale).ToList());
+                .Where(p => p.AccountInfo.State == AccountState.Sale).ToList());
             if (accountSelector.ShowDialog(this) == DialogResult.OK)
             {
                 var buyer = (Account) accountBindingSource.Current;
@@ -201,8 +247,8 @@ namespace Wallet.Views
                         "Megerősítés", MessageBoxButtons.YesNo, MessageBoxIcon.Question,
                         MessageBoxDefaultButton.Button2) != DialogResult.Yes) return;
                 var accountKey = Keys.FirstOrDefault(p =>
-                    p.PublicKey.X.SequenceEqual((byte[]) buyer.AccountInfo.AccountKey.X) &&
-                    p.PublicKey.Y.SequenceEqual((byte[]) buyer.AccountInfo.AccountKey.Y)
+                    p.PublicKey.X.SequenceEqual((byte[]) buyer.AccountInfo.AccountKey.PublicKey.X) &&
+                    p.PublicKey.Y.SequenceEqual((byte[]) buyer.AccountInfo.AccountKey.PublicKey.Y)
                 );
                 buyer.AccountInfo.AccountKey = accountKey;
 
@@ -222,8 +268,8 @@ namespace Wallet.Views
             if (result is bool && result == false) return;
 
             var accountKey = Keys.FirstOrDefault(p =>
-                p.PublicKey.X.SequenceEqual((byte[]) account.AccountInfo.AccountKey.X) &&
-                p.PublicKey.Y.SequenceEqual((byte[]) account.AccountInfo.AccountKey.Y)
+                p.PublicKey.X.SequenceEqual((byte[]) account.AccountInfo.AccountKey.PublicKey.X) &&
+                p.PublicKey.Y.SequenceEqual((byte[]) account.AccountInfo.AccountKey.PublicKey.Y)
             );
 
             account.AccountInfo.AccountKey = accountKey;

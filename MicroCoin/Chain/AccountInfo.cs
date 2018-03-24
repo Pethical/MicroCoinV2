@@ -26,13 +26,15 @@ using System.IO;
 
 namespace MicroCoin.Chain
 {
+    public enum AccountState
+    {
+        Unknown,
+        Normal,
+        Sale
+    }
+
     public class AccountInfo : IEquatable<AccountInfo>
     {
-        public enum AccountState {
-            Unknown,
-            Normal,
-            Sale
-        }
         public AccountState State { get; set; }
         public string StateString
         {
@@ -44,7 +46,7 @@ namespace MicroCoin.Chain
                     case AccountState.Sale: return "Eladó";
                     case AccountState.Unknown: return "Ismeretlen";
                     default:
-                        throw new ArgumentOutOfRangeException();
+                        return "?";
                 }
             }
         }
@@ -111,7 +113,7 @@ namespace MicroCoin.Chain
                     LockedUntilBlock = 0;
                     Price = 0;
                     AccountToPayPrice = 0;
-                    NewPublicKey = new ECKeyPair();
+                    //NewPublicKey = new ECKeyPair();
                     break;
                 case 1000:
                     State = AccountState.Sale;

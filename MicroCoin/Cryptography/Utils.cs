@@ -96,7 +96,7 @@ namespace MicroCoin.Cryptography
                     ECParameters ephemPublicParams = ephem.ExportParameters(false);
                     int pointLen = ephemPublicParams.Q.X.Length;
                     byte[] rBar = new byte[pointLen * 2 + 1];
-                    rBar[0] = (byte) (keyPair.X.Length + keyPair.Y.Length);
+                    rBar[0] = (byte) (keyPair.PublicKey.X.Length + keyPair.PublicKey.Y.Length);
                     Buffer.BlockCopy(ephemPublicParams.Q.X, 0, rBar, 1, pointLen);
                     Buffer.BlockCopy(ephemPublicParams.Q.Y, 0, rBar, 1 + pointLen, pointLen);
                     var ek = ephem.DeriveKeyFromHash(ecDiffieHellman.PublicKey, HashAlgorithmName.SHA256, null,
