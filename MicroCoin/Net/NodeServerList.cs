@@ -140,7 +140,7 @@ namespace MicroCoin.Net
                 if (IPAddress.IsLoopback(nodeServer.Value.EndPoint.Address)) continue;
                 if (localIPs.Contains(nodeServer.Value.EndPoint.Address)) continue;
                 if (ContainsKey(nodeServer.Value.ToString())) continue;
-                if (nodeServer.Value.Port != 4004) continue;
+                if (nodeServer.Value.Port != MainParams.Port) continue;
                 TryAddNew(nodeServer.Value.ToString(), nodeServer.Value);
             }
             if (Count <= 100) return;

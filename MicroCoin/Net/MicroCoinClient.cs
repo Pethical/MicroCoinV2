@@ -89,7 +89,8 @@ namespace MicroCoin.Net
     }
 
     public class MicroCoinClient : P2PClient
-    {
+    {        
+
         public event EventHandler<HelloRequestEventArgs> HelloRequest;
         public event EventHandler<HelloResponseEventArgs> HelloResponse;
         public event EventHandler<BlockResponseEventArgs> BlockResponse;
@@ -154,7 +155,7 @@ namespace MicroCoin.Net
                 NodeServers = Node.Instance.NodeServers,
                 Operation = NetOperationType.Hello
             };
-            Hash h = Utils.Sha256(Encoding.ASCII.GetBytes("(c) Peter Nemeth - Okes rendben okes"));
+            Hash h = Utils.Sha256(Encoding.ASCII.GetBytes(MainParams.GenesisPayload));
             request.Block = new Block
             {
                 AccountKey = null,
@@ -211,7 +212,7 @@ namespace MicroCoin.Net
                 Operation = NetOperationType.Hello
             };
             
-            byte[] h = Utils.Sha256(Encoding.ASCII.GetBytes("(c) Peter Nemeth - Okes rendben okes"));
+            byte[] h = Utils.Sha256(Encoding.ASCII.GetBytes(MainParams.GenesisPayload));
             request.Block = new Block
             {
                 AccountKey = null,
@@ -547,7 +548,7 @@ namespace MicroCoin.Net
                     {
                         Timestamp = DateTime.UtcNow,
                         Error = 0,
-                        ServerPort = 4004, // TODO: HardCoded
+                        ServerPort = MainParams.Port,
                         Block = BlockChain.Instance.GetLastBlock(),
                         WorkSum = CheckPoints.WorkSum,
                         AccountKey = Node.Instance.NodeKey,

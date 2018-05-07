@@ -116,8 +116,7 @@ namespace Wallet.Views
             Task.Run(async () =>
             {
 
-                //
-                await Node.Instance.StartNode(4004, Keys);
+                await Node.Instance.StartNode(MainParams.Port, Keys);
                 Invoke((Action)(() =>
                 {
                     ribbon.Enabled = true;

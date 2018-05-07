@@ -1,14 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 using MicroCoin.Chain;
-using MicroCoin.Net;
 using MicroCoin.Util;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -23,7 +19,7 @@ namespace MicroCoin.Mining
         public bool Stop { get; set; }
         public MinerServer()
         {
-            TcpListener = new TcpListener(IPAddress.Any, 4009);
+            TcpListener = new TcpListener(IPAddress.Any, MainParams.MinerPort);
         }
 
         public void HandleClient(TcpClient client)
@@ -76,11 +72,16 @@ namespace MicroCoin.Mining
                             i++;
                             if (i > timeout) break;
                         }
-
-                        if (client.Available > 0)
+                        using (MemoryStream buffer = new MemoryStream())
                         {
-                            ByteString b = new byte[client.Available];
-                            client.GetStream().Read(b, 0, client.Available);
+                            while (client.Available > 0)
+                            {                                
+                                byte[] b = new byte[client.Available];
+                                client.GetStream().Read(b, 0, client.Available);
+                                buffer.Write(b, 0, b.Length);
+                            }
+                            ByteString response = buffer.ToArray();
+                            JObject minerResponse = JObject.Parse(response);
                         }
                     }
                 }

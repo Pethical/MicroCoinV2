@@ -82,6 +82,7 @@
     <Compile Include="Cryptography\ECSignature.cs" />
     <Compile Include="Cryptography\ECKeyPair.cs" />
     <Compile Include="Cryptography\Utils.cs" />
+    <Compile Include="MainParams.cs" />
     <Compile Include="Mining\MinerServer.cs" />
     <Compile Include="Net\Discovery\Discovery.cs" />
     <Compile Include="Net\Discovery\DiscoveryMessage.cs" />

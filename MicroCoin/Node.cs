@@ -70,6 +70,10 @@ namespace MicroCoin
         public MinerServer MinerServer { get; set; }
 
         protected List<MicroCoinClient> Clients { get; set; } = new List<MicroCoinClient>();
+        public async Task<Node> StartNode( object parameters)
+        {
+            return await StartNode(MainParams.Port);
+        }
         public async Task<Node> StartNode(int port = 4004, IList<ECKeyPair> keys = null)
         {
             Keys = keys;
@@ -77,21 +81,29 @@ namespace MicroCoin
             //MicroCoinClient.Connect("micro-225.microbyte.cloud", 4004);
             try
             {
-                P2PClient.ServerPort = 4004;
+                P2PClient.ServerPort = MainParams.Port;
                 var bl = BlockChain.Instance.BlockHeight();
-                 MicroCoinClient.Connect("127.0.0.1", port);
+                 MicroCoinClient.Connect(MainParams.FixSeeds[0], port);
                 //MicroCoinClient.Connect("micro-225.microbyte.cloud", 4004);
                 var response = await MicroCoinClient.SendHelloAsync();
                  while (bl <= response.Block.BlockNumber)
                  {
-                     var blocks = await MicroCoinClient.RequestBlocksAsync((uint) bl,200); //response.TransactionBlock.BlockNumber);
-                     BlockChain.Instance.AppendAll(blocks.Blocks, true);
-                     bl += 200;
-                     BlockDownloadProgress?.Invoke(this, new BlocksDownloadProgressEventArgs
-                     {
-                         BlocksToDownload = (int)response.Block.BlockNumber,
-                         DownloadedBlocks = bl
-                     });
+                    try
+                    {
+                        var blocks = await MicroCoinClient.RequestBlocksAsync((uint)bl, 1); //response.TransactionBlock.BlockNumber);
+                        BlockChain.Instance.AppendAll(blocks.Blocks, true);
+                        bl += 1;
+                        BlockDownloadProgress?.Invoke(this, new BlocksDownloadProgressEventArgs
+                        {
+                            BlocksToDownload = (int)response.Block.BlockNumber,
+                            DownloadedBlocks = bl
+                        });
+                    }
+                    catch
+                    {
+                        Thread.Sleep(10);
+                        continue;
+                    }
                  }
                 CheckPoints.Init();
                 Log.Info("BlockChain OK");
@@ -196,11 +208,11 @@ namespace MicroCoin
                         BlockChain.Instance.Append(e.Block);
                     };
                 };
-                Instance.NodeServers.TryAddNew("127.0.0.1:4004", new NodeServer
+                Instance.NodeServers.TryAddNew(MainParams.FixSeeds[0]+":"+MainParams.Port.ToString(), new NodeServer
                 {
-                    IP = "127.0.0.1",
+                    IP = MainParams.FixSeeds[0],
                     LastConnection = DateTime.Now,
-                    Port = 4004
+                    Port = MainParams.Port
                 });
             }
             catch (Exception e)
@@ -222,10 +234,10 @@ namespace MicroCoin
                 {
                     try
                     {
-                        var tcpListener = new TcpListener(IPAddress.Any, 4041); //
+                        var tcpListener = new TcpListener(IPAddress.Any, MainParams.Port); //
                         try
                         {
-                            P2PClient.ServerPort = 4040;
+                            P2PClient.ServerPort = MainParams.Port;
                             tcpListener.Start();
                             var connected = new ManualResetEvent(false);
                             while (true)
