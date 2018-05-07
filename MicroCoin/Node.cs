@@ -90,9 +90,9 @@ namespace MicroCoin
                  {
                     try
                     {
-                        var blocks = await MicroCoinClient.RequestBlocksAsync((uint)bl, 1); //response.TransactionBlock.BlockNumber);
+                        var blocks = await MicroCoinClient.RequestBlocksAsync((uint)bl, 10); //response.TransactionBlock.BlockNumber);
                         BlockChain.Instance.AppendAll(blocks.Blocks, true);
-                        bl += 1;
+                        bl += 10;
                         BlockDownloadProgress?.Invoke(this, new BlocksDownloadProgressEventArgs
                         {
                             BlocksToDownload = (int)response.Block.BlockNumber,
