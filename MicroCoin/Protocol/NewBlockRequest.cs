@@ -28,6 +28,11 @@ namespace MicroCoin.Protocol
 
         public Block Block { get; set; }
 
+        public NewBlockRequest() : base()
+        {
+
+        }
+
         internal NewBlockRequest(Stream stream) : base(stream)
         {
         }

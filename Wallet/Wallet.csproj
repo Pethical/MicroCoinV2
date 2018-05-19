@@ -108,6 +108,7 @@
     </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Views\Prompt.cs" />
     <Compile Include="Views\SellAccount.cs">
       <SubType>Form</SubType>
     </Compile>

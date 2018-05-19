@@ -171,8 +171,6 @@ namespace MicroCoin.Chain
 
         internal static BlockChain Instance => _sInstance ?? (_sInstance = new BlockChain());
 
-        internal string BlockChainFileName { get; set; } = "block.chain";
-
         internal void LoadFromStream(Stream s)
         {
             while (s.Position < s.Length - 1) Add(new Block(s));
@@ -189,7 +187,7 @@ namespace MicroCoin.Chain
             {
                 if (true)
                 {
-                    var fi = File.Open(BlockChainFileName + ".index", FileMode.OpenOrCreate, FileAccess.ReadWrite);
+                    var fi = File.Open(MainParams.BlockChainFileName + ".index", FileMode.OpenOrCreate, FileAccess.ReadWrite);
                     using (var br = new BinaryReader(fi))
                     {
                         if (fi.Length == 0) return 0;
@@ -231,7 +229,7 @@ namespace MicroCoin.Chain
         {
             lock (Flock)
             {
-                var fi = File.Open(BlockChainFileName + ".index", FileMode.OpenOrCreate, FileAccess.ReadWrite);
+                var fi = File.Open(MainParams.BlockChainFileName + ".index", FileMode.OpenOrCreate, FileAccess.ReadWrite);
                 try
                 {
                     using (var ir = new BinaryReader(fi, Encoding.Default, true))
@@ -242,7 +240,7 @@ namespace MicroCoin.Chain
                         var bn = ir.ReadUInt32();
                         var pos = ir.ReadInt64();
                         if (bn != blockNumber) return null;
-                        var f = File.Open(BlockChainFileName, FileMode.OpenOrCreate, FileAccess.ReadWrite);
+                        var f = File.Open(MainParams.BlockChainFileName, FileMode.OpenOrCreate, FileAccess.ReadWrite);
                         try
                         {
                             f.Position = pos;
@@ -266,7 +264,7 @@ namespace MicroCoin.Chain
         {
             lock (Flock)
             {
-                var fi = File.Open(BlockChainFileName + ".index", FileMode.OpenOrCreate, FileAccess.ReadWrite);
+                var fi = File.Open(MainParams.BlockChainFileName + ".index", FileMode.OpenOrCreate, FileAccess.ReadWrite);
                 try
                 {
                     using (var ir = new BinaryReader(fi, Encoding.Default, true))
@@ -277,7 +275,7 @@ namespace MicroCoin.Chain
                         var bn = ir.ReadUInt32();
                         var pos = ir.ReadInt64();
                         if (bn != start) return null;
-                        var f = File.Open(BlockChainFileName, FileMode.OpenOrCreate, FileAccess.ReadWrite);
+                        var f = File.Open(MainParams.BlockChainFileName, FileMode.OpenOrCreate, FileAccess.ReadWrite);
                         try
                         {
                             f.Position = pos;
@@ -306,7 +304,7 @@ namespace MicroCoin.Chain
         {
             lock (Flock)
             {
-                var fi = File.Open(BlockChainFileName + ".index", FileMode.OpenOrCreate, FileAccess.ReadWrite);
+                var fi = File.Open(MainParams.BlockChainFileName + ".index", FileMode.OpenOrCreate, FileAccess.ReadWrite);
                 try
                 {
                     using (var ir = new BinaryReader(fi, Encoding.Default, true))
@@ -315,7 +313,7 @@ namespace MicroCoin.Chain
                         fi.Position = fi.Length - 16;
                         var blockNumber = ir.ReadUInt32();
                         var position = ir.ReadInt64();
-                        var f = File.Open(BlockChainFileName, FileMode.OpenOrCreate, FileAccess.ReadWrite);
+                        var f = File.Open(MainParams.BlockChainFileName, FileMode.OpenOrCreate, FileAccess.ReadWrite);
                         try
                         {
                             if (f.Length == 0) throw new Exception("No blockchain file.");
@@ -341,10 +339,10 @@ namespace MicroCoin.Chain
             lock (Flock)
             {
                 var blockHeight = GetLastBlock().BlockNumber + 1;
-                var fi = File.Open(BlockChainFileName + ".index", FileMode.OpenOrCreate, FileAccess.ReadWrite);
+                var fi = File.Open(MainParams.BlockChainFileName + ".index", FileMode.OpenOrCreate, FileAccess.ReadWrite);
                 try
                 {
-                    var f = File.Open(BlockChainFileName, FileMode.OpenOrCreate, FileAccess.ReadWrite);
+                    var f = File.Open(MainParams.BlockChainFileName, FileMode.OpenOrCreate, FileAccess.ReadWrite);
                     try
                     {
                         using (var br = new BinaryReader(fi, Encoding.Default, true))
@@ -404,8 +402,8 @@ namespace MicroCoin.Chain
             lock (Flock)
             {
                 var blockHeight = GetLastBlock().BlockNumber;
-                var f = File.Open(BlockChainFileName, FileMode.OpenOrCreate, FileAccess.ReadWrite);
-                var fi = File.Open(BlockChainFileName + ".index", FileMode.OpenOrCreate, FileAccess.ReadWrite);
+                var f = File.Open(MainParams.BlockChainFileName, FileMode.OpenOrCreate, FileAccess.ReadWrite);
+                var fi = File.Open(MainParams.BlockChainFileName + ".index", FileMode.OpenOrCreate, FileAccess.ReadWrite);
                 using (var br = new BinaryReader(fi))
                 {
                     int count;
@@ -457,7 +455,7 @@ namespace MicroCoin.Chain
             lock (Flock)
             {
 //                byte[] b;
-                var f = File.Open(BlockChainFileName + ".index", FileMode.OpenOrCreate, FileAccess.ReadWrite);
+                var f = File.Open(MainParams.BlockChainFileName + ".index", FileMode.OpenOrCreate, FileAccess.ReadWrite);
                 if (s.Length > 0 && f.Length > 0)
                     using (var br = new BinaryReader(f, Encoding.Default, true))
                     {

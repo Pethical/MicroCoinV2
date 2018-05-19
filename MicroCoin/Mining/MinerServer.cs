@@ -5,6 +5,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using MicroCoin.Chain;
+using MicroCoin.Protocol;
 using MicroCoin.Util;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -80,8 +81,22 @@ namespace MicroCoin.Mining
                                 client.GetStream().Read(b, 0, client.Available);
                                 buffer.Write(b, 0, b.Length);
                             }
-                            ByteString response = buffer.ToArray();
-                            JObject minerResponse = JObject.Parse(response);
+                            if (buffer.Length > 0)
+                            {
+                                ByteString response = buffer.ToArray();
+                                JObject minerResponse = JObject.Parse(response);
+                                var br = new NewBlockRequest();
+                                br.Block = block;
+                                br.Block.Nonce = minerResponse.Value<int>("nonce");
+                                br.Block.ProofOfWork = br.Block.CalcProofOfWork();
+                                if (!br.Block.ProofOfWorkIsValid())
+                                {
+                                    continue;
+                                }                                
+                                BlockChain.Instance.Append(br.Block);
+                                CheckPoints.AppendBlock(br.Block);
+                                // Node.Instance.SendNewBlock(br.Block);
+                            }
                         }
                     }
                 }

@@ -64,6 +64,18 @@ namespace MicroCoin.Chain
             }
         }
 
+        public Hash CalcProofOfWork()
+        {
+            var header = GetBlockHeaderForHash();
+            Hash headerHash = header.GetBlockHeaderHash((uint)Nonce, Timestamp);
+            using (SHA256Managed sha = new SHA256Managed())
+            {
+                Hash hash = Utils.DoubleSha256(headerHash);
+                return hash;
+            }
+        }
+
+
         public BlockHeaderForHash GetBlockHeaderForHash()
         {
             BlockHeaderForHash header = new BlockHeaderForHash

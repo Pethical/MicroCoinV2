@@ -20,6 +20,7 @@
 
 using MicroCoin.Chain;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Text;
 
@@ -64,14 +65,24 @@ namespace MicroCoin.Protocol
             Blocks = new List<Block>();
             using (BinaryReader br = new BinaryReader(stream, Encoding.ASCII, true))
             {
-                TransactionCount = br.ReadUInt32();
-                for(int i = 0; i < TransactionCount; i++)
+                uint BlockCount = br.ReadUInt32();
+                //for(int i = 0; i < BlockCount; i++)
+                while(true)
                 {
                     if (stream.Position >= stream.Length - 1) {
                         break;
                     }
-                    Block op = new Block(stream);
-                    Blocks.Add(op);
+                    try
+                    {
+                        long pos = stream.Position;
+                        Block op = new Block(stream);
+                    
+                        Blocks.Add(op);
+                    }catch(EndOfStreamException e)
+                    {
+                        Debug.WriteLine("End of stream?");
+                        throw e;
+                    }
                 }
             }
         }

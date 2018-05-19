@@ -23,6 +23,7 @@ using MicroCoin.Cryptography;
 using MicroCoin.Protocol;
 using MicroCoin.Util;
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
@@ -195,11 +196,35 @@ namespace MicroCoin.Net
             {
                 var rp = ReadHeader(responseStream);
                 var pos = responseStream.Position;
-                ReadBody(rp.DataLength, responseStream);
-                responseStream.Position = pos;
+                if (ReadBody(rp.DataLength, responseStream))
+                {
+                    FileStream file = File.Create("hellobello");
+                    responseStream.Position = 0;
+                    responseStream.CopyTo(file);
+                    file.Dispose();
+                    //throw new Exception("DEV ERROR");
+                }
+                responseStream.Position = pos;                
                 return rp;
             });
         }
+
+        private MessageHeader ReadResponseSync(MemoryStream responseStream)
+        {
+            responseStream.Position = 0;
+            responseStream.Capacity = 0;
+
+            var rp = ReadHeader(responseStream);
+            var pos = responseStream.Position;
+            ReadBody(rp.DataLength, responseStream);
+            if(responseStream.Length!=rp.DataLength+RequestHeader.Size)
+            {
+                Debug.WriteLine("Mi ez az adat itt kérem?");
+            }
+            responseStream.Position = pos;
+            return rp;
+        }
+
 
         internal async Task<HelloResponse> SendHelloAsync()
         {
@@ -344,7 +369,7 @@ namespace MicroCoin.Net
             RequestBlockChain(blockCount, 1, REQUEST_ID, NetOperationType.Transactions);
         }
 #endif
-        internal async Task<BlockResponse> RequestBlocksAsync(uint startBlock, uint quantity, uint? requestId = null)
+        internal BlockResponse RequestBlocksAsync(uint startBlock, uint quantity, uint? requestId = null)
         {
             BlockRequest br = new BlockRequest
             {
@@ -366,11 +391,13 @@ namespace MicroCoin.Net
 
             WaitForData(10000);
             using (var rs = new MemoryStream())
-            {
-                var rp = await ReadResponse(rs);
+            {                
+                var rp = ReadResponseSync(rs);
                 switch (rp.Operation)
                 {
                     case NetOperationType.Blocks:
+                        if (rp.DataLength > rs.Length - RequestHeader.Size)
+                            Debug.WriteLine("Hiba");
                         return new BlockResponse(rs, rp);
                     default:
                         throw new InvalidDataException();
@@ -442,7 +469,9 @@ namespace MicroCoin.Net
                 MessageHeader rp = ReadHeader(ms);
                 long pos = ms.Position; // Header end
                 ms.Position = ms.Length;
-                if (ReadBody(rp.DataLength, ms)) return true;
+                ReadBody(rp.DataLength, ms);
+                if (ms.Length != rp.DataLength + RequestHeader.Size)
+                    throw new InvalidDataException("More than expected");
                 ms.Position = pos;
                 HandleNetworkPacket(rp, ms);
             }            
@@ -457,9 +486,22 @@ namespace MicroCoin.Net
 
         protected MessageHeader ReadHeader(MemoryStream ms)
         {
-            ReadAvailable(ms);
+            ReadData(RequestHeader.Size, ms);
             ms.Position = 0;
-            MessageHeader rp = new MessageHeader(ms);
+            var p = 0;
+            MessageHeader rp = new MessageHeader(ms);            
+            if(rp.Magic != 0x0A043580) {
+                FileStream fs = File.Create("hellobello.bello");
+                ms.Position = 0;
+                ms.CopyTo(fs);
+                fs.Dispose();
+                throw new InvalidDataException("Invalid magic / no magic found");
+            }
+            if (rp.Error != 0)
+            {
+                throw new Exception("Error in response");
+            }
+            Debug.WriteLine(rp.Operation);
             return rp;
         }
 

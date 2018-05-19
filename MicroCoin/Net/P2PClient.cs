@@ -20,6 +20,7 @@
 
 using log4net;
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Net.Sockets;
 using System.Threading;
@@ -44,10 +45,7 @@ namespace MicroCoin.Net
 
         protected int WaitForData(int timeoutMs)
         {
-            while (TcpClient.Available == 0)
-            {
-                Thread.Sleep(1);
-            }
+            while (TcpClient.Available == 0);
             return TcpClient.Available;
         }
 
@@ -113,22 +111,22 @@ namespace MicroCoin.Net
 
         protected bool ReadData(int requiredSize, MemoryStream ms)
         {
-            int wt = 0;
-            while (requiredSize > ms.Length)
+            do
             {
-                do
-                {
-                    Thread.Sleep(1);
-                    wt++;
-                    if (wt > 10000) break;
-                } while (TcpClient.Available == 0);
-
-                if (wt > 10000) break;
-                ReadAvailable(ms);
-                wt = 0;
+            } while (TcpClient.Available == 0);
+            var ns = TcpClient.GetStream();
+            int read = 0;
+            byte[] buffer = new byte[requiredSize - ms.Length];
+            while (read < buffer.Length)
+            {
+                read += ns.Read(buffer, read, buffer.Length - read);
             }
-
-            return wt > 10000;
+            ms.Write(buffer, 0, buffer.Length);
+            if (ms.Length > requiredSize)
+            {
+                Debug.WriteLine("megvagy");
+            }
+            return true;
         }
 
         protected void ReadAvailable(MemoryStream ms)
@@ -138,7 +136,7 @@ namespace MicroCoin.Net
                 NetworkStream ns = TcpClient.GetStream();
                 while (TcpClient.Available > 0)
                 {
-                    byte[] buffer = new byte[TcpClient.Available];
+                    byte[] buffer = new byte[TcpClient.Available];                    
                     ns.Read(buffer, 0, buffer.Length);
                     ms.Write(buffer, 0, buffer.Length);
                 }
@@ -207,7 +205,7 @@ namespace MicroCoin.Net
                     TcpClient.Dispose();
                 }
             }) {Name = TcpClient.Client.RemoteEndPoint.ToString()};
-            ListenerThread.Start();            
+            ListenerThread.Start();
         }
     }
 }

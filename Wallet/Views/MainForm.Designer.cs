@@ -29,10 +29,10 @@
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
-            DevExpress.XtraGrid.StyleFormatCondition styleFormatCondition2 = new DevExpress.XtraGrid.StyleFormatCondition();
+            DevExpress.XtraGrid.StyleFormatCondition styleFormatCondition1 = new DevExpress.XtraGrid.StyleFormatCondition();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(MainForm));
-            DevExpress.Utils.SuperToolTip superToolTip2 = new DevExpress.Utils.SuperToolTip();
-            DevExpress.Utils.ToolTipTitleItem toolTipTitleItem2 = new DevExpress.Utils.ToolTipTitleItem();
+            DevExpress.Utils.SuperToolTip superToolTip1 = new DevExpress.Utils.SuperToolTip();
+            DevExpress.Utils.ToolTipTitleItem toolTipTitleItem1 = new DevExpress.Utils.ToolTipTitleItem();
             this.colSaved1 = new DevExpress.XtraGrid.Columns.GridColumn();
             this.accountBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.styleController1 = new DevExpress.XtraEditors.StyleController(this.components);
@@ -238,6 +238,7 @@
             this.gridControl1.ViewCollection.AddRange(new DevExpress.XtraGrid.Views.Base.BaseView[] {
             this.gridView1,
             this.gridView2});
+            this.gridControl1.Click += new System.EventHandler(this.gridControl1_Click);
             // 
             // gridView1
             // 
@@ -248,16 +249,16 @@
             this.gridColumn1,
             this.colSaved1});
             this.gridView1.FocusRectStyle = DevExpress.XtraGrid.Views.Grid.DrawFocusRectStyle.RowFocus;
-            styleFormatCondition2.Appearance.Font = new System.Drawing.Font("Tahoma", 8.25F, System.Drawing.FontStyle.Italic);
-            styleFormatCondition2.Appearance.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(128)))), ((int)(((byte)(0)))));
-            styleFormatCondition2.Appearance.Options.UseFont = true;
-            styleFormatCondition2.Appearance.Options.UseForeColor = true;
-            styleFormatCondition2.ApplyToRow = true;
-            styleFormatCondition2.Column = this.colSaved1;
-            styleFormatCondition2.Condition = DevExpress.XtraGrid.FormatConditionEnum.Expression;
-            styleFormatCondition2.Expression = "False == [Saved]";
+            styleFormatCondition1.Appearance.Font = new System.Drawing.Font("Tahoma", 8.25F, System.Drawing.FontStyle.Italic);
+            styleFormatCondition1.Appearance.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(128)))), ((int)(((byte)(0)))));
+            styleFormatCondition1.Appearance.Options.UseFont = true;
+            styleFormatCondition1.Appearance.Options.UseForeColor = true;
+            styleFormatCondition1.ApplyToRow = true;
+            styleFormatCondition1.Column = this.colSaved1;
+            styleFormatCondition1.Condition = DevExpress.XtraGrid.FormatConditionEnum.Expression;
+            styleFormatCondition1.Expression = "False == [Saved]";
             this.gridView1.FormatConditions.AddRange(new DevExpress.XtraGrid.StyleFormatCondition[] {
-            styleFormatCondition2});
+            styleFormatCondition1});
             this.gridView1.GridControl = this.gridControl1;
             this.gridView1.Name = "gridView1";
             this.gridView1.OptionsBehavior.AllowAddRows = DevExpress.Utils.DefaultBoolean.False;
@@ -641,7 +642,7 @@
             // 
             this.progressBar.AutoHideEdit = false;
             this.progressBar.CanOpenEdit = false;
-            this.progressBar.Caption = "Blokkánc letöltése";
+            this.progressBar.Caption = "Blokkánc állapota";
             this.progressBar.Edit = this.repositoryItemProgressBar1;
             this.progressBar.EditValue = "0";
             this.progressBar.Id = 20;
@@ -665,7 +666,7 @@
             // 
             // barStaticItem3
             // 
-            this.barStaticItem3.Caption = "Szerverek: 6";
+            this.barStaticItem3.Caption = "Szerverek: 0";
             this.barStaticItem3.Id = 22;
             this.barStaticItem3.Name = "barStaticItem3";
             this.barStaticItem3.TextAlignment = System.Drawing.StringAlignment.Near;
@@ -680,7 +681,7 @@
             // lastBlockTime
             // 
             this.lastBlockTime.Alignment = DevExpress.XtraBars.BarItemLinkAlignment.Right;
-            this.lastBlockTime.Caption = "Utolsó blokk: 7 perce";
+            this.lastBlockTime.Caption = "Utolsó blokk: N/A";
             this.lastBlockTime.Id = 24;
             this.lastBlockTime.Name = "lastBlockTime";
             this.lastBlockTime.TextAlignment = System.Drawing.StringAlignment.Near;
@@ -712,15 +713,15 @@
             // 
             // barStaticItem7
             // 
-            this.barStaticItem7.Caption = "barStaticItem7";
+            this.barStaticItem7.Caption = "-";
             this.barStaticItem7.Id = 33;
             this.barStaticItem7.Name = "barStaticItem7";
-            toolTipTitleItem2.Appearance.Image = global::Wallet.Properties.Resources.network_connect;
-            toolTipTitleItem2.Appearance.Options.UseImage = true;
-            toolTipTitleItem2.Image = global::Wallet.Properties.Resources.network_connect;
-            toolTipTitleItem2.Text = "Kapcsolatok";
-            superToolTip2.Items.Add(toolTipTitleItem2);
-            this.barStaticItem7.SuperTip = superToolTip2;
+            toolTipTitleItem1.Appearance.Image = global::Wallet.Properties.Resources.network_connect;
+            toolTipTitleItem1.Appearance.Options.UseImage = true;
+            toolTipTitleItem1.Image = global::Wallet.Properties.Resources.network_connect;
+            toolTipTitleItem1.Text = "Kapcsolatok";
+            superToolTip1.Items.Add(toolTipTitleItem1);
+            this.barStaticItem7.SuperTip = superToolTip1;
             this.barStaticItem7.TextAlignment = System.Drawing.StringAlignment.Near;
             // 
             // ribbonPage1
@@ -796,7 +797,6 @@
             // 
             // ribbonStatusBar1
             // 
-            this.ribbonStatusBar1.ItemLinks.Add(this.difficulty);
             this.ribbonStatusBar1.ItemLinks.Add(this.progressBar);
             this.ribbonStatusBar1.ItemLinks.Add(this.barStaticItem2);
             this.ribbonStatusBar1.ItemLinks.Add(this.barStaticItem7);
@@ -804,6 +804,7 @@
             this.ribbonStatusBar1.ItemLinks.Add(this.barStaticItem4);
             this.ribbonStatusBar1.ItemLinks.Add(this.lastBlockTime);
             this.ribbonStatusBar1.ItemLinks.Add(this.minerCount);
+            this.ribbonStatusBar1.ItemLinks.Add(this.difficulty);
             this.ribbonStatusBar1.Location = new System.Drawing.Point(0, 573);
             this.ribbonStatusBar1.Name = "ribbonStatusBar1";
             this.ribbonStatusBar1.Ribbon = this.ribbon;
@@ -940,10 +941,10 @@
             // amountToPay
             // 
             this.amountToPay.EditValue = new decimal(new int[] {
+            1,
             0,
             0,
-            0,
-            0});
+            262144});
             this.amountToPay.Location = new System.Drawing.Point(81, 37);
             this.amountToPay.Name = "amountToPay";
             this.amountToPay.Properties.Buttons.AddRange(new DevExpress.XtraEditors.Controls.EditorButton[] {
@@ -953,6 +954,16 @@
             this.amountToPay.Properties.EditFormat.FormatString = "N4";
             this.amountToPay.Properties.EditFormat.FormatType = DevExpress.Utils.FormatType.Numeric;
             this.amountToPay.Properties.Increment = new decimal(new int[] {
+            1,
+            0,
+            0,
+            262144});
+            this.amountToPay.Properties.MaxValue = new decimal(new int[] {
+            999999999,
+            0,
+            0,
+            0});
+            this.amountToPay.Properties.MinValue = new decimal(new int[] {
             1,
             0,
             0,

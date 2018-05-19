@@ -42,8 +42,6 @@ namespace MicroCoin.Chain
     {
         private static readonly ILog Log =
             LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
-        public const string CheckPointIndexName = "checkpoints.idx";
-        public const string CheckPointFileName = "checkpoints.mcc";
         public static event EventHandler<CheckPointBuildingEventArgs> CheckPointBuilding;
         private static List<uint> _offsets = new List<uint>();
         internal static ulong WorkSum { get; set; }
@@ -53,10 +51,10 @@ namespace MicroCoin.Chain
         {
             WorkSum = 0;
             Current = new List<CheckPointBlock>();
-            if (!File.Exists((CheckPointFileName))) return;
+            if (!File.Exists((MainParams.CheckPointIndexName))) return;
             try
             {
-                FileStream fs = File.Open(CheckPointIndexName, FileMode.Open);
+                FileStream fs = File.Open(MainParams.CheckPointIndexName, FileMode.Open);
                 _offsets = new List<uint>((int) (fs.Length / 4));
                 Accounts = new List<Account>();
                 using (BinaryReader br = new BinaryReader(fs))
@@ -67,7 +65,7 @@ namespace MicroCoin.Chain
                     }
                 }
 
-                using (FileStream cf = File.OpenRead(CheckPointFileName))
+                using (FileStream cf = File.OpenRead(MainParams.CheckPointFileName))
                 {
                     while (cf.Position < cf.Length)
                     {
@@ -86,7 +84,7 @@ namespace MicroCoin.Chain
         }
         internal static void Put(CheckPointBlock cb)
         {
-            using (FileStream fs = File.OpenWrite(CheckPointFileName))
+            using (FileStream fs = File.OpenWrite(MainParams.CheckPointFileName))
             {
                 uint position;
                 if (_offsets.Count <= cb.BlockNumber)
@@ -140,7 +138,7 @@ namespace MicroCoin.Chain
         internal static List<CheckPointBlock> ReadAll()
         {
             List<CheckPointBlock> list = new List<CheckPointBlock>(_offsets.Count);
-            using (FileStream fs = File.OpenRead(CheckPointFileName))
+            using (FileStream fs = File.OpenRead(MainParams.CheckPointFileName))
             {
                 while (fs.Position < fs.Length)
                 {
@@ -172,6 +170,12 @@ namespace MicroCoin.Chain
             for (int block = 0; block < 100 * ((blockChain.GetLastBlock().BlockNumber + 1) / 100); block++)
             {
                 Block currentBlock = blockChain.Get(block);
+                if (currentBlock == null)
+                {
+                    var h = blockChain.GetLastBlock().BlockNumber;
+                    Block currentBlock1 = blockChain.Get((int)block);
+                    continue;
+                }
                 CheckPointBlock checkPointBlock = new CheckPointBlock {AccountKey = currentBlock.AccountKey};
                 for (int i = 0; i < 5; i++)
                 {
@@ -363,7 +367,7 @@ namespace MicroCoin.Chain
             var offsets2 = new List<uint>();
             uint chunk = (Current.Last().BlockNumber / 100) % 10;
             Log.Info($"Saving next checkpont => {chunk}");
-            using (FileStream fs = File.Create(CheckPointFileName + $".{chunk}"))
+            using (FileStream fs = File.Create(MainParams.CheckPointFileName + $".{chunk}"))
             {
                 foreach (var block in Current)
                 {
@@ -372,7 +376,7 @@ namespace MicroCoin.Chain
                 }
             }
 
-            using (FileStream fs = File.Create(CheckPointIndexName + $".{chunk}"))
+            using (FileStream fs = File.Create(MainParams.CheckPointIndexName + $".{chunk}"))
             {
                 using (BinaryWriter bw = new BinaryWriter(fs))
                 {
@@ -380,8 +384,8 @@ namespace MicroCoin.Chain
                 }
             }
 
-            File.Copy(CheckPointIndexName + $".{chunk}", CheckPointIndexName, true);
-            File.Copy(CheckPointFileName + $".{chunk}", CheckPointFileName, true);
+            File.Copy(MainParams.CheckPointIndexName + $".{chunk}", MainParams.CheckPointIndexName, true);
+            File.Copy(MainParams.CheckPointFileName + $".{chunk}", MainParams.CheckPointFileName, true);
         }
         internal static void AppendBlock(Block b)
         {

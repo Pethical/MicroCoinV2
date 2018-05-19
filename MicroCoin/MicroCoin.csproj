@@ -112,7 +112,6 @@
     <Compile Include="Net\NodeServerList.cs" />
     <Compile Include="Chain\Block.cs" />
     <Compile Include="Chain\BlockBase.cs" />
-    <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Protocol\Request.cs" />
     <Compile Include="Protocol\RequestHeader.cs" />

@@ -44,6 +44,8 @@ namespace Wallet.Views
 {
     public partial class MainForm : RibbonForm
     {
+        private const string keyfilefilter = "MicroCoin kulcstár|*.keys";
+
         public MainForm()
         {
             InitializeComponent();
@@ -55,22 +57,67 @@ namespace Wallet.Views
 
         private void Form1_Load(object sender, EventArgs e)
         {
-            var path = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\MicroCoin";
-            var fs = File.Open(path + "\\WalletKeys.dat", FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-
-            using (var br = new BinaryReader(fs))
+            if (!Directory.Exists(MainParams.DataDirectory))
             {
-                var magic = ByteString.ReadFromStream(br);
-                var version = br.ReadUInt32();
-                var count = br.ReadUInt32();
-                for (var i = 0; i < count; i++)
+                Directory.CreateDirectory(MainParams.DataDirectory);
+            }
+            string password = "";
+            if (File.Exists(MainParams.KeysFileName))
+            {
+                var fs = File.Open(MainParams.KeysFileName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                using (var br = new BinaryReader(fs))
                 {
-                    var keyPair = new ECKeyPair();
-                    keyPair.LoadFromStream(fs, false, true, true);
-                    Keys.Add(keyPair);
-                    keyPair.DecriptKey("");
+                    if (fs.Length > 0)
+                    {
+                        var magic = ByteString.ReadFromStream(br);
+                        var version = br.ReadUInt32();
+                        var count = br.ReadUInt32();
+                        for (var i = 0; i < count; i++)
+                        {
+                            var keyPair = new ECKeyPair();
+                            keyPair.LoadFromStream(fs, false, true, true);
+                            Keys.Add(keyPair);
+                            if (version < 110)
+                            {
+                                while (true)
+                                {
+                                    try
+                                    {
+                                        keyPair.DecriptKey(password);
+                                        break;
+                                    }
+                                    catch (Exception exception)
+                                    {
+                                        if (password == "")
+                                        {
+                                            password = Prompt.ShowDialog("Add meg a tárca jelszavát", "Jelszó szükséges");
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
+            if(Keys.Count==0)
+            {
+                var fs = File.Open(MainParams.KeysFileName, FileMode.Create, FileAccess.ReadWrite, FileShare.ReadWrite);
+                var keyPair = ECKeyPair.CreateNew(false, DateTime.Now.ToString());
+                Keys.Add(keyPair);
+                using (BinaryWriter bw = new BinaryWriter(fs,Encoding.ASCII,true))
+                {
+                    ByteString magic = "WalletKeys";
+                    magic.SaveToStream(bw);
+                    bw.Write((uint)110);
+                    bw.Write((uint)Keys.Count);
+                    foreach (var key in Keys)
+                    {
+                        key.SaveToStream(fs, false, true, true);
+                    }
+                }
+                fs.Dispose();
+            }
+
             Node.Instance.NodeServers.NodesChanged += (ob, ev) =>
             {
                 Invoke((Action)(() =>
@@ -96,7 +143,7 @@ namespace Wallet.Views
             {
                 Invoke((Action)(() =>
                 {
-                    progressBar.Caption = "Blokklánc letöltése";
+                    progressBar.Caption = "Blokklánc";
                     repositoryItemProgressBar1.Maximum = ev.BlocksToDownload;
                     progressBar.EditValue = ev.DownloadedBlocks;
                 }));
@@ -105,7 +152,7 @@ namespace Wallet.Views
             {
                 Invoke((Action)(() =>
                 {
-                    progressBar.Caption = "Checkpoint számítása";
+                    progressBar.Caption = "Checkpointok";
                     repositoryItemProgressBar1.Maximum = ee.BlocksNeeded;
                     progressBar.EditValue = ee.BlocksDone;
                 }));
@@ -126,8 +173,9 @@ namespace Wallet.Views
                 Action action = () =>
                 {
                     //repositoryItemMarqueeProgressBar1.Paused = true;
+                    accountBindingSource.DataSource = Node.Instance.Accounts.Where(p => Keys.Contains(p.AccountInfo.AccountKey));
+
                     var myAccounts = Node.Instance.Accounts.Where(p => Keys.Contains(p.AccountInfo.AccountKey));
-                    accountBindingSource.DataSource = myAccounts;
                     accountCount.Text = myAccounts.Count().ToString("N0") + " db";
                     currentBalance.Text = myAccounts.Sum(p => p.VisibleBalance).ToString("N") + " MCC";
                     var timer = new Timer
@@ -154,9 +202,17 @@ namespace Wallet.Views
 
         private void button1_Click(object sender, EventArgs e)
         {
+            try
+            {
+                AccountNumber an = targetAccount.Text;
+            }
+            catch
+            {
+                XtraMessageBox.Show("Hibás számlaszám", "Hiba", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
             var signer = (Account) accountBindingSource.Current;
-            var target =
-                ((IEnumerable<Account>) accountBindingSource.DataSource).FirstOrDefault(p =>
+            var target = ((IEnumerable<Account>) accountBindingSource.DataSource).FirstOrDefault(p =>
                     p.AccountNumber == targetAccount.Text);
             var accountKey = Keys.FirstOrDefault(p =>
                 p.PublicKey.X.SequenceEqual((byte[]) signer.AccountInfo.AccountKey.PublicKey.X) &&
@@ -169,7 +225,7 @@ namespace Wallet.Views
                 return;
             }
 
-            if (XtraMessageBox.Show(this, "Biztosan elutalod?", "Kérdés", MessageBoxButtons.YesNo,
+            if (XtraMessageBox.Show(this, "Biztosan utalni szeretnél?", "Kérdés", MessageBoxButtons.YesNo,
                     MessageBoxIcon.Question) != DialogResult.Yes) return;
             Node.Instance.SendCoin(signer, target, amountToPay.Value, fee.Value, accountKey, payload.Text);
         }
@@ -288,7 +344,7 @@ namespace Wallet.Views
                 saveFileDialog.OverwritePrompt = true;
                 saveFileDialog.FileName = "";
                 saveFileDialog.DefaultExt = "keys";
-                saveFileDialog.Filter = "MicroCoin kulcstár|*.keys";
+                saveFileDialog.Filter = keyfilefilter;
                 if (saveFileDialog.ShowDialog(this) == DialogResult.OK)
                     using (var fs = File.Open(saveFileDialog.FileName, FileMode.OpenOrCreate, FileAccess.Write,
                         FileShare.None))
@@ -302,7 +358,7 @@ namespace Wallet.Views
         {
             using (var openFileDialog = new OpenFileDialog())
             {
-                openFileDialog.Filter = "MicroCoin kulcstár|*.keys";
+                openFileDialog.Filter = keyfilefilter;
                 openFileDialog.CheckFileExists = true;
                 openFileDialog.Multiselect = false;
                 if (openFileDialog.ShowDialog(this) == DialogResult.OK)
@@ -344,6 +400,11 @@ namespace Wallet.Views
             {
                 asForm.ShowDialog(this);
             }
+        }
+
+        private void gridControl1_Click(object sender, EventArgs e)
+        {
+
         }
     }
 }

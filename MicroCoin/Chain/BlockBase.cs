@@ -56,7 +56,7 @@ namespace MicroCoin.Chain
         };
 
         internal BlockBase(Stream s)
-        {
+        {            
             using (var br = new BinaryReader(s, Encoding.ASCII, true))
             {
                 BlockSignature = br.ReadByte();
