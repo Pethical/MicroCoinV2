@@ -47,6 +47,8 @@ namespace MicroCoin.Chain
         internal static ulong WorkSum { get; set; }
         internal static List<Account> Accounts { get; set; } = new List<Account>();
         internal static List<CheckPointBlock> Current { get; set; } = new List<CheckPointBlock>();
+        public static List<ITransaction> AppliedTransactions { get; private set; } = new List<ITransaction>();
+
         internal static void Init()
         {
             WorkSum = 0;
@@ -79,8 +81,10 @@ namespace MicroCoin.Chain
             catch
             {
             }
-
-            Log.Info($"Accounts: {Accounts.Last().AccountNumber}");
+            if (Accounts.Count > 0)
+            {
+                Log.Info($"Accounts: {Accounts.Last().AccountNumber}");
+            }
         }
         internal static void Put(CheckPointBlock cb)
         {
@@ -387,6 +391,133 @@ namespace MicroCoin.Chain
             File.Copy(MainParams.CheckPointIndexName + $".{chunk}", MainParams.CheckPointIndexName, true);
             File.Copy(MainParams.CheckPointFileName + $".{chunk}", MainParams.CheckPointFileName, true);
         }
+
+        public static void ApplyTransaction(ITransaction t, Block b = null)
+        {
+            Account targetAccount = null;
+            Account signerAccount = null;
+            try
+            {
+                signerAccount = Accounts[t.SignerAccount];
+                targetAccount = Accounts[t.TargetAccount];
+            }
+            catch
+            {
+                SaveNext();
+                signerAccount = Accounts[t.SignerAccount];
+                targetAccount = Accounts[t.TargetAccount];
+            }
+            targetAccount.Saved = false;
+            signerAccount.Saved = false;
+            var signerBlock = Get(signerAccount.BlockNumber);
+            var targetBlock = Get(targetAccount.BlockNumber);
+            if (t.Fee != 0) signerAccount.NumberOfOperations++;
+            if (b != null)
+            {
+                signerAccount.UpdatedBlock = b.BlockNumber;
+                targetAccount.UpdatedBlock = b.BlockNumber;
+                targetAccount.Saved = true;
+                signerAccount.Saved = true;
+            }
+            if (TransactionType.BuyAccount == t.TransactionType)
+            {
+                TransferTransaction transferTransaction = (TransferTransaction)t;
+                Account sellerAccount = Accounts[transferTransaction.SellerAccount];
+                sellerAccount.Saved = false;
+                if (b != null)
+                {
+                    sellerAccount.UpdatedBlock = b.BlockNumber;
+                    sellerAccount.Saved = true;
+                }
+            }
+            if (AppliedTransactions.Count(p => p.GetHash().SequenceEqual(t.GetHash())) > 0)
+                return; // FDon't apply twice
+            switch (t.TransactionType)
+            {
+                case TransactionType.Transaction:
+                    TransferTransaction transfer = (TransferTransaction)t;
+                    if (signerBlock != null && targetBlock != null)
+                    {
+                        if (t.Fee == 0) signerAccount.NumberOfOperations++;
+                        signerAccount.Balance -= (transfer.Fee + transfer.Amount);
+                        targetAccount.Balance += transfer.Amount;
+                    }
+
+                    break;
+                case TransactionType.BuyAccount:
+                    TransferTransaction transferTransaction = (TransferTransaction)t;
+                    if (t.Fee == 0)
+                        signerBlock.Accounts.First(p => p.AccountNumber == t.SignerAccount).NumberOfOperations++;
+                    signerBlock.Accounts.First(p => p.AccountNumber == t.SignerAccount).Balance -=
+                        (transferTransaction.Fee + transferTransaction.Amount);
+                    Account sellerAccount = Accounts[transferTransaction.SellerAccount];
+                    Get(sellerAccount.BlockNumber);
+                    sellerAccount.Balance += transferTransaction.Amount;
+                    targetAccount.AccountInfo.AccountKey = transferTransaction.NewAccountKey;
+                    targetAccount.AccountInfo.Price = 0;
+                    targetAccount.AccountInfo.LockedUntilBlock = 0;
+                    targetAccount.AccountInfo.State = AccountState.Normal;
+                    targetAccount.AccountInfo.AccountToPayPrice = 0;
+                    targetAccount.AccountInfo.NewPublicKey = null;
+                    break;
+                case TransactionType.DeListAccountForSale:
+                case TransactionType.ListAccountForSale:
+                    ListAccountTransaction listAccountTransaction = (ListAccountTransaction)t;
+                    signerAccount.Balance -= listAccountTransaction.Fee;
+                    if (t.Fee == 0) signerAccount.NumberOfOperations++;
+                    if (signerBlock != null && targetBlock != null)
+                    {
+                        if (listAccountTransaction.TransactionType == TransactionType.ListAccountForSale)
+                        {
+                            targetAccount.AccountInfo.Price = listAccountTransaction.AccountPrice;
+                            targetAccount.AccountInfo.LockedUntilBlock = listAccountTransaction.LockedUntilBlock;
+                            targetAccount.AccountInfo.State = AccountState.Sale;
+                            targetAccount.AccountInfo.Price = listAccountTransaction.AccountPrice;
+                            targetAccount.AccountInfo.NewPublicKey = listAccountTransaction.NewPublicKey;
+                            targetAccount.AccountInfo.AccountToPayPrice = listAccountTransaction.AccountToPay;
+                        }
+                        else
+                        {
+                            targetAccount.AccountInfo.State = AccountState.Normal;
+                            targetAccount.AccountInfo.Price = 0;
+                            targetAccount.AccountInfo.NewPublicKey = null;
+                            targetAccount.AccountInfo.LockedUntilBlock = 0;
+                            targetAccount.AccountInfo.AccountToPayPrice = 0;
+                        }
+                    }
+
+                    break;
+                case TransactionType.ChangeAccountInfo:
+                    ChangeAccountInfoTransaction changeAccountInfoTransaction = (ChangeAccountInfoTransaction)t;
+                    if ((changeAccountInfoTransaction.ChangeType & 1) == 1)
+                    {
+                        targetAccount.AccountInfo.AccountKey = changeAccountInfoTransaction.NewAccountKey;
+                    }
+
+                    if ((changeAccountInfoTransaction.ChangeType & 4) == 4)
+                    {
+                        targetAccount.AccountType = changeAccountInfoTransaction.NewType;
+                    }
+
+                    if ((changeAccountInfoTransaction.ChangeType & 2) == 2)
+                    {
+                        targetAccount.Name = changeAccountInfoTransaction.NewName;
+                    }
+
+                    signerAccount.Balance -= changeAccountInfoTransaction.Fee;
+                    if (t.Fee == 0) signerAccount.NumberOfOperations++;
+                    break;
+                case TransactionType.ChangeKey:
+                case TransactionType.ChangeKeySigned:
+                    ChangeKeyTransaction changeKeyTransaction = (ChangeKeyTransaction)t;
+                    signerAccount.Balance -= changeKeyTransaction.Fee;
+                    targetAccount.AccountInfo.AccountKey = changeKeyTransaction.NewAccountKey;
+                    if (t.Fee == 0) signerAccount.NumberOfOperations++;
+                    break;
+            }
+            AppliedTransactions.Add(t);
+        }
+
         internal static void AppendBlock(Block b)
         {
             int lastBlock = -1;
@@ -443,117 +574,8 @@ namespace MicroCoin.Chain
             checkPointBlock.TransactionHash = b.TransactionHash;
             foreach (var t in b.Transactions)
             {
-                Account signerAccount = Accounts[t.SignerAccount];
-                Account targetAccount = Accounts[t.TargetAccount];
-                var signerBlock = Get(signerAccount.BlockNumber);
-                var targetBlock = Get(targetAccount.BlockNumber);
-                if (t.Fee != 0) signerAccount.NumberOfOperations++;
-                switch (t.TransactionType)
-                {
-                    case TransactionType.Transaction:
-                        TransferTransaction transfer = (TransferTransaction) t;
-                        if (signerBlock != null && targetBlock != null)
-                        {
-                            if (t.Fee == 0) signerAccount.NumberOfOperations++;
-                            signerAccount.Balance -= (transfer.Fee + transfer.Amount);
-                            signerAccount.UpdatedBlock = b.BlockNumber;
-                            targetAccount.Balance += transfer.Amount;
-                            targetAccount.UpdatedBlock = b.BlockNumber;
-                            targetAccount.Saved = true;
-                            signerAccount.Saved = true;
-                        }
-
-                        break;
-                    case TransactionType.BuyAccount:
-                        TransferTransaction transferTransaction = (TransferTransaction) t; // TODO: be kell fejezni
-                        if (t.Fee == 0)
-                            signerBlock.Accounts.First(p => p.AccountNumber == t.SignerAccount).NumberOfOperations++;
-                        signerBlock.Accounts.First(p => p.AccountNumber == t.SignerAccount).Balance -=
-                            (transferTransaction.Fee + transferTransaction.Amount);
-                        Account sellerAccount = Accounts[transferTransaction.SellerAccount];
-                        Get(sellerAccount.BlockNumber);
-                        sellerAccount.Balance += transferTransaction.Amount;
-                        signerAccount.UpdatedBlock = b.BlockNumber;
-                        targetAccount.UpdatedBlock = b.BlockNumber;
-                        sellerAccount.UpdatedBlock = b.BlockNumber;
-                        targetAccount.AccountInfo.AccountKey = transferTransaction.NewAccountKey;
-                        targetAccount.AccountInfo.Price = 0;
-                        targetAccount.AccountInfo.LockedUntilBlock = 0;
-                        targetAccount.AccountInfo.State = AccountState.Normal;
-                        targetAccount.AccountInfo.AccountToPayPrice = 0;
-                        targetAccount.AccountInfo.NewPublicKey = null;
-                        targetAccount.Saved = true;
-                        signerAccount.Saved = true;
-                        break;
-                    case TransactionType.DeListAccountForSale:
-                    case TransactionType.ListAccountForSale:
-                        ListAccountTransaction listAccountTransaction = (ListAccountTransaction) t;
-                        signerAccount.Balance -= listAccountTransaction.Fee;
-                        signerAccount.UpdatedBlock = b.BlockNumber;
-                        targetAccount.UpdatedBlock = b.BlockNumber;
-                        if (t.Fee == 0) signerAccount.NumberOfOperations++;
-                        if (signerBlock != null && targetBlock != null)
-                        {
-                            if (listAccountTransaction.TransactionType == TransactionType.ListAccountForSale)
-                            {
-                                targetAccount.AccountInfo.Price = listAccountTransaction.AccountPrice;
-                                targetAccount.AccountInfo.LockedUntilBlock = listAccountTransaction.LockedUntilBlock;
-                                targetAccount.AccountInfo.State = AccountState.Sale;
-                                targetAccount.AccountInfo.Price = listAccountTransaction.AccountPrice;
-                                targetAccount.AccountInfo.NewPublicKey = listAccountTransaction.NewPublicKey;
-                                targetAccount.AccountInfo.AccountToPayPrice = listAccountTransaction.AccountToPay;
-                            }
-                            else
-                            {
-                                targetAccount.AccountInfo.State = AccountState.Normal;
-                                targetAccount.AccountInfo.Price = 0;
-                                targetAccount.AccountInfo.NewPublicKey = null;
-                                targetAccount.AccountInfo.LockedUntilBlock = 0;
-                                targetAccount.AccountInfo.AccountToPayPrice = 0;
-                            }
-                        }
-
-                        targetAccount.Saved = true;
-                        signerAccount.Saved = true;
-                        break;
-                    case TransactionType.ChangeAccountInfo:
-                        ChangeAccountInfoTransaction changeAccountInfoTransaction = (ChangeAccountInfoTransaction) t;
-                        if ((changeAccountInfoTransaction.ChangeType & 1) == 1)
-                        {
-                            targetAccount.AccountInfo.AccountKey = changeAccountInfoTransaction.NewAccountKey;
-                        }
-
-                        if ((changeAccountInfoTransaction.ChangeType & 4) == 4)
-                        {
-                            targetAccount.AccountType = changeAccountInfoTransaction.NewType;
-                        }
-
-                        if ((changeAccountInfoTransaction.ChangeType & 2) == 2)
-                        {
-                            targetAccount.Name = changeAccountInfoTransaction.NewName;
-                        }
-
-                        signerAccount.Balance -= changeAccountInfoTransaction.Fee;
-                        signerAccount.UpdatedBlock = b.BlockNumber;
-                        targetAccount.UpdatedBlock = b.BlockNumber;
-                        if (t.Fee == 0) signerAccount.NumberOfOperations++;
-                        targetAccount.Saved = true;
-                        signerAccount.Saved = true;
-                        break;
-                    case TransactionType.ChangeKey:
-                    case TransactionType.ChangeKeySigned:
-                        ChangeKeyTransaction changeKeyTransaction = (ChangeKeyTransaction) t;
-                        signerAccount.Balance -= changeKeyTransaction.Fee;
-                        signerAccount.UpdatedBlock = b.BlockNumber;
-                        targetAccount.AccountInfo.AccountKey = changeKeyTransaction.NewAccountKey;
-                        targetAccount.UpdatedBlock = b.BlockNumber;
-                        if (t.Fee == 0) signerAccount.NumberOfOperations++;
-                        targetAccount.Saved = true;
-                        signerAccount.Saved = true;
-                        break;
-                }
+                ApplyTransaction(t, b);
             }
-
             Current.Add(checkPointBlock);
             Accounts.AddRange(checkPointBlock.Accounts);
             if ((checkPointBlock.BlockNumber + 1) % 100 == 0)

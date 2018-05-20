@@ -80,7 +80,6 @@ namespace MicroCoin.Protocol
                         Blocks.Add(op);
                     }catch(EndOfStreamException e)
                     {
-                        Debug.WriteLine("End of stream?");
                         throw e;
                     }
                 }

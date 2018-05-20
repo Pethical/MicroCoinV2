@@ -35,11 +35,31 @@ namespace MicroCoin.Cryptography
             using (var br = new BinaryReader(stream, Encoding.ASCII, true))
             {
                 var len = br.ReadUInt16();
-                R = new byte[len];
-                br.Read(R, 0, len);
+                int offset = 0;
+                if (len == 31)
+                {
+                    R = new byte[len + 1];
+                    R[0] = 0;
+                    offset = 1;
+                }
+                else
+                {
+                    R = new byte[len];
+                }
+                br.Read(R, offset, len);                
                 len = br.ReadUInt16();
-                S = new byte[len];
-                br.Read(S, 0, len);
+                offset = 0;
+                if (len == 31)
+                {
+                    S = new byte[len + 1];
+                    S[0] = 0;
+                    offset = 1;
+                }
+                else
+                {
+                    S = new byte[len];
+                }
+                br.Read(S, offset, len);
             }
         }
 

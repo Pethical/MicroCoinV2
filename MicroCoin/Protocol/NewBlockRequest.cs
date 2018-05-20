@@ -20,6 +20,7 @@
 
 using MicroCoin.Chain;
 using System.IO;
+using System.Text;
 
 namespace MicroCoin.Protocol
 {
@@ -30,11 +31,45 @@ namespace MicroCoin.Protocol
 
         public NewBlockRequest() : base()
         {
-
+            this.Operation = Net.NetOperationType.NewBlock;
+            this.RequestType = Net.RequestType.AutoSend;            
         }
+
+        public NewBlockRequest(Block block) : base()
+        {
+            this.Operation = Net.NetOperationType.NewBlock;
+            this.RequestType = Net.RequestType.AutoSend;
+            this.Block = Block;            
+        }
+
+
 
         internal NewBlockRequest(Stream stream) : base(stream)
         {
+        }
+
+        internal override void SaveToStream(Stream s)
+        {
+            base.SaveToStream(s);
+            MemoryStream memoryStream = new MemoryStream();
+            try
+            {
+                using (BinaryWriter bw = new BinaryWriter(memoryStream))
+                {
+                    Block.SaveToStream(memoryStream);
+                    using (BinaryWriter bw2 = new BinaryWriter(s, Encoding.Default, true))
+                    {
+                        memoryStream.Position = 0;
+                        bw2.Write((int)memoryStream.Length);
+                        memoryStream.CopyTo(s);
+                        s.Position = 0;
+                    }
+                }
+            }
+            finally
+            {
+                memoryStream.Dispose();
+            }
         }
 
         internal NewBlockRequest(Stream stream, MessageHeader rp) :base(rp)

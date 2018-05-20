@@ -28,7 +28,7 @@ namespace MicroCoin.Protocol
     {
         public static int Size = 4 + 2 + 2 + 2 + 4 + 2 + 2 + 4;
 
-        public uint Magic { get; set; } = 0x0A043580;
+        public uint Magic { get; set; } = MainParams.NetworkPacketMagic;
         public RequestType RequestType { get; set; } = RequestType.Request;
         public NetOperationType Operation { get; set; }
         public ushort Error { get; set; }
@@ -49,8 +49,8 @@ namespace MicroCoin.Protocol
                 RequestId = _requestId++;
             }
             Operation = NetOperationType.Hello;
-            ProtocolVersion = 2;
-            AvailableProtocol = 2;
+            ProtocolVersion = MainParams.NetworkProtocolVersion;
+            AvailableProtocol = MainParams.NetworkProtocolAvailable;
             Error = 0;
         }
 

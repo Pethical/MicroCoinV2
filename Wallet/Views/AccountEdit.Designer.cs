@@ -133,7 +133,9 @@
             this.Controls.Add(this.keys);
             this.Controls.Add(this.labelControl1);
             this.Controls.Add(this.accountName);
-            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedToolWindow;
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
+            this.MaximizeBox = false;
+            this.MinimizeBox = false;
             this.Name = "AccountEdit";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
             this.Text = "Számla módosítása";

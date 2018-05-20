@@ -54,15 +54,11 @@ namespace MicroCoin.Transactions
                     bw.Write(Amount);
                     bw.Write(Fee);
                     if (Payload.Length > 0) bw.Write((byte[]) Payload);
+                    bw.Write((ushort)AccountKey.CurveType);
                     if (AccountKey?.PublicKey.X != null && AccountKey.PublicKey.X.Length > 0 && AccountKey.PublicKey.Y.Length > 0)
                     {
-                        bw.Write((ushort) AccountKey.CurveType);
                         bw.Write(AccountKey.PublicKey.X);
                         bw.Write(AccountKey.PublicKey.Y);
-                    }
-                    else
-                    {
-                        bw.Write((ushort) 0);
                     }
                     ms.Position = 0;
                     byte[] b = ms.ToArray();
@@ -108,17 +104,25 @@ namespace MicroCoin.Transactions
                 Payload = ByteString.ReadFromStream(br);
                 AccountKey = new ECKeyPair();
                 AccountKey.LoadFromStream(stream, false);
+                //stream.Position -= 1;
                 byte b = br.ReadByte();
                 TransactionStyle = (TransferType)b;
-                if (b > 2) { stream.Position -= 1; }
+                if (b > 2) { stream.Position -= 1; TransactionStyle = TransferType.Transaction; TransactionType = TransactionType.Transaction; }
                 if (b > 0 && b < 3)
                 {
                     AccountPrice = br.ReadUInt64();
                     SellerAccount = br.ReadUInt32();
                     NewAccountKey = new ECKeyPair();
                     NewAccountKey.LoadFromStream(stream, false);
+                    switch (TransactionStyle)
+                    {
+                        case TransferType.BuyAccount: TransactionType = TransactionType.BuyAccount; break;
+                        case TransferType.TransactionAndBuyAccount: TransactionType = TransactionType.BuyAccount; break;
+                        default: TransactionType = TransactionType.Transaction; break;
+                    }
                 }
                 Signature = new ECSignature(stream);
+                
             }
 
         }

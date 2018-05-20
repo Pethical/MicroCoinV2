@@ -29,6 +29,7 @@
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(PrivateKeys));
             this.listBoxControl1 = new DevExpress.XtraEditors.ListBoxControl();
             this.newKey = new DevExpress.XtraEditors.SimpleButton();
             this.showPublicKey = new DevExpress.XtraEditors.SimpleButton();
@@ -42,12 +43,16 @@
             // 
             // listBoxControl1
             // 
+            this.listBoxControl1.Appearance.Font = new System.Drawing.Font("Tahoma", 11F);
+            this.listBoxControl1.Appearance.Options.UseFont = true;
             this.listBoxControl1.DataSource = this.eCKeyPairBindingSource;
             this.listBoxControl1.DisplayMember = "Name";
             this.listBoxControl1.Dock = System.Windows.Forms.DockStyle.Top;
+            this.listBoxControl1.HotTrackItems = true;
+            this.listBoxControl1.HotTrackSelectMode = DevExpress.XtraEditors.HotTrackSelectMode.SelectItemOnClick;
             this.listBoxControl1.Location = new System.Drawing.Point(0, 0);
             this.listBoxControl1.Name = "listBoxControl1";
-            this.listBoxControl1.Size = new System.Drawing.Size(617, 378);
+            this.listBoxControl1.Size = new System.Drawing.Size(611, 378);
             this.listBoxControl1.TabIndex = 0;
             // 
             // newKey
@@ -98,6 +103,7 @@
             this.renameButton.Size = new System.Drawing.Size(82, 23);
             this.renameButton.TabIndex = 1;
             this.renameButton.Text = "Átnevezés";
+            this.renameButton.Click += new System.EventHandler(this.renameButton_Click);
             // 
             // eCKeyPairBindingSource
             // 
@@ -107,17 +113,19 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(617, 434);
+            this.ClientSize = new System.Drawing.Size(611, 428);
             this.Controls.Add(this.newKey);
             this.Controls.Add(this.showPublicKey);
             this.Controls.Add(this.closeButton);
             this.Controls.Add(this.exportButton);
             this.Controls.Add(this.renameButton);
             this.Controls.Add(this.listBoxControl1);
-            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedToolWindow;
+            this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
+            this.MaximizeBox = false;
+            this.MinimizeBox = false;
             this.Name = "PrivateKeys";
             this.ShowInTaskbar = false;
-            this.Text = "PrivateKeys";
+            this.Text = "Privát kulcsok";
             this.TopMost = true;
             ((System.ComponentModel.ISupportInitialize)(this.listBoxControl1)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.eCKeyPairBindingSource)).EndInit();

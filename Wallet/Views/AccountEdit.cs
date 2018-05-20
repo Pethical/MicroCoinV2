@@ -13,6 +13,7 @@ namespace Wallet.Views
         public AccountEdit()
         {
             InitializeComponent();
+            this.Icon = Properties.Resources.heart;
         }
 
         public static bool EditAccount(Account account)

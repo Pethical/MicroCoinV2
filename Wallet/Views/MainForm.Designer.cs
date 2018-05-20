@@ -71,24 +71,24 @@
             this.sellAccount = new DevExpress.XtraBars.BarButtonItem();
             this.buyAccount = new DevExpress.XtraBars.BarButtonItem();
             this.editAccount = new DevExpress.XtraBars.BarButtonItem();
-            this.barButtonItem6 = new DevExpress.XtraBars.BarButtonItem();
+            this.privateKeysButton = new DevExpress.XtraBars.BarButtonItem();
             this.exportKeys = new DevExpress.XtraBars.BarButtonItem();
             this.importKeys = new DevExpress.XtraBars.BarButtonItem();
             this.blockExplorer = new DevExpress.XtraBars.BarButtonItem();
             this.accountsButton = new DevExpress.XtraBars.BarButtonItem();
-            this.barButtonItem11 = new DevExpress.XtraBars.BarButtonItem();
+            this.pendingTransactions = new DevExpress.XtraBars.BarButtonItem();
             this.barButtonItem12 = new DevExpress.XtraBars.BarButtonItem();
             this.difficulty = new DevExpress.XtraBars.BarStaticItem();
             this.progressBar = new DevExpress.XtraBars.BarEditItem();
             this.repositoryItemProgressBar1 = new DevExpress.XtraEditors.Repository.RepositoryItemProgressBar();
-            this.barStaticItem2 = new DevExpress.XtraBars.BarStaticItem();
-            this.barStaticItem3 = new DevExpress.XtraBars.BarStaticItem();
-            this.barStaticItem4 = new DevExpress.XtraBars.BarStaticItem();
+            this.connectionStatus = new DevExpress.XtraBars.BarStaticItem();
+            this.serverCount = new DevExpress.XtraBars.BarStaticItem();
+            this.clientCount = new DevExpress.XtraBars.BarStaticItem();
             this.lastBlockTime = new DevExpress.XtraBars.BarStaticItem();
             this.barButtonItem13 = new DevExpress.XtraBars.BarButtonItem();
             this.changeAccountKey = new DevExpress.XtraBars.BarButtonItem();
             this.minerCount = new DevExpress.XtraBars.BarStaticItem();
-            this.barStaticItem7 = new DevExpress.XtraBars.BarStaticItem();
+            this.connectionCount = new DevExpress.XtraBars.BarStaticItem();
             this.ribbonPage1 = new DevExpress.XtraBars.Ribbon.RibbonPage();
             this.ribbonPageGroup2 = new DevExpress.XtraBars.Ribbon.RibbonPageGroup();
             this.ribbonPageGroup3 = new DevExpress.XtraBars.Ribbon.RibbonPageGroup();
@@ -109,7 +109,7 @@
             this.barDockControlBottom = new DevExpress.XtraBars.BarDockControl();
             this.barDockControlLeft = new DevExpress.XtraBars.BarDockControl();
             this.barDockControlRight = new DevExpress.XtraBars.BarDockControl();
-            this.simpleButton1 = new DevExpress.XtraEditors.SimpleButton();
+            this.btnSendMCC = new DevExpress.XtraEditors.SimpleButton();
             this.payload = new DevExpress.XtraEditors.MemoEdit();
             this.fee = new DevExpress.XtraEditors.SpinEdit();
             this.amountToPay = new DevExpress.XtraEditors.SpinEdit();
@@ -117,6 +117,7 @@
             this.barManager1 = new DevExpress.XtraBars.BarManager(this.components);
             this.repositoryItemSpinEdit1 = new DevExpress.XtraEditors.Repository.RepositoryItemSpinEdit();
             this.dxErrorProvider1 = new DevExpress.XtraEditors.DXErrorProvider.DXErrorProvider(this.components);
+            this.progressPanel = new DevExpress.XtraWaitForm.ProgressPanel();
             ((System.ComponentModel.ISupportInitialize)(this.accountBindingSource)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.styleController1)).BeginInit();
             this.panel1.SuspendLayout();
@@ -424,9 +425,9 @@
             this.accountCount.AutoSize = true;
             this.accountCount.Location = new System.Drawing.Point(109, 55);
             this.accountCount.Name = "accountCount";
-            this.accountCount.Size = new System.Drawing.Size(40, 13);
+            this.accountCount.Size = new System.Drawing.Size(25, 13);
             this.accountCount.TabIndex = 7;
-            this.accountCount.Text = "123 db";
+            this.accountCount.Text = "N/A";
             this.accountCount.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
             // label7
@@ -445,9 +446,9 @@
             this.defaultToolTipController1.SetAllowHtmlText(this.currentBalance, DevExpress.Utils.DefaultBoolean.Default);
             this.currentBalance.Location = new System.Drawing.Point(77, 32);
             this.currentBalance.Name = "currentBalance";
-            this.currentBalance.Size = new System.Drawing.Size(114, 13);
+            this.currentBalance.Size = new System.Drawing.Size(90, 13);
             this.currentBalance.TabIndex = 5;
-            this.currentBalance.Text = "100.000 MCC";
+            this.currentBalance.Text = "N/A";
             this.currentBalance.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
             // label5
@@ -465,7 +466,7 @@
             // 
             this.defaultToolTipController1.SetAllowHtmlText(this.transaction, DevExpress.Utils.DefaultBoolean.Default);
             this.transaction.Controls.Add(this.targetAccount);
-            this.transaction.Controls.Add(this.simpleButton1);
+            this.transaction.Controls.Add(this.btnSendMCC);
             this.transaction.Controls.Add(this.payload);
             this.transaction.Controls.Add(this.fee);
             this.transaction.Controls.Add(this.amountToPay);
@@ -502,7 +503,7 @@
             // ribbon
             // 
             this.ribbon.AllowMinimizeRibbon = false;
-            this.ribbon.ApplicationCaption = "MicroCoin Wallet";
+            this.ribbon.ApplicationCaption = "Wallet";
             this.ribbon.ColorScheme = DevExpress.XtraBars.Ribbon.RibbonControlColorScheme.Orange;
             this.ribbon.ExpandCollapseItem.Id = 0;
             this.ribbon.Items.AddRange(new DevExpress.XtraBars.BarItem[] {
@@ -510,23 +511,23 @@
             this.sellAccount,
             this.buyAccount,
             this.editAccount,
-            this.barButtonItem6,
+            this.privateKeysButton,
             this.exportKeys,
             this.importKeys,
             this.blockExplorer,
             this.accountsButton,
-            this.barButtonItem11,
+            this.pendingTransactions,
             this.barButtonItem12,
             this.difficulty,
             this.progressBar,
-            this.barStaticItem2,
-            this.barStaticItem3,
-            this.barStaticItem4,
+            this.connectionStatus,
+            this.serverCount,
+            this.clientCount,
             this.lastBlockTime,
             this.barButtonItem13,
             this.changeAccountKey,
             this.minerCount,
-            this.barStaticItem7});
+            this.connectionCount});
             this.ribbon.Location = new System.Drawing.Point(0, 0);
             this.ribbon.MaxItemId = 34;
             this.ribbon.Name = "ribbon";
@@ -570,14 +571,14 @@
             this.editAccount.RibbonStyle = DevExpress.XtraBars.Ribbon.RibbonItemStyles.Large;
             this.editAccount.ItemClick += new DevExpress.XtraBars.ItemClickEventHandler(this.editAccount_ItemClick);
             // 
-            // barButtonItem6
+            // privateKeysButton
             // 
-            this.barButtonItem6.Caption = "Privát kulcsok";
-            this.barButtonItem6.Glyph = ((System.Drawing.Image)(resources.GetObject("barButtonItem6.Glyph")));
-            this.barButtonItem6.Id = 9;
-            this.barButtonItem6.Name = "barButtonItem6";
-            this.barButtonItem6.RibbonStyle = DevExpress.XtraBars.Ribbon.RibbonItemStyles.Large;
-            this.barButtonItem6.ItemClick += new DevExpress.XtraBars.ItemClickEventHandler(this.barButtonItem6_ItemClick);
+            this.privateKeysButton.Caption = "Privát kulcsok";
+            this.privateKeysButton.Glyph = ((System.Drawing.Image)(resources.GetObject("privateKeysButton.Glyph")));
+            this.privateKeysButton.Id = 9;
+            this.privateKeysButton.Name = "privateKeysButton";
+            this.privateKeysButton.RibbonStyle = DevExpress.XtraBars.Ribbon.RibbonItemStyles.Large;
+            this.privateKeysButton.ItemClick += new DevExpress.XtraBars.ItemClickEventHandler(this.barButtonItem6_ItemClick);
             // 
             // exportKeys
             // 
@@ -615,13 +616,14 @@
             this.accountsButton.RibbonStyle = DevExpress.XtraBars.Ribbon.RibbonItemStyles.Large;
             this.accountsButton.ItemClick += new DevExpress.XtraBars.ItemClickEventHandler(this.accountsButton_ItemClick);
             // 
-            // barButtonItem11
+            // pendingTransactions
             // 
-            this.barButtonItem11.Caption = "Várakozó tranzakciók";
-            this.barButtonItem11.Glyph = ((System.Drawing.Image)(resources.GetObject("barButtonItem11.Glyph")));
-            this.barButtonItem11.Id = 15;
-            this.barButtonItem11.Name = "barButtonItem11";
-            this.barButtonItem11.RibbonStyle = DevExpress.XtraBars.Ribbon.RibbonItemStyles.Large;
+            this.pendingTransactions.Caption = "Várakozó tranzakciók";
+            this.pendingTransactions.Glyph = ((System.Drawing.Image)(resources.GetObject("pendingTransactions.Glyph")));
+            this.pendingTransactions.Id = 15;
+            this.pendingTransactions.Name = "pendingTransactions";
+            this.pendingTransactions.RibbonStyle = DevExpress.XtraBars.Ribbon.RibbonItemStyles.Large;
+            this.pendingTransactions.ItemClick += new DevExpress.XtraBars.ItemClickEventHandler(this.pendingTransactions_ItemClick);
             // 
             // barButtonItem12
             // 
@@ -657,26 +659,26 @@
             this.repositoryItemProgressBar1.ShowTitle = true;
             this.repositoryItemProgressBar1.Step = 1;
             // 
-            // barStaticItem2
+            // connectionStatus
             // 
-            this.barStaticItem2.Caption = "Kapcsolatok: ";
-            this.barStaticItem2.Id = 21;
-            this.barStaticItem2.Name = "barStaticItem2";
-            this.barStaticItem2.TextAlignment = System.Drawing.StringAlignment.Near;
+            this.connectionStatus.Caption = "Kapcsolatok: ";
+            this.connectionStatus.Id = 21;
+            this.connectionStatus.Name = "connectionStatus";
+            this.connectionStatus.TextAlignment = System.Drawing.StringAlignment.Near;
             // 
-            // barStaticItem3
+            // serverCount
             // 
-            this.barStaticItem3.Caption = "Szerverek: 0";
-            this.barStaticItem3.Id = 22;
-            this.barStaticItem3.Name = "barStaticItem3";
-            this.barStaticItem3.TextAlignment = System.Drawing.StringAlignment.Near;
+            this.serverCount.Caption = "Szerverek: 0";
+            this.serverCount.Id = 22;
+            this.serverCount.Name = "serverCount";
+            this.serverCount.TextAlignment = System.Drawing.StringAlignment.Near;
             // 
-            // barStaticItem4
+            // clientCount
             // 
-            this.barStaticItem4.Caption = "Kliensek: 0";
-            this.barStaticItem4.Id = 23;
-            this.barStaticItem4.Name = "barStaticItem4";
-            this.barStaticItem4.TextAlignment = System.Drawing.StringAlignment.Near;
+            this.clientCount.Caption = "Kliensek: 0";
+            this.clientCount.Id = 23;
+            this.clientCount.Name = "clientCount";
+            this.clientCount.TextAlignment = System.Drawing.StringAlignment.Near;
             // 
             // lastBlockTime
             // 
@@ -711,18 +713,18 @@
             this.minerCount.Name = "minerCount";
             this.minerCount.TextAlignment = System.Drawing.StringAlignment.Near;
             // 
-            // barStaticItem7
+            // connectionCount
             // 
-            this.barStaticItem7.Caption = "-";
-            this.barStaticItem7.Id = 33;
-            this.barStaticItem7.Name = "barStaticItem7";
+            this.connectionCount.Caption = "-";
+            this.connectionCount.Id = 33;
+            this.connectionCount.Name = "connectionCount";
             toolTipTitleItem1.Appearance.Image = global::Wallet.Properties.Resources.network_connect;
             toolTipTitleItem1.Appearance.Options.UseImage = true;
             toolTipTitleItem1.Image = global::Wallet.Properties.Resources.network_connect;
             toolTipTitleItem1.Text = "Kapcsolatok";
             superToolTip1.Items.Add(toolTipTitleItem1);
-            this.barStaticItem7.SuperTip = superToolTip1;
-            this.barStaticItem7.TextAlignment = System.Drawing.StringAlignment.Near;
+            this.connectionCount.SuperTip = superToolTip1;
+            this.connectionCount.TextAlignment = System.Drawing.StringAlignment.Near;
             // 
             // ribbonPage1
             // 
@@ -744,7 +746,7 @@
             // 
             // ribbonPageGroup3
             // 
-            this.ribbonPageGroup3.ItemLinks.Add(this.barButtonItem6);
+            this.ribbonPageGroup3.ItemLinks.Add(this.privateKeysButton);
             this.ribbonPageGroup3.ItemLinks.Add(this.exportKeys);
             this.ribbonPageGroup3.ItemLinks.Add(this.importKeys);
             this.ribbonPageGroup3.Name = "ribbonPageGroup3";
@@ -780,7 +782,7 @@
             // 
             // ribbonPageGroup6
             // 
-            this.ribbonPageGroup6.ItemLinks.Add(this.barButtonItem11);
+            this.ribbonPageGroup6.ItemLinks.Add(this.pendingTransactions);
             this.ribbonPageGroup6.Name = "ribbonPageGroup6";
             this.ribbonPageGroup6.Text = "Várakozó tranzakciók";
             // 
@@ -798,10 +800,10 @@
             // ribbonStatusBar1
             // 
             this.ribbonStatusBar1.ItemLinks.Add(this.progressBar);
-            this.ribbonStatusBar1.ItemLinks.Add(this.barStaticItem2);
-            this.ribbonStatusBar1.ItemLinks.Add(this.barStaticItem7);
-            this.ribbonStatusBar1.ItemLinks.Add(this.barStaticItem3);
-            this.ribbonStatusBar1.ItemLinks.Add(this.barStaticItem4);
+            this.ribbonStatusBar1.ItemLinks.Add(this.connectionStatus);
+            this.ribbonStatusBar1.ItemLinks.Add(this.connectionCount);
+            this.ribbonStatusBar1.ItemLinks.Add(this.serverCount);
+            this.ribbonStatusBar1.ItemLinks.Add(this.clientCount);
             this.ribbonStatusBar1.ItemLinks.Add(this.lastBlockTime);
             this.ribbonStatusBar1.ItemLinks.Add(this.minerCount);
             this.ribbonStatusBar1.ItemLinks.Add(this.difficulty);
@@ -890,15 +892,15 @@
             this.barDockControlRight.Location = new System.Drawing.Point(843, 0);
             this.barDockControlRight.Size = new System.Drawing.Size(0, 605);
             // 
-            // simpleButton1
+            // btnSendMCC
             // 
-            this.simpleButton1.Image = global::Wallet.Properties.Resources.dialog_ok_apply;
-            this.simpleButton1.Location = new System.Drawing.Point(82, 170);
-            this.simpleButton1.Name = "simpleButton1";
-            this.simpleButton1.Size = new System.Drawing.Size(109, 23);
-            this.simpleButton1.TabIndex = 27;
-            this.simpleButton1.Text = "Utalás indítása";
-            this.simpleButton1.Click += new System.EventHandler(this.button1_Click);
+            this.btnSendMCC.Image = global::Wallet.Properties.Resources.dialog_ok_apply;
+            this.btnSendMCC.Location = new System.Drawing.Point(82, 170);
+            this.btnSendMCC.Name = "btnSendMCC";
+            this.btnSendMCC.Size = new System.Drawing.Size(109, 23);
+            this.btnSendMCC.TabIndex = 27;
+            this.btnSendMCC.Text = "Utalás indítása";
+            this.btnSendMCC.Click += new System.EventHandler(this.button1_Click);
             // 
             // payload
             // 
@@ -1012,12 +1014,30 @@
             // 
             this.dxErrorProvider1.ContainerControl = this;
             // 
+            // progressPanel
+            // 
+            this.progressPanel.Appearance.BackColor = System.Drawing.Color.Transparent;
+            this.progressPanel.Appearance.Options.UseBackColor = true;
+            this.progressPanel.AppearanceCaption.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F);
+            this.progressPanel.AppearanceCaption.Options.UseFont = true;
+            this.progressPanel.AppearanceDescription.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F);
+            this.progressPanel.AppearanceDescription.Options.UseFont = true;
+            this.progressPanel.Caption = "Kérlek várj...";
+            this.progressPanel.Description = "Blokklánc betöltése";
+            this.progressPanel.Location = new System.Drawing.Point(460, 320);
+            this.progressPanel.Name = "progressPanel";
+            this.progressPanel.Padding = new System.Windows.Forms.Padding(10);
+            this.progressPanel.Size = new System.Drawing.Size(246, 66);
+            this.progressPanel.TabIndex = 29;
+            this.progressPanel.Text = "Kérlek várj...";
+            // 
             // MainForm
             // 
             this.defaultToolTipController1.SetAllowHtmlText(this, DevExpress.Utils.DefaultBoolean.Default);
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(843, 605);
+            this.Controls.Add(this.progressPanel);
             this.Controls.Add(this.panel1);
             this.Controls.Add(this.flowLayoutPanel1);
             this.Controls.Add(this.ribbon);
@@ -1030,7 +1050,7 @@
             this.Name = "MainForm";
             this.Ribbon = this.ribbon;
             this.StatusBar = this.ribbonStatusBar1;
-            this.Text = "MicroCoin Wallet";
+            this.Text = "Wallet";
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.Form1_FormClosing);
             this.Load += new System.EventHandler(this.Form1_Load);
             ((System.ComponentModel.ISupportInitialize)(this.accountBindingSource)).EndInit();
@@ -1090,7 +1110,7 @@
         private DevExpress.XtraGrid.Columns.GridColumn colVisibleBalance;
         private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel1;
         private DevExpress.XtraEditors.GroupControl transaction;
-        private DevExpress.XtraEditors.SimpleButton simpleButton1;
+        private DevExpress.XtraEditors.SimpleButton btnSendMCC;
         private DevExpress.XtraEditors.MemoEdit payload;
         private DevExpress.XtraEditors.SpinEdit fee;
         private DevExpress.XtraEditors.SpinEdit amountToPay;
@@ -1109,12 +1129,12 @@
         private DevExpress.XtraBars.BarButtonItem sellAccount;
         private DevExpress.XtraBars.BarButtonItem buyAccount;
         private DevExpress.XtraBars.BarButtonItem editAccount;
-        private DevExpress.XtraBars.BarButtonItem barButtonItem6;
+        private DevExpress.XtraBars.BarButtonItem privateKeysButton;
         private DevExpress.XtraBars.BarButtonItem exportKeys;
         private DevExpress.XtraBars.BarButtonItem importKeys;
         private DevExpress.XtraBars.BarButtonItem blockExplorer;
         private DevExpress.XtraBars.BarButtonItem accountsButton;
-        private DevExpress.XtraBars.BarButtonItem barButtonItem11;
+        private DevExpress.XtraBars.BarButtonItem pendingTransactions;
         private DevExpress.XtraBars.BarButtonItem barButtonItem12;
         private DevExpress.XtraBars.Ribbon.RibbonPageGroup ribbonPageGroup2;
         private DevExpress.XtraBars.Ribbon.RibbonPageGroup ribbonPageGroup3;
@@ -1128,9 +1148,9 @@
         private DevExpress.XtraEditors.Repository.RepositoryItemMarqueeProgressBar repositoryItemMarqueeProgressBar1;
         private DevExpress.XtraEditors.Repository.RepositoryItemProgressBar repositoryItemProgressBar1;
         private DevExpress.XtraEditors.ButtonEdit targetAccount;
-        private DevExpress.XtraBars.BarStaticItem barStaticItem2;
-        private DevExpress.XtraBars.BarStaticItem barStaticItem3;
-        private DevExpress.XtraBars.BarStaticItem barStaticItem4;
+        private DevExpress.XtraBars.BarStaticItem connectionStatus;
+        private DevExpress.XtraBars.BarStaticItem serverCount;
+        private DevExpress.XtraBars.BarStaticItem clientCount;
         private DevExpress.XtraBars.BarStaticItem lastBlockTime;
         private DevExpress.XtraBars.BarButtonItem barButtonItem13;
         private DevExpress.XtraBars.BarButtonItem changeAccountKey;
@@ -1143,13 +1163,14 @@
         private DevExpress.XtraBars.BarDockControl barDockControlLeft;
         private DevExpress.XtraBars.BarDockControl barDockControlRight;
         private DevExpress.Utils.DefaultToolTipController defaultToolTipController1;
-        private DevExpress.XtraBars.BarStaticItem barStaticItem7;
+        private DevExpress.XtraBars.BarStaticItem connectionCount;
         private DevExpress.XtraGrid.Columns.GridColumn gridColumn1;
         private DevExpress.XtraEditors.Repository.RepositoryItemHyperLinkEdit repositoryItemHyperLinkEdit1;
         private DevExpress.XtraEditors.Repository.RepositoryItemComboBox repositoryItemComboBox1;
         private System.Windows.Forms.BindingSource accountBindingSource1;
         private DevExpress.XtraEditors.DXErrorProvider.DXErrorProvider dxErrorProvider1;
         private DevExpress.XtraGrid.Views.Grid.GridView gridView2;
+        private DevExpress.XtraWaitForm.ProgressPanel progressPanel;
     }
 }
 

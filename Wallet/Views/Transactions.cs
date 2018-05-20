@@ -37,6 +37,11 @@ namespace Wallet.Views
             transactionBindingSource.DataSource = Node.Instance.Accounts[accountNumber].Transactions.Value;
         }
 
+        public void ShowPending()
+        {
+            transactionBindingSource.DataSource = Node.Instance.PendingTransactions;
+        }
+
         private void repositoryItemButtonEdit1_ButtonClick(object sender, DevExpress.XtraEditors.Controls.ButtonPressedEventArgs e)
         {
             

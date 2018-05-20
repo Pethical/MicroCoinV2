@@ -29,6 +29,7 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using log4net;
+using log4net.Config;
 using MicroCoin.Chain;
 using MicroCoin.Cryptography;
 using MicroCoin.Mining;
@@ -51,11 +52,12 @@ namespace MicroCoin
         private static Node _sInstance;
         private static object nodeLock = new object();
         public event EventHandler<BlocksDownloadProgressEventArgs> BlockDownloadProgress;
+        public List<ITransaction> PendingTransactions { get; set; } = new List<ITransaction>();
         protected Node()
         {
         }
 
-        internal ECKeyPair NodeKey { get; } = ECKeyPair.CreateNew(false);
+        public ECKeyPair NodeKey { get; set; } = ECKeyPair.CreateNew(false);
         public static IList<ECKeyPair> Keys { get; set; }
         private static MicroCoinClient MicroCoinClient { get; set; }
         public NodeServerList NodeServers { get; set; } = new NodeServerList();
@@ -77,59 +79,70 @@ namespace MicroCoin
         }
         public async Task<Node> StartNode(int port = 4004, IList<ECKeyPair> keys = null)
         {
+            XmlConfigurator.Configure(File.OpenRead("log4net.config"));
             Keys = keys;
             MicroCoinClient = new MicroCoinClient();
             //MicroCoinClient.Connect("micro-225.microbyte.cloud", 4004);
             //          try
             //{
             P2PClient.ServerPort = MainParams.Port;
-            var bl = BlockChain.Instance.BlockHeight();
-            MicroCoinClient.Connect(MainParams.FixSeeds[0], port);
-            //MicroCoinClient.Connect("micro-225.microbyte.cloud", 4004);
-            var response = await MicroCoinClient.SendHelloAsync();
-            if (BlockChain.Instance.GetLastBlock().CompactTarget < response.Block.CompactTarget)
+#if !MICROCOIN
+            if (!BlockChain.Instance.HasBlockChain())
             {
-                if (bl == response.Block.BlockNumber)
-                {
-                    throw new Exception("Ajjaj!");
-                }
+                Block block = BlockChain.Instance.NextBlock(MainParams.GenesisBlockPayload, Node.Instance.NodeKey);
+                BlockChain.Instance.AppendAll(new List<Block>() { block });
             }
-            uint blockChunk = 10000;
-            while (bl <= response.Block.BlockNumber)
+#endif
+            var bl = BlockChain.Instance.BlockHeight();
+            for (int i = 0; i < MainParams.FixedSeedServers.Count; i++)
             {
-                try
-                {                    
-                    var blocks = MicroCoinClient.RequestBlocksAsync((uint)bl, blockChunk); //response.TransactionBlock.BlockNumber);                    
-                    Debug.WriteLine(blocks.Blocks.Count);
-                    if (blocks.Blocks.Count > blockChunk)
+                MicroCoinClient.Connect(MainParams.FixedSeedServers[i], port);
+                if (MicroCoinClient.Connected) break;
+            }
+            if (MicroCoinClient.Connected)
+            {
+                var response = await MicroCoinClient.SendHelloAsync();
+                if (BlockChain.Instance.GetLastBlock().CompactTarget < response.Block.CompactTarget)
+                {
+                    if (bl == response.Block.BlockNumber)
                     {
-                        Debug.WriteLine("Ez meg mi?");
+                        throw new Exception("Ajjaj!");
                     }
-                    if (blocks.Blocks.Count > 0 && blocks.Blocks.First().BlockNumber != bl) continue;
-                    if (blocks.Blocks.Count < blockChunk && blocks.Blocks.Last().BlockNumber < response.Block.BlockNumber)
-                    {
-                        blockChunk = ((uint) blocks.Blocks.Count / 100)*100;
-                        continue;
-                    }
+                }
+                uint blockChunk = MainParams.MaxBlockInPacket;
+                while (bl <= response.Block.BlockNumber)
+                {
                     try
                     {
-                       BlockChain.Instance.AppendAll(blocks.Blocks, true);
+                        var blocks = MicroCoinClient.RequestBlocksAsync((uint)bl, blockChunk); //response.TransactionBlock.BlockNumber);                    
+                        Log.InfoFormat("Received {0} blocks", blocks.Blocks.Count);
+                        if (blocks.Blocks.Count > 0 && blocks.Blocks.First().BlockNumber != bl) continue;
+                        if (blocks.Blocks.Count < blockChunk && blocks.Blocks.Last().BlockNumber < response.Block.BlockNumber)
+                        {
+                            blockChunk = ((uint)blocks.Blocks.Count / 100) * 100;
+                            Log.WarnFormat("Changed download count to {0}", blockChunk);
+                            continue;
+                        }
+                        try
+                        {
+                            BlockChain.Instance.AppendAll(blocks.Blocks, true);
+                        }
+                        catch
+                        {
+                            continue;
+                        }
+                        bl += (int)blockChunk;
+                        BlockDownloadProgress?.Invoke(this, new BlocksDownloadProgressEventArgs
+                        {
+                            BlocksToDownload = (int)response.Block.BlockNumber,
+                            DownloadedBlocks = bl
+                        });
+                        GC.Collect();
                     }
                     catch
                     {
                         continue;
                     }
-                    bl += (int) blockChunk;
-                    BlockDownloadProgress?.Invoke(this, new BlocksDownloadProgressEventArgs
-                    {
-                        BlocksToDownload = (int)response.Block.BlockNumber,
-                        DownloadedBlocks = bl
-                    });
-                    GC.Collect();
-                }
-                catch
-                {
-                    continue;
                 }
             }
             CheckPoints.Init();
@@ -147,16 +160,26 @@ namespace MicroCoin
             if (File.Exists(MainParams.CheckPointIndexName))
             {
                 CheckPoints.Init();
-                var blocks = CheckPoints.GetLastBlock().BlockNumber;
-                var need = BlockChain.Instance.GetLastBlock().BlockNumber;
-                for (var i = blocks; i <= need; i++)
-                    CheckPoints.AppendBlock(BlockChain.Instance.Get((int)i));
+                if (CheckPoints.GetLastBlock() != null)
+                {
+                    var blocks = CheckPoints.GetLastBlock().BlockNumber;
+                    var need = BlockChain.Instance.GetLastBlock().BlockNumber;
+                    for (var i = blocks; i <= need; i++)
+                        CheckPoints.AppendBlock(BlockChain.Instance.Get((int)i));
+                }
+                var ind = (BlockChain.BlockHeight() + 1) % MainParams.CheckPointFrequency;
+                for (int bb = ind; bb > 0; bb--)
+                {
+                    int c = (BlockChain.BlockHeight() + 1) - bb;
+                    CheckPoints.AppendBlock(BlockChain.Instance.Get(c));
+                }
+
             }
             else
             {
                 throw new FileNotFoundException("Checkpoint file not found", MainParams.CheckPointIndexName);
             }
-
+            
             GC.Collect();
             MicroCoinClient.HelloResponse += (o, e) =>
             {
@@ -195,6 +218,18 @@ namespace MicroCoin
                 microCoinClient.BlockResponse += (ob, eb) =>
                 {
                     BlockChain.Instance.AppendAll(eb.BlockResponse.Blocks);
+                    foreach(var b in eb.BlockResponse.Blocks)
+                    {
+                        foreach (var t in b.Transactions)
+                        {
+                            if (PendingTransactions.Count(p => p.GetHash().SequenceEqual(t.GetHash())) > 0)
+                            {
+                                var trans = PendingTransactions.FirstOrDefault(p => p.GetHash().SequenceEqual(t.GetHash()));
+                                PendingTransactions.Remove(trans);
+                            }
+                        }
+
+                    }
                     microCoinClient.SendHello();
                 };
                 microCoinClient.NewTransaction += (o, e) =>
@@ -230,31 +265,60 @@ namespace MicroCoin
                             }
                         }
                     }
+                    PendingTransactions.AddRange(e.Transaction.Transactions);                    
+                    CheckPoints.ApplyTransaction(e.Transaction.Transactions[0]);
                 };
                 microCoinClient.NewBlock += (o, e) =>
-                {
+                {                    
                     BlockChain.Instance.Append(e.Block);
+                    foreach(var t in e.Block.Transactions)
+                    {
+                        if (PendingTransactions.Count(p => p.GetHash().SequenceEqual(t.GetHash())) > 0)
+                        {
+                            var trans = PendingTransactions.FirstOrDefault(p => p.GetHash().SequenceEqual(t.GetHash()));
+                            PendingTransactions.Remove(trans);
+                        }
+                    }
                 };
                 microCoinClient.SendHello();
             };
-            Instance.NodeServers.TryAddNew(MainParams.FixSeeds[0] + ":" + MainParams.Port.ToString(), new NodeServer
+            for (int i = 0; i < MainParams.FixedSeedServers.Count; i++)
             {
-                IP = MainParams.FixSeeds[0],
-                LastConnection = DateTime.Now,
-                Port = MainParams.Port
-            });
-            /*            }
-                        catch (Exception e)
-                        {
-                            Log.Error(e.Message, e);
-                            throw;
-                        }
-            */
+                Instance.NodeServers.TryAddNew(MainParams.FixedSeedServers[i] + ":" + MainParams.Port.ToString(), new NodeServer
+                {
+                    IP = MainParams.FixedSeedServers[i],
+                    LastConnection = DateTime.Now,
+                    Port = MainParams.Port
+                });
+            }
             Instance.Listen();
             Instance.MinerServer = new MinerServer();
             Instance.MinerServer.Start();
             return Instance;
         }
+
+        internal void SendNewBlock(Block block)
+        {
+            NewBlockRequest request = new NewBlockRequest();
+            request.Block = block;
+            using (MemoryStream ms = new MemoryStream())
+            {
+                request.SaveToStream(ms);                
+                foreach (var c in Instance.NodeServers)
+                {                    
+                    ms.Position = 0;
+                    try
+                    {
+                        c.Value.MicroCoinClient.SendRaw(ms);
+                    }
+                    catch
+                    {
+
+                    }
+                }
+            }
+        }
+
         protected void Listen()
         {
             ListenerThread = new Thread(() =>

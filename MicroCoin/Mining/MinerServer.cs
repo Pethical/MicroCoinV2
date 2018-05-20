@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
+using System.Reflection;
 using System.Threading;
+using log4net;
 using MicroCoin.Chain;
 using MicroCoin.Protocol;
 using MicroCoin.Util;
@@ -14,6 +16,8 @@ namespace MicroCoin.Mining
 {
     public class MinerServer
     {
+        private static readonly ILog Log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+
         public event EventHandler<EventArgs> NewMinerClient;
         protected TcpListener TcpListener { get; set; }
         public List<TcpClient> Clients { get; set; } = new List<TcpClient>();        
@@ -30,8 +34,9 @@ namespace MicroCoin.Mining
                 try
                 {
                     while (true)
-                    {
-                        Block block = BlockChain.Instance.NextBlock("GPUMINE", Node.Instance.NodeKey);
+                    {                        
+                        Block block = BlockChain.Instance.NextBlock("GPUMINE---", Node.Instance.NodeKey);                        
+                        
                         var header = block.GetBlockHeaderForHash();
                         JObject message = new JObject
                         {
@@ -58,13 +63,15 @@ namespace MicroCoin.Mining
                         using (var ms = new MemoryStream())
                         {
                             ByteString json = message.ToString(Formatting.None) + Environment.NewLine;
+                            Log.InfoFormat("Sending \"{0}\" to miner", json);
                             ms.Write(json, 0, json.Length);
                             ms.Position = 0;
                             ms.CopyTo(client.GetStream());
                             client.GetStream().Flush();
+                            
                         }
 
-                        int timeout = 5000;
+                        int timeout = 60000;
                         int i = 0;
                         while (client.Available == 0)
                         {
@@ -84,18 +91,29 @@ namespace MicroCoin.Mining
                             if (buffer.Length > 0)
                             {
                                 ByteString response = buffer.ToArray();
+                                Log.Info(response);
                                 JObject minerResponse = JObject.Parse(response);
-                                var br = new NewBlockRequest();
-                                br.Block = block;
-                                br.Block.Nonce = minerResponse.Value<int>("nonce");
-                                br.Block.ProofOfWork = br.Block.CalcProofOfWork();
-                                if (!br.Block.ProofOfWorkIsValid())
+                                if (minerResponse.Value<string>("method") == "miner-submit")
                                 {
-                                    continue;
-                                }                                
-                                BlockChain.Instance.Append(br.Block);
-                                CheckPoints.AppendBlock(br.Block);
-                                // Node.Instance.SendNewBlock(br.Block);
+                                    var br = new NewBlockRequest();
+                                    br.Block = block;
+                                    br.Block.Nonce = minerResponse.Value<JArray>("params").Value<JObject>(0).Value<int>("nonce");
+                                    br.Block.Timestamp = minerResponse.Value<JArray>("params").Value<JObject>(0).Value<uint>("timestamp");
+                                    br.Block.ProofOfWork = br.Block.CalcProofOfWork();
+                                    if (!br.Block.ProofOfWorkIsValid())
+                                    {
+                                        Log.Warn("Received invalid solution for block");
+                                        continue;
+                                    }
+                                    Log.Info("Received valid solution for block");
+                                    BlockChain.Instance.AppendAll( new List<Block>() { br.Block });
+                                    CheckPoints.AppendBlock(br.Block);
+                                    Node.Instance.SendNewBlock(br.Block);
+                                }
+                                else
+                                {
+
+                                }
                             }
                         }
                     }
@@ -130,10 +148,13 @@ namespace MicroCoin.Mining
                                 var client = TcpListener.EndAcceptTcpClient(state);
                                 Clients.Add(client);
                                 NewMinerClient?.Invoke(this, new EventArgs());
-                                new Thread(() =>
+                                var minerThread = new Thread(() =>
                                 {
                                     HandleClient(client);
-                                }).Start();
+                                });
+                                minerThread.Name = "miner " + client.Client.RemoteEndPoint.ToString();
+                                Log.InfoFormat("Connected miner {0}", minerThread.Name);
+                                minerThread.Start();
                                 connected.Set();
                             }
                             catch (ObjectDisposedException)

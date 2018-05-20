@@ -51,7 +51,7 @@ namespace MicroCoin.Chain
                 Reward = 100ul,
                 Timestamp = DateTime.Now,
                 AccountKey = accountKey,
-                BlockNumber = GetLastBlock().BlockNumber + 1,
+                BlockNumber = HasBlockChain() ? GetLastBlock().BlockNumber + 1 : 0,
                 BlockSignature = 4,
                 CheckPointHash = CheckPoints.CheckPointHash(CheckPoints.Current),
                 ProtocolVersion = 2,
@@ -73,10 +73,10 @@ namespace MicroCoin.Chain
                 nbits++;
             }
 
-            uint i = 0x19000000 >> 24;
+            uint i = MainParams.MinimumDifficulty >> 24;
             if (nbits < i)
             {
-                return 0x19000000;
+                return MainParams.MinimumDifficulty;
             }
             int s = ((256 - 25) - (int)nbits);
             bn = bn >> s;
@@ -93,10 +93,10 @@ namespace MicroCoin.Chain
                 nbits++;
             }
 
-            uint i = 0x19000000 >> 24;
+            uint i = MainParams.MinimumDifficulty >> 24;
             if (nbits < i)
             {
-                return 0x19000000;
+                return MainParams.MinimumDifficulty;
             }
             int s = ((256 - 25) - (int)nbits);
             bn = bn >> s;
@@ -105,24 +105,27 @@ namespace MicroCoin.Chain
 
         public Tuple<Hash, uint> GetNewTarget()
         {
+            var blockHeight = BlockHeight();
+            if (BlockHeight() == 0)
+                return Tuple.Create(TargetFromCompact(MainParams.MinimumDifficulty), MainParams.MinimumDifficulty) ;
             var lastBlock = Get(BlockHeight());
-            var lastCheckPointBlock = Get(BlockHeight() - 100);
+            var lastCheckPointBlock = Get(Math.Max(BlockHeight() - MainParams.CheckPointFrequency, 0));
             var s = String.Format("{0:X}", lastBlock.CompactTarget);
             Hash actualTarget = TargetFromCompact(lastBlock.CompactTarget);
             DateTime ts1 = lastBlock.Timestamp;
             DateTime ts2 = lastCheckPointBlock.Timestamp;
             var tsReal = ts1.Subtract(ts2).TotalSeconds;            
-            long tsTeorical = 100*300;
+            long tsTeorical = MainParams.DifficultyAdjustFrequency*MainParams.BlockTime;
             //long tsReal = vreal;
             long factor1000 = ((long)(((tsTeorical - tsReal) * 1000) / tsTeorical) * -1);
-            long factor1000Min = -500 / (100 / 2);
-            long factor1000Max = 1000 / (100 / 2);
+            long factor1000Min = -500 / (MainParams.DifficultyAdjustFrequency / 2);
+            long factor1000Max = 1000 / (MainParams.DifficultyAdjustFrequency / 2);
             if (factor1000 < factor1000Min) factor1000 = factor1000Min;
             else if (factor1000 > factor1000Max) factor1000 = factor1000Max;
             else if (factor1000 == 0) return Tuple.Create(actualTarget, TargetToCompact(actualTarget));
-            ts2 = Get(BlockHeight() - 10).Timestamp;
+            ts2 = Get(BlockHeight() - MainParams.DifficultyCalcFrequency).Timestamp;
             var tsRealStop = ts1.Subtract(ts2).TotalSeconds;
-            var tsTeoricalStop = 3000;
+            var tsTeoricalStop = MainParams.DifficultyCalcFrequency *MainParams.BlockTime;
             if (
                 (tsTeorical > tsReal && tsTeoricalStop > tsRealStop) || 
                 (tsTeoricalStop < tsRealStop && tsTeorical < tsReal)
@@ -145,7 +148,7 @@ namespace MicroCoin.Chain
         public static Hash TargetFromCompact(uint encoded)
         {
             uint nbits = encoded >> 24;
-            uint i = 0x19000000 >> 24;
+            uint i = MainParams.MinimumDifficulty >> 24;
             if (nbits < i)
             {
                 nbits = i;
@@ -300,6 +303,32 @@ namespace MicroCoin.Chain
             }
         }
 
+        public bool HasBlockChain(FileStream index = null)
+        {
+            lock (Flock)
+            {
+                FileStream fi;
+                if (index != null)
+                {
+                    fi = index;
+                }
+                else{
+                     fi = File.Open(MainParams.BlockChainFileName + ".index", FileMode.OpenOrCreate, FileAccess.ReadWrite);
+                }
+                try
+                {
+                    using (var ir = new BinaryReader(fi, Encoding.Default, true))
+                    {
+                        if (fi.Length == 0) return false;
+                    }
+                }
+                finally
+                {
+                    if(index==null) fi.Dispose();
+                }
+            }
+            return true;
+        }
         public Block GetLastBlock()
         {
             lock (Flock)
@@ -357,26 +386,40 @@ namespace MicroCoin.Chain
                                 count = br.ReadInt32();
                                 var size = br.ReadInt64();
                             }
-
-                            if (blockHeight < t.BlockNumber - 1)
+                            if (HasBlockChain(fi))
                             {
-                                return false;
+                                if (blockHeight < t.BlockNumber - 1)
+                                {
+                                    return false;
+                                }
+                                else if (blockHeight > t.BlockNumber)
+                                {
+                                    return true;
+                                }
                             }
-                            else if (blockHeight > t.BlockNumber)
-                            {
-                                return true;
-                            }
-
                             using (var iw = new BinaryWriter(fi, Encoding.Default, true))
                             {
                                 iw.BaseStream.Position = iw.BaseStream.Length;
                                 fi.Position = 0;
-                                iw.Write(count + 1);
+                                if (HasBlockChain(fi))
+                                {
+                                    iw.Write(count + 1);
+                                }
+                                else {
+                                    iw.Write(0);
+                                }
                                 f.Position = f.Length;
                                 fi.Position = fi.Length;
                                 var pos = f.Position;
                                 t.SaveToStream(f);
-                                iw.Write(t.BlockNumber);
+                                if (HasBlockChain(fi))
+                                {
+                                    iw.Write(t.BlockNumber);
+                                }
+                                else
+                                {
+                                    iw.Write(0);
+                                }                                
                                 iw.Write(pos);
                                 iw.Write((uint) (f.Position - pos));
                             }

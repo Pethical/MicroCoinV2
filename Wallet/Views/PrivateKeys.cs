@@ -74,5 +74,13 @@ namespace Wallet.Views
             ECKeyPair keyPair = ECKeyPair.CreateNew(false, DateTime.UtcNow.ToString());
             eCKeyPairBindingSource.Add(keyPair);
         }
+
+        private void renameButton_Click(object sender, EventArgs e)
+        {
+            var name = Prompt.ShowDialog("A kulcs új neve", "Átnevezés", false);
+            if (name.Equals("")) return;
+            var pair = (ECKeyPair) eCKeyPairBindingSource.Current;
+            pair.Name = name;            
+        }
     }
 }

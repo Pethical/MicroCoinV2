@@ -55,7 +55,7 @@ namespace MicroCoin.Net
             {
                 TcpClient = new TcpClient();                
                 var result = TcpClient.BeginConnect(hostname, port, null, null);
-                Connected = result.AsyncWaitHandle.WaitOne(TimeSpan.FromSeconds(1));
+                Connected = result.AsyncWaitHandle.WaitOne(TimeSpan.FromMilliseconds(200));
                 TcpClient.EndConnect(result);                
                 if (!Connected)
                 {
@@ -122,10 +122,6 @@ namespace MicroCoin.Net
                 read += ns.Read(buffer, read, buffer.Length - read);
             }
             ms.Write(buffer, 0, buffer.Length);
-            if (ms.Length > requiredSize)
-            {
-                Debug.WriteLine("megvagy");
-            }
             return true;
         }
 

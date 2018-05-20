@@ -64,9 +64,10 @@ namespace MicroCoin.Transactions
         }
         public bool SignatureValid()
         {
-            if (AccountKey == null || AccountKey.CurveType==CurveType.Empty)
-                AccountKey = CheckPoints.Accounts[SignerAccount].AccountInfo.AccountKey;
-            return Utils.ValidateSignature(GetHash(), Signature, AccountKey);
+            var accountKey = AccountKey;
+            if (AccountKey == null || AccountKey.CurveType == CurveType.Empty)
+                accountKey = CheckPoints.Accounts[SignerAccount].AccountInfo.AccountKey;
+            return Utils.ValidateSignature(GetHash(), Signature, accountKey);
         }
 
         public virtual bool IsValid()
@@ -74,9 +75,18 @@ namespace MicroCoin.Transactions
             if (SignerAccount < 0) return false;
             if (CheckPoints.Accounts.Count(p => p.AccountNumber == SignerAccount) == 0) return false;
             if (CheckPoints.Accounts.Count(p => p.AccountNumber == TargetAccount) == 0) return false;
+            Account Signer = CheckPoints.Accounts.FirstOrDefault(p => p.AccountNumber == SignerAccount);
+            if (Signer.BlockNumber >=
+                Node.Instance.BlockChain.BlockHeight() - MainParams.MinimumBlocksToUseAccount) return false;
+            if (CheckPoints.Accounts.FirstOrDefault(p => p.AccountNumber == TargetAccount).BlockNumber >=
+                Node.Instance.BlockChain.BlockHeight() - MainParams.MinimumBlocksToUseAccount) return false;
             if (Amount < 0) return false;
             if (Fee < 0) return false;
-            if (NumberOfOperations != SignerAccount.Account().NumberOfOperations) return false;
+            if (Amount + Fee > Signer.Balance) return false;
+            if (
+                (NumberOfOperations != SignerAccount.Account().NumberOfOperations) && 
+                (NumberOfOperations != SignerAccount.Account().NumberOfOperations + 1) // Bug fix hack
+                ) return false;
             return true;
         }
 

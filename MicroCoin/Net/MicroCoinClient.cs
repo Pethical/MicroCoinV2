@@ -120,9 +120,11 @@ namespace MicroCoin.Net
             HelloResponse?.Invoke(this, new HelloResponseEventArgs(helloResponse));
         }
 
+        static object transactionLock = new object();
+
         protected virtual void OnNewTransaction(NewTransactionMessage newTransaction)
         {
-            NewTransaction?.Invoke(this, new NewTransactionEventArgs(newTransaction));
+                NewTransaction?.Invoke(this, new NewTransactionEventArgs(newTransaction));
         }
 
         protected virtual void OnGetBlockResponse(BlockResponse blockResponse)
@@ -219,7 +221,7 @@ namespace MicroCoin.Net
             ReadBody(rp.DataLength, responseStream);
             if(responseStream.Length!=rp.DataLength+RequestHeader.Size)
             {
-                Debug.WriteLine("Mi ez az adat itt kérem?");
+                throw new InvalidDataException("Received invalid chunk");
             }
             responseStream.Position = pos;
             return rp;
@@ -396,8 +398,6 @@ namespace MicroCoin.Net
                 switch (rp.Operation)
                 {
                     case NetOperationType.Blocks:
-                        if (rp.DataLength > rs.Length - RequestHeader.Size)
-                            Debug.WriteLine("Hiba");
                         return new BlockResponse(rs, rp);
                     default:
                         throw new InvalidDataException();
@@ -490,18 +490,14 @@ namespace MicroCoin.Net
             ms.Position = 0;
             var p = 0;
             MessageHeader rp = new MessageHeader(ms);            
-            if(rp.Magic != 0x0A043580) {
-                FileStream fs = File.Create("hellobello.bello");
-                ms.Position = 0;
-                ms.CopyTo(fs);
-                fs.Dispose();
+            if(rp.Magic != MainParams.NetworkPacketMagic) {
                 throw new InvalidDataException("Invalid magic / no magic found");
             }
             if (rp.Error != 0)
             {
                 throw new Exception("Error in response");
             }
-            Debug.WriteLine(rp.Operation);
+            Log.InfoFormat("Received {0}", rp.Operation);
             return rp;
         }
 
@@ -534,9 +530,12 @@ namespace MicroCoin.Net
                     OnNewBlock(response);
                     break;
                 case NetOperationType.AddOperations:
-                    var newTransaction = new NewTransactionMessage(ms, rp);
-                    OnNewTransaction(newTransaction);
-                    break;
+                    lock (transactionLock)
+                    {
+                        var newTransaction = new NewTransactionMessage(ms, rp);
+                        OnNewTransaction(newTransaction);
+                        break;
+                    }
             }
         }
 
