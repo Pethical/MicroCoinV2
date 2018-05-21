@@ -29,7 +29,11 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using log4net;
+using log4net.Appender;
 using log4net.Config;
+using log4net.Core;
+using log4net.Layout;
+using log4net.Repository.Hierarchy;
 using MicroCoin.Chain;
 using MicroCoin.Cryptography;
 using MicroCoin.Mining;
@@ -79,7 +83,44 @@ namespace MicroCoin
         }
         public async Task<Node> StartNode(int port = 4004, IList<ECKeyPair> keys = null)
         {
+#if NETCOREAPP2_0
+            Hierarchy hierarchy = (Hierarchy)LogManager.GetRepository(Assembly.GetEntryAssembly());
+            PatternLayout patternLayout = new PatternLayout();
+            patternLayout.ConversionPattern = "%date{yyyy-MM-dd HH:mm:ss} %-5level %logger - %message%newline";
+            patternLayout.ActivateOptions();
+            ManagedColoredConsoleAppender consoleAppender = new ManagedColoredConsoleAppender();
+            consoleAppender.Layout = patternLayout;
+            consoleAppender.AddMapping(new ManagedColoredConsoleAppender.LevelColors()
+            {
+                ForeColor = ConsoleColor.Yellow,
+                Level = Level.Warn
+            });
+            consoleAppender.AddMapping(new ManagedColoredConsoleAppender.LevelColors()
+            {
+                ForeColor = ConsoleColor.Cyan,
+                Level = Level.Info
+            });
+            consoleAppender.AddMapping(new ManagedColoredConsoleAppender.LevelColors()
+            {
+                ForeColor = ConsoleColor.DarkGray,
+                Level = Level.Debug
+            });
+
+            consoleAppender.AddMapping(new ManagedColoredConsoleAppender.LevelColors()
+            {
+                ForeColor = ConsoleColor.Red,
+                Level = Level.Error
+            });
+            consoleAppender.ActivateOptions();
+            hierarchy.Root.AddAppender(consoleAppender);
+            //MemoryAppender memory = new MemoryAppender();
+            //memory.ActivateOptions();
+            //hierarchy.Root.AddAppender(memory);
+            hierarchy.Root.Level = Level.Debug;
+            hierarchy.Configured = true;
+#else
             XmlConfigurator.Configure(File.OpenRead("log4net.config"));
+#endif
             Keys = keys;
             MicroCoinClient = new MicroCoinClient();
             //MicroCoinClient.Connect("micro-225.microbyte.cloud", 4004);

@@ -48,6 +48,9 @@ namespace MicroCoin.Cryptography
         }
         public static ByteString DecryptString(Hash em, ECKeyPair keyPair)
         {
+#if NETCOREAPP2_0
+            return "";
+#else
             ECParameters parameters = new ECParameters();
             byte[] ems = em;
             parameters.Q.X = ems.Skip(1).Take(32).ToArray();
@@ -68,6 +71,7 @@ namespace MicroCoin.Cryptography
                     return bs;
                 }
             }
+#endif
         }
 
         public static Hash Sha256(Hash data)
@@ -89,6 +93,10 @@ namespace MicroCoin.Cryptography
 
         public static Hash EncryptString(ByteString data, ECKeyPair keyPair)
         {
+#if NETCOREAPP2_0
+            return "";
+#else
+
             using (var ecDiffieHellman = ECDiffieHellman.Create(keyPair))
             {
                 using (var ephem = ECDiffieHellman.Create(keyPair.ECParameters.Curve))
@@ -126,8 +134,8 @@ namespace MicroCoin.Cryptography
                     }
                 }
             }
+#endif
         }
-
 
     }
 }

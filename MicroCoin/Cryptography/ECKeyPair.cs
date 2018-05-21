@@ -194,7 +194,12 @@ namespace MicroCoin.Cryptography
 
         public static ECKeyPair CreateNew(bool v, string name = "")
         {
-            ECCurve curve = ECCurve.CreateFromFriendlyName("secp256k1");
+
+            ECCurve curve = ECCurve.CreateFromFriendlyName("secP256k1".ToUpper());
+            Console.WriteLine("Generating keys");
+            //ECCurve curve = ECCurve.CreateFromValue("1.3.132.0.10");
+            //var curve.Hash = HashAlgorithmName.SHA256;            
+            //ECCurve curve = ECCurve.CreateFromOid(Oid.FromOidValue("1.3.132.0.10", OidGroup.All));
             var ecdsa = ECDsa.Create(curve);
             ECParameters parameters = ecdsa.ExportParameters(true);
             ECKeyPair pair = new ECKeyPair

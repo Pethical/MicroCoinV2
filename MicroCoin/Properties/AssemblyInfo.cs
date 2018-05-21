@@ -24,10 +24,11 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
+#if !NETCOREAPP2_0
 [assembly: AssemblyTitle("MicroCoin")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyDescription("MicroCoin")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
+[assembly: AssemblyCompany("MicroCoin")]
 [assembly: AssemblyProduct("MicroCoin")]
 [assembly: AssemblyCopyright("Copyright © 2018 Peter Nemeth")]
 [assembly: AssemblyTrademark("")]
@@ -53,3 +54,6 @@ using System.Runtime.InteropServices;
 // [assembly: AssemblyVersion("1.0.*")]
 [assembly: AssemblyVersion("1.0.0.0")]
 [assembly: AssemblyFileVersion("1.0.0.0")]
+#else
+
+#endif
