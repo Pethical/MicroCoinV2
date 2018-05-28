@@ -42,21 +42,29 @@ namespace MicroCoin.Chain
 
         public Block NextBlock(ByteString payload, ECKeyPair accountKey)
         {
+            ushort protocol = 2;
+            Hash ophash = Utils.Sha256("");
+            foreach (var t in Node.Instance.PendingTransactions)
+            {
+                Hash hb = t.Serialize();
+                ophash = Utils.Sha256(ophash + Utils.Sha256(hb));
+            }
             Block block = new Block
             {
-                TransactionCount = 0,
+                TransactionCount = (uint) Node.Instance.PendingTransactions.Count,
                 Payload = payload,
                 AvailableProtocol = 2,
                 CompactTarget = GetNewTarget().Item2,
-                Reward = 100ul,
-                Timestamp = DateTime.Now,
+                Reward = 1000000ul,
+                Timestamp = DateTime.UtcNow,
                 AccountKey = accountKey,
                 BlockNumber = HasBlockChain() ? GetLastBlock().BlockNumber + 1 : 0,
                 BlockSignature = 4,
-                CheckPointHash = CheckPoints.CheckPointHash(CheckPoints.Current),
-                ProtocolVersion = 2,
+                CheckPointHash = CheckPoints.OldCheckPointHash, // CheckPoints.CheckPointHash(CheckPoints.Current),
+                ProtocolVersion = protocol,
                 Fee = 0,
-                TransactionHash = Utils.Sha256("")
+                TransactionHash = ophash,
+                Transactions = Node.Instance.PendingTransactions
             };
             return block;
         }
@@ -73,10 +81,10 @@ namespace MicroCoin.Chain
                 nbits++;
             }
 
-            uint i = MainParams.MinimumDifficulty >> 24;
+            uint i = Node.NetParams.MinimumDifficulty >> 24;
             if (nbits < i)
             {
-                return MainParams.MinimumDifficulty;
+                return Node.NetParams.MinimumDifficulty;
             }
             int s = ((256 - 25) - (int)nbits);
             bn = bn >> s;
@@ -93,10 +101,10 @@ namespace MicroCoin.Chain
                 nbits++;
             }
 
-            uint i = MainParams.MinimumDifficulty >> 24;
+            uint i = Node.NetParams.MinimumDifficulty >> 24;
             if (nbits < i)
             {
-                return MainParams.MinimumDifficulty;
+                return Node.NetParams.MinimumDifficulty;
             }
             int s = ((256 - 25) - (int)nbits);
             bn = bn >> s;
@@ -107,25 +115,25 @@ namespace MicroCoin.Chain
         {
             var blockHeight = BlockHeight();
             if (BlockHeight() == 0)
-                return Tuple.Create(TargetFromCompact(MainParams.MinimumDifficulty), MainParams.MinimumDifficulty) ;
+                return Tuple.Create(TargetFromCompact(Node.NetParams.MinimumDifficulty), Node.NetParams.MinimumDifficulty) ;
             var lastBlock = Get(BlockHeight());
-            var lastCheckPointBlock = Get(Math.Max(BlockHeight() - MainParams.CheckPointFrequency, 0));
+            var lastCheckPointBlock = Get(Math.Max(BlockHeight() - Node.NetParams.CheckPointFrequency, 0));
             var s = String.Format("{0:X}", lastBlock.CompactTarget);
             Hash actualTarget = TargetFromCompact(lastBlock.CompactTarget);
             DateTime ts1 = lastBlock.Timestamp;
             DateTime ts2 = lastCheckPointBlock.Timestamp;
             var tsReal = ts1.Subtract(ts2).TotalSeconds;            
-            long tsTeorical = MainParams.DifficultyAdjustFrequency*MainParams.BlockTime;
+            long tsTeorical = Node.NetParams.DifficultyAdjustFrequency* Node.NetParams.BlockTime;
             //long tsReal = vreal;
             long factor1000 = ((long)(((tsTeorical - tsReal) * 1000) / tsTeorical) * -1);
-            long factor1000Min = -500 / (MainParams.DifficultyAdjustFrequency / 2);
-            long factor1000Max = 1000 / (MainParams.DifficultyAdjustFrequency / 2);
+            long factor1000Min = -500 / (Node.NetParams.DifficultyAdjustFrequency / 2);
+            long factor1000Max = 1000 / (Node.NetParams.DifficultyAdjustFrequency / 2);
             if (factor1000 < factor1000Min) factor1000 = factor1000Min;
             else if (factor1000 > factor1000Max) factor1000 = factor1000Max;
             else if (factor1000 == 0) return Tuple.Create(actualTarget, TargetToCompact(actualTarget));
-            ts2 = Get(BlockHeight() - MainParams.DifficultyCalcFrequency).Timestamp;
+            ts2 = Get(BlockHeight() - Node.NetParams.DifficultyCalcFrequency).Timestamp;
             var tsRealStop = ts1.Subtract(ts2).TotalSeconds;
-            var tsTeoricalStop = MainParams.DifficultyCalcFrequency *MainParams.BlockTime;
+            var tsTeoricalStop = Node.NetParams.DifficultyCalcFrequency * Node.NetParams.BlockTime;
             if (
                 (tsTeorical > tsReal && tsTeoricalStop > tsRealStop) || 
                 (tsTeoricalStop < tsRealStop && tsTeorical < tsReal)
@@ -148,7 +156,7 @@ namespace MicroCoin.Chain
         public static Hash TargetFromCompact(uint encoded)
         {
             uint nbits = encoded >> 24;
-            uint i = MainParams.MinimumDifficulty >> 24;
+            uint i = Node.NetParams.MinimumDifficulty >> 24;
             if (nbits < i)
             {
                 nbits = i;
@@ -190,7 +198,7 @@ namespace MicroCoin.Chain
             {
                 if (true)
                 {
-                    var fi = File.Open(MainParams.BlockChainFileName + ".index", FileMode.OpenOrCreate, FileAccess.ReadWrite);
+                    var fi = File.Open(Node.NetParams.BlockChainFileName + ".index", FileMode.OpenOrCreate, FileAccess.ReadWrite);
                     using (var br = new BinaryReader(fi))
                     {
                         if (fi.Length == 0) return 0;
@@ -201,12 +209,12 @@ namespace MicroCoin.Chain
             }
         }
 
-        public List<Transaction> GetAccountOperations(int accountNumber)
+        public List<ITransaction> GetAccountOperations(int accountNumber)
         {
             var account = CheckPoints.Accounts[accountNumber];
             uint i = 0;
             var blocks = new List<Block>();
-            var result = new List<Transaction>();
+            var result = new List<ITransaction>();
             while (i < account.UpdatedBlock)
             {
                 var start = i;
@@ -232,7 +240,7 @@ namespace MicroCoin.Chain
         {
             lock (Flock)
             {
-                var fi = File.Open(MainParams.BlockChainFileName + ".index", FileMode.OpenOrCreate, FileAccess.ReadWrite);
+                var fi = File.Open(Node.NetParams.BlockChainFileName + ".index", FileMode.OpenOrCreate, FileAccess.ReadWrite);
                 try
                 {
                     using (var ir = new BinaryReader(fi, Encoding.Default, true))
@@ -243,7 +251,7 @@ namespace MicroCoin.Chain
                         var bn = ir.ReadUInt32();
                         var pos = ir.ReadInt64();
                         if (bn != blockNumber) return null;
-                        var f = File.Open(MainParams.BlockChainFileName, FileMode.OpenOrCreate, FileAccess.ReadWrite);
+                        var f = File.Open(Node.NetParams.BlockChainFileName, FileMode.OpenOrCreate, FileAccess.ReadWrite);
                         try
                         {
                             f.Position = pos;
@@ -267,7 +275,7 @@ namespace MicroCoin.Chain
         {
             lock (Flock)
             {
-                var fi = File.Open(MainParams.BlockChainFileName + ".index", FileMode.OpenOrCreate, FileAccess.ReadWrite);
+                var fi = File.Open(Node.NetParams.BlockChainFileName + ".index", FileMode.OpenOrCreate, FileAccess.ReadWrite);
                 try
                 {
                     using (var ir = new BinaryReader(fi, Encoding.Default, true))
@@ -278,7 +286,7 @@ namespace MicroCoin.Chain
                         var bn = ir.ReadUInt32();
                         var pos = ir.ReadInt64();
                         if (bn != start) return null;
-                        var f = File.Open(MainParams.BlockChainFileName, FileMode.OpenOrCreate, FileAccess.ReadWrite);
+                        var f = File.Open(Node.NetParams.BlockChainFileName, FileMode.OpenOrCreate, FileAccess.ReadWrite);
                         try
                         {
                             f.Position = pos;
@@ -313,7 +321,7 @@ namespace MicroCoin.Chain
                     fi = index;
                 }
                 else{
-                     fi = File.Open(MainParams.BlockChainFileName + ".index", FileMode.OpenOrCreate, FileAccess.ReadWrite);
+                     fi = File.Open(Node.NetParams.BlockChainFileName + ".index", FileMode.OpenOrCreate, FileAccess.ReadWrite);
                 }
                 try
                 {
@@ -333,7 +341,7 @@ namespace MicroCoin.Chain
         {
             lock (Flock)
             {
-                var fi = File.Open(MainParams.BlockChainFileName + ".index", FileMode.OpenOrCreate, FileAccess.ReadWrite);
+                var fi = File.Open(Node.NetParams.BlockChainFileName + ".index", FileMode.OpenOrCreate, FileAccess.ReadWrite);
                 try
                 {
                     using (var ir = new BinaryReader(fi, Encoding.Default, true))
@@ -342,7 +350,7 @@ namespace MicroCoin.Chain
                         fi.Position = fi.Length - 16;
                         var blockNumber = ir.ReadUInt32();
                         var position = ir.ReadInt64();
-                        var f = File.Open(MainParams.BlockChainFileName, FileMode.OpenOrCreate, FileAccess.ReadWrite);
+                        var f = File.Open(Node.NetParams.BlockChainFileName, FileMode.OpenOrCreate, FileAccess.ReadWrite);
                         try
                         {
                             if (f.Length == 0) throw new Exception("No blockchain file.");
@@ -368,10 +376,10 @@ namespace MicroCoin.Chain
             lock (Flock)
             {
                 var blockHeight = GetLastBlock().BlockNumber + 1;
-                var fi = File.Open(MainParams.BlockChainFileName + ".index", FileMode.OpenOrCreate, FileAccess.ReadWrite);
+                var fi = File.Open(Node.NetParams.BlockChainFileName + ".index", FileMode.OpenOrCreate, FileAccess.ReadWrite);
                 try
                 {
-                    var f = File.Open(MainParams.BlockChainFileName, FileMode.OpenOrCreate, FileAccess.ReadWrite);
+                    var f = File.Open(Node.NetParams.BlockChainFileName, FileMode.OpenOrCreate, FileAccess.ReadWrite);
                     try
                     {
                         using (var br = new BinaryReader(fi, Encoding.Default, true))
@@ -443,10 +451,10 @@ namespace MicroCoin.Chain
         internal void AppendAll(List<Block> blocks, bool ignoreCheckPointing = false)
         {
             lock (Flock)
-            {
+            {                
                 var blockHeight = GetLastBlock().BlockNumber;
-                var f = File.Open(MainParams.BlockChainFileName, FileMode.OpenOrCreate, FileAccess.ReadWrite);
-                var fi = File.Open(MainParams.BlockChainFileName + ".index", FileMode.OpenOrCreate, FileAccess.ReadWrite);
+                var f = File.Open(Node.NetParams.BlockChainFileName, FileMode.OpenOrCreate, FileAccess.ReadWrite);
+                var fi = File.Open(Node.NetParams.BlockChainFileName + ".index", FileMode.OpenOrCreate, FileAccess.ReadWrite);
                 using (var br = new BinaryReader(fi))
                 {
                     int count;
@@ -473,6 +481,7 @@ namespace MicroCoin.Chain
                             if (block.BlockNumber != 0 || blockHeight > 0)
                                 if (block.BlockNumber <= blockHeight)
                                     continue;
+                            if (!block.BlockIsValid()) return;
                             f.Position = f.Length;
                             fi.Position = fi.Length;
                             var pos = f.Position;
@@ -498,7 +507,7 @@ namespace MicroCoin.Chain
             lock (Flock)
             {
 //                byte[] b;
-                var f = File.Open(MainParams.BlockChainFileName + ".index", FileMode.OpenOrCreate, FileAccess.ReadWrite);
+                var f = File.Open(Node.NetParams.BlockChainFileName + ".index", FileMode.OpenOrCreate, FileAccess.ReadWrite);
                 if (s.Length > 0 && f.Length > 0)
                     using (var br = new BinaryReader(f, Encoding.Default, true))
                     {

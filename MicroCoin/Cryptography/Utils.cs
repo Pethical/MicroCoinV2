@@ -19,6 +19,12 @@
 
 
 using MicroCoin.Util;
+using Org.BouncyCastle.Asn1;
+using Org.BouncyCastle.Asn1.X9;
+using Org.BouncyCastle.Crypto;
+using Org.BouncyCastle.Crypto.Parameters;
+using Org.BouncyCastle.Math.EC;
+using Org.BouncyCastle.Security;
 using System;
 using System.Linq;
 using System.Security.Cryptography;
@@ -29,28 +35,80 @@ namespace MicroCoin.Cryptography
     {
         public static ECSignature GenerateSignature(Hash data, ECKeyPair keyPair)
         {
-
+#if NATIVE_ECDSA            
             using (var eC = ECDsa.Create(keyPair))
             {
                 Hash sign = eC.SignHash(data);
-                ECSignature ecs = new ECSignature(sign);
-                return ecs;
+                return new ECSignature(sign);
+                 
             }
-
+#else
+            try
+            {
+                ISigner signer = SignerUtilities.GetSigner("NONEwithECDSA");
+                X9ECParameters curve = Org.BouncyCastle.Asn1.Sec.SecNamedCurves.GetByName(keyPair.CurveType.ToString().ToLower());
+                ECDomainParameters domain = new ECDomainParameters(curve.Curve, curve.G, curve.N, curve.H);
+                Org.BouncyCastle.Math.BigInteger bn = new Org.BouncyCastle.Math.BigInteger(keyPair.D);
+                ECPrivateKeyParameters parameters = new ECPrivateKeyParameters(bn, domain);
+                signer.Init(true, parameters);
+                signer.BlockUpdate(data, 0, data.Length);
+                byte[] sigBytes = signer.GenerateSignature();
+                Asn1InputStream decoder = new Asn1InputStream(sigBytes);
+                DerSequence seq = (DerSequence)decoder.ReadObject();
+                DerInteger r = (DerInteger)seq[0];
+                DerInteger s = (DerInteger)seq[1];
+                decoder.Dispose();
+                var rArr = r.Value.ToByteArray();
+                var sArr = s.Value.ToByteArray();
+                if (rArr[0] == 0) rArr = rArr.Skip(1).ToArray();
+                if (sArr[0] == 0) sArr = sArr.Skip(1).ToArray();
+                return new ECSignature
+                {
+                    R = r.Value.ToByteArray(),
+                    S = s.Value.ToByteArray(),
+                    SigCompat = sigBytes
+                };
+            }
+            catch (Exception e)
+            {
+                return new ECSignature();
+            }
+#endif
         }
 
         public static bool ValidateSignature(Hash data, ECSignature signature, ECKeyPair keyPair)
         {
+#if NATIVE_ECDSA
             using (var ecdsa = ECDsa.Create(keyPair))
             {
                 return ecdsa.VerifyHash(data, signature.Signature);                
             }
+#else
+
+            var derSignature = new DerSequence(
+                new DerInteger(new Org.BouncyCastle.Math.BigInteger(1, signature.Signature.Take(32).ToArray())),
+                new DerInteger(new Org.BouncyCastle.Math.BigInteger(1, signature.Signature.Skip(32).ToArray())))
+                .GetDerEncoded();
+
+            ISigner signer = SignerUtilities.GetSigner("NONEwithECDSA");
+            X9ECParameters curve = Org.BouncyCastle.Asn1.Sec.SecNamedCurves.GetByName(keyPair.CurveType.ToString().ToLower());
+            ECDomainParameters domain = new ECDomainParameters(curve.Curve, curve.G, curve.N, curve.H);
+            Org.BouncyCastle.Math.BigInteger bn = new Org.BouncyCastle.Math.BigInteger(keyPair.D);
+            ECPrivateKeyParameters parameters = new ECPrivateKeyParameters(bn, domain);
+            FpCurve c = (FpCurve)curve.Curve;
+            var publicKey = new FpPoint(c, new FpFieldElement(c.Q, new Org.BouncyCastle.Math.BigInteger(+1, keyPair.PublicKey.X)),
+                new FpFieldElement(c.Q, new Org.BouncyCastle.Math.BigInteger(+1, keyPair.PublicKey.Y)));
+            ECPublicKeyParameters publicKeyParameters = new ECPublicKeyParameters(publicKey, domain);
+            signer.Init(false, publicKeyParameters);
+            signer.BlockUpdate(data, 0, data.Length);
+            bool ok = signer.VerifySignature(derSignature);
+            return ok;
+
+#endif
         }
+
         public static ByteString DecryptString(Hash em, ECKeyPair keyPair)
         {
-#if NETCOREAPP2_0
-            return "";
-#else
             ECParameters parameters = new ECParameters();
             byte[] ems = em;
             parameters.Q.X = ems.Skip(1).Take(32).ToArray();
@@ -61,7 +119,7 @@ namespace MicroCoin.Cryptography
             using (var ecDiffieHellmanCng = new ECDiffieHellmanCng())
             {
                 ecDiffieHellmanCng.ImportParameters(parameters);
-                var ek = ecDiffieHellmanCng.DeriveKeyFromHash(ecDiffieHellmanCng.PublicKey, HashAlgorithmName.SHA256, null, new byte[] {0, 0, 0, 1});
+                var ek = ecDiffieHellmanCng.DeriveKeyFromHash(ecDiffieHellmanCng.PublicKey, HashAlgorithmName.SHA256, null, new byte[] { 0, 0, 0, 1 });
                 using (RijndaelManaged aes = new RijndaelManaged())
                 {
                     aes.Padding = PaddingMode.PKCS7;
@@ -71,7 +129,6 @@ namespace MicroCoin.Cryptography
                     return bs;
                 }
             }
-#endif
         }
 
         public static Hash Sha256(Hash data)
@@ -91,12 +148,16 @@ namespace MicroCoin.Cryptography
             }
         }
 
+        public static Hash RipeMD160(Hash data)
+        {
+            using (RIPEMD160Managed rp = new RIPEMD160Managed())
+            {
+                return rp.ComputeHash(data);
+            }
+        }
+
         public static Hash EncryptString(ByteString data, ECKeyPair keyPair)
         {
-#if NETCOREAPP2_0
-            return "";
-#else
-
             using (var ecDiffieHellman = ECDiffieHellman.Create(keyPair))
             {
                 using (var ephem = ECDiffieHellman.Create(keyPair.ECParameters.Curve))
@@ -104,13 +165,13 @@ namespace MicroCoin.Cryptography
                     ECParameters ephemPublicParams = ephem.ExportParameters(false);
                     int pointLen = ephemPublicParams.Q.X.Length;
                     byte[] rBar = new byte[pointLen * 2 + 1];
-                    rBar[0] = (byte) (keyPair.PublicKey.X.Length + keyPair.PublicKey.Y.Length);
+                    rBar[0] = (byte)(keyPair.PublicKey.X.Length + keyPair.PublicKey.Y.Length);
                     Buffer.BlockCopy(ephemPublicParams.Q.X, 0, rBar, 1, pointLen);
                     Buffer.BlockCopy(ephemPublicParams.Q.Y, 0, rBar, 1 + pointLen, pointLen);
                     var ek = ephem.DeriveKeyFromHash(ecDiffieHellman.PublicKey, HashAlgorithmName.SHA256, null,
-                        new byte[] {0, 0, 0, 1});
+                        new byte[] { 0, 0, 0, 1 });
                     var mk = ephem.DeriveKeyFromHash(ecDiffieHellman.PublicKey, HashAlgorithmName.SHA256, null,
-                        new byte[] {0, 0, 0, 2});
+                        new byte[] { 0, 0, 0, 2 });
 
                     using (RijndaelManaged aes = new RijndaelManaged())
                     {
@@ -129,13 +190,11 @@ namespace MicroCoin.Cryptography
                                 da = hmac.ComputeHash(em);
                             }
 
-                            return rBar.Concat((byte[]) em).Concat(da).ToArray();
+                            return rBar.Concat((byte[])em).Concat(da).ToArray();
                         }
                     }
                 }
             }
-#endif
         }
-
     }
 }

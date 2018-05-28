@@ -19,6 +19,11 @@
 
 
 using MicroCoin.Util;
+using Org.BouncyCastle.Asn1.X9;
+using Org.BouncyCastle.Crypto;
+using Org.BouncyCastle.Crypto.Generators;
+using Org.BouncyCastle.Crypto.Parameters;
+using Org.BouncyCastle.Security;
 using System;
 using System.IO;
 using System.IO.Compression;
@@ -194,12 +199,9 @@ namespace MicroCoin.Cryptography
 
         public static ECKeyPair CreateNew(bool v, string name = "")
         {
-
+#if NATIVE_ECDSA
             ECCurve curve = ECCurve.CreateFromFriendlyName("secP256k1".ToUpper());
             Console.WriteLine("Generating keys");
-            //ECCurve curve = ECCurve.CreateFromValue("1.3.132.0.10");
-            //var curve.Hash = HashAlgorithmName.SHA256;            
-            //ECCurve curve = ECCurve.CreateFromOid(Oid.FromOidValue("1.3.132.0.10", OidGroup.All));
             var ecdsa = ECDsa.Create(curve);
             ECParameters parameters = ecdsa.ExportParameters(true);
             ECKeyPair pair = new ECKeyPair
@@ -210,6 +212,30 @@ namespace MicroCoin.Cryptography
                 Name = name
             };
             return pair;
+#else
+            SecureRandom secureRandom = new SecureRandom();
+            X9ECParameters curve = Org.BouncyCastle.Asn1.Sec.SecNamedCurves.GetByName("secp256k1");
+            ECDomainParameters domain = new ECDomainParameters(curve.Curve, curve.G, curve.N, curve.H);
+            ECKeyPairGenerator generator = new ECKeyPairGenerator();
+            ECKeyGenerationParameters keygenParams = new ECKeyGenerationParameters(domain, secureRandom);
+            generator.Init(keygenParams);
+            AsymmetricCipherKeyPair keypair = generator.GenerateKeyPair();
+            ECPrivateKeyParameters privParams = (ECPrivateKeyParameters)keypair.Private;
+            ECPublicKeyParameters pubParams = (ECPublicKeyParameters)keypair.Public;
+            ECKeyPair k = new ECKeyPair
+            {
+                CurveType = CurveType.Secp256K1,
+                PrivateKey = new BigInteger(privParams.D.ToByteArray()),
+                Name = name
+            };
+            k.PublicKey = new ECPoint
+            {
+                X = pubParams.Q.X.ToBigInteger().ToByteArray(),
+                Y = pubParams.Q.Y.ToBigInteger().ToByteArray()
+            };
+            return k;
+
+#endif
         }
 
         public void LoadFromStream(Stream stream, bool doubleLen = true, bool readPrivateKey = false,

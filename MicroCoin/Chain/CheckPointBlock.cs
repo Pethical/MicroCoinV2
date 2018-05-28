@@ -57,30 +57,37 @@ namespace MicroCoin.Chain
             }
         }
 
-        internal void SaveToStream(BinaryWriter bw, bool saveHash = true)
+        internal void SaveToStream(BinaryWriter bw, bool saveHash = true, bool proto1 = false)
         {
             bw.Write(BlockNumber);
-            AccountKey.SaveToStream(bw.BaseStream, false);
-            bw.Write(Reward);
-            bw.Write(Fee);
-            bw.Write(ProtocolVersion);
-            bw.Write(AvailableProtocol);
-            bw.Write(Timestamp);
-            bw.Write(CompactTarget);
-            bw.Write(Nonce);
-            Payload.SaveToStream(bw);
-            CheckPointHash.SaveToStream(bw);
-            TransactionHash.SaveToStream(bw);
-            ProofOfWork.SaveToStream(bw);
+            if (!proto1)
+            {
+                AccountKey.SaveToStream(bw.BaseStream, false);
+                bw.Write(Reward);
+                bw.Write(Fee);
+                bw.Write(ProtocolVersion);
+                bw.Write(AvailableProtocol);
+                bw.Write(Timestamp);
+                bw.Write(CompactTarget);
+                bw.Write(Nonce);
+                Payload.SaveToStream(bw);
+                CheckPointHash.SaveToStream(bw);
+                TransactionHash.SaveToStream(bw);
+                ProofOfWork.SaveToStream(bw);
+            }
             for (int i = 0; i < 5; i++)
             {
-                Accounts[i].SaveToStream(bw, saveHash);
+                Accounts[i].SaveToStream(bw, saveHash, !proto1);
             }
+            if (proto1) bw.Write(Timestamp);
             if (saveHash)
             {
                 BlockHash.SaveToStream(bw);
             }
-            bw.Write(AccumulatedWork);
+            if (!proto1)
+            {
+                bw.Write(AccumulatedWork);
+            }
         }
 
         public CheckPointBlock() 
@@ -88,14 +95,15 @@ namespace MicroCoin.Chain
 
         }
 
-        internal Hash CalculateBlockHash()
+        internal Hash CalculateBlockHash(bool checkproto = false)
         {
             MemoryStream ms = new MemoryStream();
             try
             {
                 using (BinaryWriter bw = new BinaryWriter(ms))
                 {
-                    SaveToStream(bw, false);
+                    //SaveToStream(bw, false, checkproto ? ProtocolVersion<2 : false);
+                    SaveToStream(bw, false, false);
                     ms.Position = 0;
                     using (SHA256Managed sha = new SHA256Managed())
                     {

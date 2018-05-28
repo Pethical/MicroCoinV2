@@ -35,7 +35,7 @@ namespace MicroCoin.Chain
     {
         public uint TransactionCount { get; set; }
         internal TransactionType TransactionsType { get; set; }
-        public List<Transaction> Transactions { get; set; } = new List<Transaction>();
+        public List<ITransaction> Transactions { get; set; } = new List<ITransaction>();
         public new static Block GenesisBlock => new Block
         {
             BlockNumber = 0
@@ -49,7 +49,7 @@ namespace MicroCoin.Chain
         public bool BlockIsValid()
         {
             if (Reward < 0) return false;
-            if (Fee < 0) return false;
+            if (Fee < 0) return false;            
             return ProofOfWork.Length == 0 || ProofOfWorkIsValid();
         }
 
@@ -62,6 +62,7 @@ namespace MicroCoin.Chain
                 Hash hash = Utils.DoubleSha256(headerHash);
                 return hash.SequenceEqual(ProofOfWork);
             }
+            
         }
 
         public Hash CalcProofOfWork()
@@ -124,7 +125,7 @@ namespace MicroCoin.Chain
             {
                 TransactionCount = br.ReadUInt32();
                 if (TransactionCount <= 0) return;
-                Transactions = new List<Transaction>();
+                Transactions = new List<ITransaction>();
                 for (var i = 0; i < TransactionCount; i++)
                 {
                     TransactionsType = (TransactionType)br.ReadUInt32();

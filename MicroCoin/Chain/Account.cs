@@ -56,11 +56,11 @@ namespace MicroCoin.Chain
             }
         }
         
-        public Lazy<List<Transaction>> Transactions
+        public Lazy<List<ITransaction>> Transactions
         {
             get
             {
-                return new Lazy<List<Transaction>>(()=>BlockChain.Instance.GetAccountOperations(AccountNumber),true);
+                return new Lazy<List<ITransaction>>(()=>BlockChain.Instance.GetAccountOperations(AccountNumber),true);
             }
         }
         
@@ -80,15 +80,18 @@ namespace MicroCoin.Chain
             LoadFromStream(s);
         }
 
-        internal void SaveToStream(BinaryWriter bw, bool writeLengths = true)
+        internal void SaveToStream(BinaryWriter bw, bool writeLengths = true, bool proto2 = true)
         {
             bw.Write(AccountNumber);
             AccountInfo.SaveToStream(bw, writeLengths);
             bw.Write(Balance);
             bw.Write(UpdatedBlock);
             bw.Write(NumberOfOperations);
-            Name.SaveToStream(bw, writeLengths);
-            bw.Write(AccountType);
+            if (proto2)
+            {
+                Name.SaveToStream(bw, writeLengths);
+                bw.Write(AccountType);
+            }
             if (writeLengths) bw.Write(UpdatedByBlock);
         }
 

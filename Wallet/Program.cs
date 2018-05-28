@@ -18,6 +18,7 @@
 //-----------------------------------------------------------------------
 
 
+using DevExpress.XtraEditors;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -38,6 +39,13 @@ namespace Wallet
         [STAThread]
         static void Main()
         {
+            Application.ThreadException += (o, e) =>
+            {
+                if (XtraMessageBox.Show(e.Exception.Message, "Hiba történt!", MessageBoxButtons.OK, MessageBoxIcon.Error) == DialogResult.Yes)
+                {
+                    Application.Exit();
+                }
+            };
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             Application.Run(new MainForm());

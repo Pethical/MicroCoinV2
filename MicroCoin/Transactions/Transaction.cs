@@ -23,6 +23,7 @@ using MicroCoin.Util;
 using System.IO;
 using MicroCoin.Chain;
 using System.Linq;
+using System.Text;
 
 namespace MicroCoin.Transactions
 {
@@ -45,7 +46,7 @@ namespace MicroCoin.Transactions
             get
             {
                 if (_payload.IsReadable) return _payload;
-                ByteString bs = (string) (new Hash(_payload));
+                ByteString bs = (string)(new Hash(_payload));
                 return bs;
             }
             set => _payload = value;
@@ -77,18 +78,55 @@ namespace MicroCoin.Transactions
             if (CheckPoints.Accounts.Count(p => p.AccountNumber == TargetAccount) == 0) return false;
             Account Signer = CheckPoints.Accounts.FirstOrDefault(p => p.AccountNumber == SignerAccount);
             if (Signer.BlockNumber >=
-                Node.Instance.BlockChain.BlockHeight() - MainParams.MinimumBlocksToUseAccount) return false;
+                Node.Instance.BlockChain.BlockHeight() - Node.NetParams.MinimumBlocksToUseAccount) return false;
             if (CheckPoints.Accounts.FirstOrDefault(p => p.AccountNumber == TargetAccount).BlockNumber >=
-                Node.Instance.BlockChain.BlockHeight() - MainParams.MinimumBlocksToUseAccount) return false;
+                Node.Instance.BlockChain.BlockHeight() - Node.NetParams.MinimumBlocksToUseAccount) return false;
             if (Amount < 0) return false;
             if (Fee < 0) return false;
             if (Amount + Fee > Signer.Balance) return false;
             if (
-                (NumberOfOperations != SignerAccount.Account().NumberOfOperations) && 
+                (NumberOfOperations != SignerAccount.Account().NumberOfOperations) &&
                 (NumberOfOperations != SignerAccount.Account().NumberOfOperations + 1) // Bug fix hack
                 ) return false;
             return true;
         }
 
+        public Hash GetOpHash(uint block)
+        {
+            MemoryStream ms = new MemoryStream();
+            try
+            {
+                using (BinaryWriter bw = new BinaryWriter(ms))
+                {
+                    bw.Write(block);
+                    bw.Write(SignerAccount);
+                    bw.Write(NumberOfOperations);
+                    Hash data;
+                    using (MemoryStream m = new MemoryStream())
+                    {
+                        SaveToStream(m);
+                        data = m.ToArray();                                                
+                    }
+                    Hash hh = Utils.RipeMD160(data);
+                    string s = hh;
+                    s = s.Substring(0, 20);
+                    bw.Write(Encoding.ASCII.GetBytes(s), 0, 20);
+                    return ms.ToArray();
+                }
+            }
+            finally
+            {
+                ms?.Dispose();
+            }
+        }
+
+        public Hash Serialize()
+        {
+            using(var ms = new MemoryStream())
+            {
+                SaveToStream(ms);
+                return ms.ToArray();
+            }
+        }
     }
 }

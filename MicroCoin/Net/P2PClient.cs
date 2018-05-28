@@ -55,7 +55,7 @@ namespace MicroCoin.Net
             {
                 TcpClient = new TcpClient();                
                 var result = TcpClient.BeginConnect(hostname, port, null, null);
-                Connected = result.AsyncWaitHandle.WaitOne(TimeSpan.FromMilliseconds(200));
+                Connected = result.AsyncWaitHandle.WaitOne(TimeSpan.FromMilliseconds(50));
                 TcpClient.EndConnect(result);                
                 if (!Connected)
                 {

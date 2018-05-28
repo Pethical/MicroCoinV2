@@ -34,10 +34,12 @@ namespace MicroCoin.Transactions
         TransactionType TransactionType { get; set; }
         ByteString Payload { get; set; }
         byte[] GetHash();
+        Hash Serialize();
         void LoadFromStream(Stream s);
         void SaveToStream(Stream s);
         bool IsValid();
         bool SignatureValid();
         ECSignature GetSignature();
+        Hash GetOpHash(uint block);
     }
 }

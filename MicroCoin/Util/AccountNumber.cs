@@ -40,7 +40,7 @@ namespace MicroCoin.Util
                 }
             }catch(Exception)
             {
-                throw new InvalidCastException();
+                throw new InvalidCastException("Hibás számlaszám!");
             }
         }
 

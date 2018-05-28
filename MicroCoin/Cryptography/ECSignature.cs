@@ -30,8 +30,11 @@ namespace MicroCoin.Cryptography
         public byte[] R { get; set; }
         public byte[] S { get; set; }
 
+        public byte[] SigCompat { get; set; }
+
         internal ECSignature(Stream stream)
         {
+            SigCompat = new byte[0];
             using (var br = new BinaryReader(stream, Encoding.ASCII, true))
             {
                 var len = br.ReadUInt16();
@@ -65,6 +68,7 @@ namespace MicroCoin.Cryptography
 
         public ECSignature(Hash sign)
         {
+            SigCompat = new byte[0];
             byte[] data = sign;
             R = data.Take(32).ToArray();
             S = data.Skip(32).Take(32).ToArray();

@@ -36,7 +36,7 @@ namespace MicroCoin.Chain
         public Hash GetBlockHeaderHash(uint nonce, uint timestamp)
         {
             Hash s1 = $"{timestamp:X04}";
-            Hash s2 = $"{nonce:X04}";
+            Hash s2 = $"{nonce:X08}";
             Hash h = (byte[]) MinerPayload;
             return Part1 + h + Part3 + s1.Reverse() + s2.Reverse();
         }

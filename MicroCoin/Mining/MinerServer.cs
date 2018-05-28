@@ -24,7 +24,7 @@ namespace MicroCoin.Mining
         public bool Stop { get; set; }
         public MinerServer()
         {
-            TcpListener = new TcpListener(IPAddress.Any, MainParams.MinerPort);
+            TcpListener = new TcpListener(IPAddress.Any, Node.NetParams.MinerPort);
         }
 
         public void HandleClient(TcpClient client)
@@ -105,10 +105,30 @@ namespace MicroCoin.Mining
                                         Log.Warn("Received invalid solution for block");
                                         continue;
                                     }
+                                    byte[] targetPow = BlockChain.TargetFromCompact(block.CompactTarget);
+                                    byte[] pow = block.ProofOfWork;
+                                    i = 0;
+                                    bool found = false;
+                                    foreach (byte c in pow)
+                                    {
+                                        i++;
+                                        if ((byte)c == (byte)targetPow[i]) continue;
+                                        if ((byte)c < (byte)targetPow[i])
+                                        {
+                                            found = true;
+                                            break;
+                                        }
+                                        break;
+                                    }
+                                    if (!found) {
+                                        Log.Warn("Received invalid solution for block. PoW not valid");
+                                        continue;
+                                    }
                                     Log.Info("Received valid solution for block");
                                     BlockChain.Instance.AppendAll( new List<Block>() { br.Block });
-                                    CheckPoints.AppendBlock(br.Block);
+                                    CheckPoints.AppendBlock(br.Block);                                    
                                     Node.Instance.SendNewBlock(br.Block);
+                                    Node.Instance.PendingTransactions.Clear();
                                 }
                                 else
                                 {

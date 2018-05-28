@@ -145,7 +145,7 @@ namespace MicroCoin.Transactions
         {
             if (!base.IsValid()) return false;
             if (AccountPrice < 0) return false;
-            if (AccountToPay.IsValid()) return false;
+            if (!AccountToPay.IsValid()) return false;
             return true;
         }
     }

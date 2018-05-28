@@ -158,7 +158,7 @@ namespace MicroCoin.Net
                 NodeServers = Node.Instance.NodeServers,
                 Operation = NetOperationType.Hello
             };
-            Hash h = Utils.Sha256(Encoding.ASCII.GetBytes(MainParams.GenesisPayload));
+            Hash h = Utils.Sha256(Encoding.ASCII.GetBytes(Node.NetParams.GenesisPayload));
             request.Block = new Block
             {
                 AccountKey = null,
@@ -239,7 +239,7 @@ namespace MicroCoin.Net
                 Operation = NetOperationType.Hello
             };
             
-            byte[] h = Utils.Sha256(Encoding.ASCII.GetBytes(MainParams.GenesisPayload));
+            byte[] h = Utils.Sha256(Encoding.ASCII.GetBytes(Node.NetParams.GenesisPayload));
             request.Block = new Block
             {
                 AccountKey = null,
@@ -253,7 +253,12 @@ namespace MicroCoin.Net
                 ProofOfWork = new byte[0],
                 ProtocolVersion = 0,
                 Reward = 0,
+#if PRODUCTION
                 CheckPointHash = h,
+#endif
+#if TESTNET
+                CheckPointHash = new byte[0],
+#endif
                 BlockSignature = 3,
                 Timestamp = 0
             };
@@ -488,9 +493,8 @@ namespace MicroCoin.Net
         {
             ReadData(RequestHeader.Size, ms);
             ms.Position = 0;
-            var p = 0;
             MessageHeader rp = new MessageHeader(ms);            
-            if(rp.Magic != MainParams.NetworkPacketMagic) {
+            if(rp.Magic != Node.NetParams.NetworkPacketMagic) {
                 throw new InvalidDataException("Invalid magic / no magic found");
             }
             if (rp.Error != 0)
@@ -589,7 +593,7 @@ namespace MicroCoin.Net
                     {
                         Timestamp = DateTime.UtcNow,
                         Error = 0,
-                        ServerPort = MainParams.Port,
+                        ServerPort = Node.NetParams.Port,
                         Block = BlockChain.Instance.GetLastBlock(),
                         WorkSum = CheckPoints.WorkSum,
                         AccountKey = Node.Instance.NodeKey,

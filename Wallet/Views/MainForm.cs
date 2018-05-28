@@ -22,6 +22,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -44,26 +45,16 @@ namespace Wallet.Views
 {
     public partial class MainForm : RibbonForm
     {
-        private const string keyfilefilter = MainParams.CoinName + " kulcstár|*.keys";
+        private const string keyfilefilter = NetParams.CoinName + " kulcstár|*.keys";
 
         public MainForm()
         {
+            Node.Initialize(new NetParams());
             InitializeComponent();
             SkinManager.EnableFormSkins();
-#if !MICROCOIN
-            DevExpress.UserSkins.BonusSkins.Register();
-            defaultLookAndFeel1.LookAndFeel.SkinName = "Valentine";
-            gridControl1.LookAndFeel.SkinName = "Valentine";
-#endif
-            colVisibleBalance.DisplayFormat.FormatString = "{0:N4} " + MainParams.CoinTicker;
-            Text = MainParams.CoinName + " Wallet";
-
+            colVisibleBalance.DisplayFormat.FormatString = "{0:N4} " + Node.NetParams.CoinTicker;
+            Text = NetParams.CoinName + " Wallet";
             ribbon.ApplicationCaption = this.Text;
-#if !MICROCOIN
-            ForeColor = Color.DarkRed;
-            Icon = Resources.heart;
-            this.btnSendMCC.Image = Resources.heartpng;
-#endif
             //repositoryItemMarqueeProgressBar1.ProgressAnimationMode = ProgressAnimationMode.PingPong;
         }
 
@@ -71,14 +62,14 @@ namespace Wallet.Views
 
         private void Form1_Load(object sender, EventArgs e)
         {
-            if (!Directory.Exists(MainParams.DataDirectory))
+            if (!Directory.Exists(Node.NetParams.DataDirectory))
             {
-                Directory.CreateDirectory(MainParams.DataDirectory);
+                Directory.CreateDirectory(Node.NetParams.DataDirectory);
             }
             string password = "";
-            if (File.Exists(MainParams.KeysFileName))
+            if (File.Exists(Node.NetParams.KeysFileName))
             {
-                var fs = File.Open(MainParams.KeysFileName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                var fs = File.Open(Node.NetParams.KeysFileName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
                 using (var br = new BinaryReader(fs))
                 {
                     if (fs.Length > 0)
@@ -115,7 +106,7 @@ namespace Wallet.Views
             }
             if(Keys.Count==0)
             {
-                var fs = File.Open(MainParams.KeysFileName, FileMode.Create, FileAccess.ReadWrite, FileShare.ReadWrite);
+                var fs = File.Open(Node.NetParams.KeysFileName, FileMode.Create, FileAccess.ReadWrite, FileShare.ReadWrite);
                 var keyPair = ECKeyPair.CreateNew(false, DateTime.Now.ToString());
                 Keys.Add(keyPair);
                 using (BinaryWriter bw = new BinaryWriter(fs,Encoding.ASCII,true))
@@ -131,9 +122,9 @@ namespace Wallet.Views
                 }
                 fs.Dispose();
             }
-            Node.Instance.NodeKey = Keys.First();
+            Node.Instance.NodeKey = Keys.First();            
             Node.Instance.NodeServers.NodesChanged += (ob, ev) =>
-            {
+            {                
                 Invoke((Action)(() =>
                 {
                     var i = 0;
@@ -179,7 +170,7 @@ namespace Wallet.Views
             Task.Run(async () =>
             {
 
-                var node = await Node.Instance.StartNode(MainParams.Port, Keys);
+                var node = await Node.Instance.StartNode(Keys);
                 if (node == null)
                 {
                     return;
@@ -198,7 +189,7 @@ namespace Wallet.Views
 
                     var myAccounts = Node.Instance.Accounts.Where(p => Keys.Contains(p.AccountInfo.AccountKey));
                     accountCount.Text = myAccounts.Count().ToString("N0") + " db";
-                    currentBalance.Text = myAccounts.Sum(p => p.VisibleBalance).ToString("N") + " " + MainParams.CoinTicker;
+                    currentBalance.Text = myAccounts.Sum(p => p.VisibleBalance).ToString("N") + " " + Node.NetParams.CoinTicker;
                     var timer = new Timer
                     {
                         Interval = 5000
@@ -233,7 +224,8 @@ namespace Wallet.Views
                 return;
             }
             var signer = (Account) accountBindingSource.Current;
-            var target = ((IEnumerable<Account>) accountBindingSource.DataSource).FirstOrDefault(p =>
+            
+            var target = Node.Instance.Accounts.FirstOrDefault(p =>
                     p.AccountNumber == targetAccount.Text);
             var accountKey = Keys.FirstOrDefault(p =>
                 p.PublicKey.X.SequenceEqual((byte[]) signer.AccountInfo.AccountKey.PublicKey.X) &&
@@ -246,9 +238,17 @@ namespace Wallet.Views
                 return;
             }
 
-            if (XtraMessageBox.Show(this, "Biztosan utalni szeretnél?", "Kérdés", MessageBoxButtons.YesNo,
+            decimal amount = amountToPay.Value;
+            decimal feeAmount = fee.Value;
+            if (XtraMessageBox.Show(this, $"Biztosan utalnjunk {amount} coint {feeAmount} díjjal a {target.AccountNumber} számlára?", "Kérdés", MessageBoxButtons.YesNo,
                     MessageBoxIcon.Question) != DialogResult.Yes) return;
-            Node.Instance.SendCoin(signer, target, amountToPay.Value, fee.Value, accountKey, payload.Text);
+            try
+            {
+                Node.Instance.SendCoin(signer, target, amount, feeAmount, accountKey, payload.Text);
+            }catch(Exception exception)
+            {
+                XtraMessageBox.Show(exception.Message, "Hiba", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private void barButtonItem13_ItemClick(object sender, ItemClickEventArgs e)

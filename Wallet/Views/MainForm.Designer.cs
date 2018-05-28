@@ -932,6 +932,11 @@
             0,
             0,
             262144});
+            this.fee.Properties.MaxValue = new decimal(new int[] {
+            1215752191,
+            23,
+            0,
+            0});
             this.fee.Size = new System.Drawing.Size(100, 20);
             this.fee.TabIndex = 25;
             this.fee.ToolTip = "Eldöntheted, hogy adsz-e meg költséget. Ha megadsz kötlséget,\r\na megadott összeg " +
